@@ -18,7 +18,9 @@ export class Player {
   ) {}
 
   async load() {
-    this.model = await this.loader.loadFBX("/assets/models/player/player.fbx");
+    const playerAsset = await this.loader.loadGLB("/assets/models/player/player.glb");
+
+    this.model = playerAsset.scene;
 
     this.model.scale.setScalar(0.01);
 
@@ -48,17 +50,17 @@ export class Player {
 
   private async loadAnimations() {
     const [idle, walking, walkingBackword, running, jump] = await Promise.all([
-      this.loader.loadFBX("/assets/models/player/animations/idle.fbx"),
+      this.loader.loadGLB("/assets/models/player/animations/idle.glb"),
 
-      this.loader.loadFBX("/assets/models/player/animations/walking.fbx"),
+      this.loader.loadGLB("/assets/models/player/animations/walking.glb"),
 
-      this.loader.loadFBX(
-        "/assets/models/player/animations/walking-backwards.fbx",
+      this.loader.loadGLB(
+        "/assets/models/player/animations/walking-backwards.glb",
       ),
 
-      this.loader.loadFBX("/assets/models/player/animations/running.fbx"),
+      this.loader.loadGLB("/assets/models/player/animations/running.glb"),
 
-      this.loader.loadFBX("/assets/models/player/animations/jump.fbx"),
+      this.loader.loadGLB("/assets/models/player/animations/jump.glb"),
     ]);
 
     this.animations.add("idle", this.fixAnimationBoneNames(idle.animations[0]));

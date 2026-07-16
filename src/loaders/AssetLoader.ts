@@ -1,9 +1,9 @@
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export class AssetLoader {
-  private fbxLoader = new FBXLoader();
+  private gltfLoader = new GLTFLoader();
 
-  loadFBX(path: string) {
-    return this.fbxLoader.loadAsync(path);
+  loadGLB(path: string) {
+    return this.gltfLoader.loadAsync(path);
   }
 }

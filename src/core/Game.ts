@@ -14,7 +14,7 @@ export class Game {
 
   private thirdPersonCamera?: ThirdPersonCamera;
 
-  private clock = new THREE.Clock();
+  private clock = new THREE.Timer();
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
