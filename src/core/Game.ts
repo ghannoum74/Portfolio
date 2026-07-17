@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { Renderer } from "./Renderer";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
-import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 
 export class Game {
   private scene: THREE.Scene;
@@ -12,9 +11,7 @@ export class Game {
   private world: World;
   private keyboard: Keyboard;
 
-  private thirdPersonCamera?: ThirdPersonCamera;
-
-  private clock = new THREE.Timer();
+  private timer = new THREE.Timer();
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -30,7 +27,7 @@ export class Game {
     );
 
     // Very important initial camera position
-    this.camera.position.set(0, 5, 10);
+    this.camera.position.set(0, 12, 18);
     this.camera.lookAt(0, 0, 0);
 
     this.keyboard = new Keyboard();
@@ -51,22 +48,17 @@ export class Game {
   private async init() {
     try {
       await this.world.init();
-
-      this.thirdPersonCamera = new ThirdPersonCamera(
-        this.camera,
-        this.world.player.model,
-      );
     } catch (error) {
       console.error("Failed to initialize game:", error);
     }
   }
 
   private update = () => {
-    const delta = this.clock.getDelta();
+    this.timer.update();
+
+    const delta = this.timer.getDelta();
 
     this.world.update(delta);
-
-    this.thirdPersonCamera?.update(delta);
 
     this.renderer.instance.render(this.scene, this.camera);
   };

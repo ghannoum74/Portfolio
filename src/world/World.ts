@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
-import { Player } from "../models/Player";
+import { Player } from "./player/Player";
 
 export class World {
   ground: Ground;

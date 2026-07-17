@@ -24,6 +24,7 @@ export class PlayerController {
 
     if (this.keyboard.forward) {
       this.player.translateZ(speed * delta);
+
       moving = true;
     }
 
@@ -58,5 +59,8 @@ export class PlayerController {
     }
 
     this.animations.play("walking");
+
+    const leg = this.player.getObjectByName("mixamorigLeftUpLeg");
+    if (leg) console.log(leg.rotation.x.toFixed(3));
   }
 }
