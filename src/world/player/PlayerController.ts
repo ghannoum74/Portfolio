@@ -46,21 +46,38 @@ export class PlayerController {
   }
 
   private updateAnimation(moving: boolean) {
+    if (this.keyboard.consumeJump()) {
+      return this.animations.playOnce("jump");
+    }
+
+    if (this.animations.isLocked()) {
+      return;
+    }
+
     if (!moving) {
+      if (this.keyboard.left) {
+        return this.animations.play("left_turn");
+      }
+
+      if (this.keyboard.right) {
+        return this.animations.play("right_turn");
+      }
+
       return this.animations.play("idle");
+    }
+
+    if (this.keyboard.backward) {
+      if (this.keyboard.run) {
+        return this.animations.play("running_backword");
+      }
+
+      return this.animations.play("walking_backword");
     }
 
     if (this.keyboard.run) {
       return this.animations.play("running");
     }
 
-    if (this.keyboard.backward) {
-      return this.animations.play("walking_backword");
-    }
-
     this.animations.play("walking");
-
-    const leg = this.player.getObjectByName("mixamorigLeftUpLeg");
-    if (leg) console.log(leg.rotation.x.toFixed(3));
   }
 }

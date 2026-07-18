@@ -11,6 +11,7 @@ export class World {
   constructor(
     private scene: THREE.Scene,
     private keyboard: Keyboard,
+    private loadingManager: THREE.LoadingManager,
   ) {
     this.ground = new Ground(this.scene);
 
@@ -18,7 +19,7 @@ export class World {
   }
 
   async init() {
-    this.player = new Player(this.scene, this.keyboard);
+    this.player = new Player(this.scene, this.keyboard, this.loadingManager);
 
     await this.player.load();
   }

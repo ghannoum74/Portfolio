@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Renderer } from "./Renderer";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
+import { GameLoadingManager } from "../loaders/GameLoadingManager";
 
 export class Game {
   private scene: THREE.Scene;
@@ -12,6 +13,7 @@ export class Game {
   private keyboard: Keyboard;
 
   private timer = new THREE.Timer();
+  private loadingMnager = new GameLoadingManager();
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -34,7 +36,11 @@ export class Game {
 
     this.renderer = new Renderer(canvas);
 
-    this.world = new World(this.scene, this.keyboard);
+    this.world = new World(
+      this.scene,
+      this.keyboard,
+      this.loadingMnager.instance,
+    );
 
     // Start rendering immediately
     this.renderer.instance.setAnimationLoop(this.update);

@@ -4,7 +4,7 @@ export class Keyboard {
   left = false;
   right = false;
   run = false;
-  jump = false;
+  private jumpQueued = false;
 
   constructor() {
     window.addEventListener("keydown", this.onKeyDown);
@@ -34,7 +34,10 @@ export class Keyboard {
         break;
 
       case "Space":
-        this.jump = true;
+        // listen to this event only once
+        if (!event.repeat) {
+          this.jumpQueued = true;
+        }
         break;
     }
   };
@@ -60,10 +63,14 @@ export class Keyboard {
       case "ShiftLeft":
         this.run = false;
         break;
-
-      case "Space":
-        this.jump = false;
-        break;
     }
   };
+
+  consumeJump() {
+    const shouldJump = this.jumpQueued;
+
+    this.jumpQueued = false;
+
+    return shouldJump;
+  }
 }

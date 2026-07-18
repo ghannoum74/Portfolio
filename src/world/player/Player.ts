@@ -10,12 +10,15 @@ export class Player {
   private mixer!: THREE.AnimationMixer;
   private animations!: PlayerAnimations;
   private controller!: PlayerController;
-  private loader = new AssetLoader();
+  private loader: AssetLoader;
 
   constructor(
     private scene: THREE.Scene,
     private keyboard: Keyboard,
-  ) {}
+    private loadingManager: THREE.LoadingManager,
+  ) {
+    this.loader = new AssetLoader(loadingManager);
+  }
 
   async load() {
     const playerAsset = await this.loader.loadGLB(
@@ -24,7 +27,7 @@ export class Player {
 
     this.model = playerAsset.scene;
 
-    this.model.scale.setScalar(0.01);
+    // this.model.scale.setScalar(0.01);
 
     this.model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -51,65 +54,65 @@ export class Player {
   }
 
   private async loadAnimations() {
-    const [idle, walking, jump] = await Promise.all([
+    const [
+      idle,
+      walking,
+      walkingBackword,
+      running,
+      runningBackword,
+      jump,
+      // leftTurn,
+      // rightTurn,
+    ] = await Promise.all([
       this.loader.loadGLB("/assets/models/player/animations/idle.glb"),
 
       this.loader.loadGLB("/assets/models/player/animations/walking.glb"),
 
-      //   this.loader.loadGLB(
-      //     "/assets/models/player/animations/walking-backwards.glb",
-      //   ),
+      this.loader.loadGLB(
+        "/assets/models/player/animations/walking-backwords.glb",
+      ),
 
-      //   this.loader.loadGLB("/assets/models/player/animations/running.glb"),
+      this.loader.loadGLB("/assets/models/player/animations/running.glb"),
 
-      this.loader.loadGLB("/assets/models/player/animations/jump.glb"),
+      this.loader.loadGLB(
+        "/assets/models/player/animations/running-backwords.glb",
+      ),
+
+      this.loader.loadGLB("/assets/models/player/animations/jump-fast.glb"),
+
+      // this.loader.loadGLB("/assets/models/player/animations/left-turn.glb"),
+
+      // this.loader.loadGLB("/assets/models/player/animations/right-turn.glb"),
     ]);
 
-    this.animations.add("idle", this.fixAnimationBoneNames(idle.animations[0]));
+    this.animations.add("idle", idle.animations[0]);
 
-    this.animations.add(
-      "walking",
-      this.fixAnimationBoneNames(walking.animations[0]),
-    );
+    this.animations.add("walking", walking.animations[0]);
+
+    this.animations.add("walking_backword", walkingBackword.animations[0]);
+
+    this.animations.add("running", running.animations[0]);
+
+    this.animations.add("running_backword", runningBackword.animations[0]);
+
+    this.animations.add("jump", jump.animations[0]);
 
     // this.animations.add(
-    //   "walking_backword",
-    //   this.fixAnimationBoneNames(walkingBackword.animations[0]),
+    //   "left_turn",
+    //   leftTurn.animations[0],
+    //   THREE.LoopPingPong,
     // );
 
     // this.animations.add(
-    //   "running",
-    //   this.fixAnimationBoneNames(running.animations[0]),
+    //   "right_turn",
+    //   rightTurn.animations[0],
+    //   THREE.LoopPingPong,
     // );
-
-    this.animations.add("jump", this.fixAnimationBoneNames(jump.animations[0]));
-
-    this.model.traverse((child) => {
-      if (child instanceof THREE.Bone) {
-        console.log("Character bone:", child.name);
-      }
-    });
   }
 
   update(delta: number) {
     this.controller?.update(delta);
 
     this.mixer?.update(delta);
-  }
-
-  private fixAnimationBoneNames(clip: THREE.AnimationClip) {
-    clip.tracks.forEach((track) => {
-      track.name = track.name.replace(/^mixamorig(?!_)/, "mixamorig_");
-    });
-
-    return clip;
-  }
-
-  private removeRootMotion(clip: THREE.AnimationClip): THREE.AnimationClip {
-    clip.tracks = clip.tracks.filter(
-      (track) => track.name !== "mixamorig_Hips.position",
-    );
-
-    return clip;
   }
 }
