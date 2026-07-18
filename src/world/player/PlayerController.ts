@@ -14,24 +14,29 @@ export class PlayerController {
   ) {}
 
   update(delta: number) {
-    let moving: boolean = false;
+    if (this.keyboard.consumeJump() && !this.animations.isLocked()) {
+      this.animations.playOnce("jump");
+    }
 
-    let speed: number = this.walkSpeed;
+    const locked = this.animations.isLocked();
+
+    let moving = false;
+    let speed = this.walkSpeed;
 
     if (this.keyboard.run) {
       speed = this.runSpeed;
     }
 
-    if (this.keyboard.forward) {
-      this.player.translateZ(speed * delta);
+    if (!locked) {
+      if (this.keyboard.forward) {
+        this.player.translateZ(speed * delta);
+        moving = true;
+      }
 
-      moving = true;
-    }
-
-    if (this.keyboard.backward) {
-      this.player.translateZ(-speed * delta);
-
-      moving = true;
+      if (this.keyboard.backward) {
+        this.player.translateZ(-speed * delta);
+        moving = true;
+      }
     }
 
     if (this.keyboard.left) {
@@ -42,41 +47,24 @@ export class PlayerController {
       this.player.rotation.y -= this.rotationSpeed * delta;
     }
 
-    this.updateAnimation(moving);
+    this.updateAnimation(moving, locked);
   }
 
-  private updateAnimation(moving: boolean) {
-    if (this.keyboard.consumeJump()) {
-      return this.animations.playOnce("jump");
-    }
-
-    if (this.animations.isLocked()) {
-      return;
-    }
+  private updateAnimation(moving: boolean, locked: boolean) {
+    if (locked) return;
 
     if (!moving) {
-      if (this.keyboard.left) {
-        return this.animations.play("left_turn");
-      }
-
-      if (this.keyboard.right) {
-        return this.animations.play("right_turn");
-      }
-
+      if (this.keyboard.left) return this.animations.play("left_turn");
+      if (this.keyboard.right) return this.animations.play("right_turn");
       return this.animations.play("idle");
     }
 
     if (this.keyboard.backward) {
-      if (this.keyboard.run) {
-        return this.animations.play("running_backword");
-      }
-
+      if (this.keyboard.run) return this.animations.play("running_backword");
       return this.animations.play("walking_backword");
     }
 
-    if (this.keyboard.run) {
-      return this.animations.play("running");
-    }
+    if (this.keyboard.run) return this.animations.play("running");
 
     this.animations.play("walking");
   }
