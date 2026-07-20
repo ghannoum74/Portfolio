@@ -1,71 +1,39 @@
-import * as THREE from "three";
 import { Keyboard } from "../../input/Keyboard";
-import { PlayerAnimations } from "./PlayerAnimations";
+import { PlayerMotor, PlayerMovementInput } from "./PlayerMotor";
 
 export class PlayerController {
-  private walkSpeed = 2;
-  private runSpeed = 5;
-  private rotationSpeed = 4;
+  private input: PlayerMovementInput = {
+    forward: 0,
+    turn: 0,
+    jump: false,
+    run: false,
+  };
 
   constructor(
-    private player: THREE.Group,
     private keyboard: Keyboard,
-    private animations: PlayerAnimations,
+    private motor: PlayerMotor,
   ) {}
 
-  update(delta: number) {
-    if (this.keyboard.consumeJump() && !this.animations.isLocked()) {
-      this.animations.playOnce("jump");
-    }
+  update(movementLocked: boolean) {
+    const forward =
+      !movementLocked && this.keyboard.forward
+        ? 1
+        : !movementLocked && this.keyboard.backward
+          ? -1
+          : 0;
+    const turn = Number(this.keyboard.left) - Number(this.keyboard.right);
 
-    const locked = this.animations.isLocked();
+    this.input = {
+      forward,
+      turn,
+      jump: this.keyboard.consumeJump() && !movementLocked,
+      run: this.keyboard.run,
+    };
 
-    let moving = false;
-    let speed = this.walkSpeed;
-
-    if (this.keyboard.run) {
-      speed = this.runSpeed;
-    }
-
-    if (!locked) {
-      if (this.keyboard.forward) {
-        this.player.translateZ(speed * delta);
-        moving = true;
-      }
-
-      if (this.keyboard.backward) {
-        this.player.translateZ(-speed * delta);
-        moving = true;
-      }
-    }
-
-    if (this.keyboard.left) {
-      this.player.rotation.y += this.rotationSpeed * delta;
-    }
-
-    if (this.keyboard.right) {
-      this.player.rotation.y -= this.rotationSpeed * delta;
-    }
-
-    this.updateAnimation(moving, locked);
+    this.motor.setInput(this.input);
   }
 
-  private updateAnimation(moving: boolean, locked: boolean) {
-    if (locked) return;
-
-    if (!moving) {
-      if (this.keyboard.left) return this.animations.play("left_turn");
-      if (this.keyboard.right) return this.animations.play("right_turn");
-      return this.animations.play("idle");
-    }
-
-    if (this.keyboard.backward) {
-      if (this.keyboard.run) return this.animations.play("running_backword");
-      return this.animations.play("walking_backword");
-    }
-
-    if (this.keyboard.run) return this.animations.play("running");
-
-    this.animations.play("walking");
+  getInput() {
+    return this.input;
   }
 }

@@ -1,7 +1,9 @@
 import * as THREE from "three";
+import { PhysicsGround } from "../physics/PhysicsGround";
 
 export class Ground {
   mesh: THREE.Mesh;
+  physics: PhysicsGround;
   private grid: THREE.GridHelper;
 
   constructor(scene: THREE.Scene) {
@@ -15,6 +17,8 @@ export class Ground {
 
     this.mesh.receiveShadow = true;
     scene.add(this.mesh);
+
+    this.physics = new PhysicsGround();
 
     this.grid = new THREE.GridHelper(100, 20, 0x2f4f2f, 0x567d46);
     scene.add(this.grid);

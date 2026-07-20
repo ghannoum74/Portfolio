@@ -4,6 +4,7 @@ import { Renderer } from "./Renderer";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 import { GameLoadingManager } from "../loaders/GameLoadingManager";
+import { PhysicsWorld } from "../physics/PhysicsWorld";
 
 export class Game {
   private scene: THREE.Scene;
@@ -11,9 +12,10 @@ export class Game {
   private camera: THREE.PerspectiveCamera;
   private world: World;
   private keyboard: Keyboard;
+  private physicsWorld: PhysicsWorld;
 
   private timer = new THREE.Timer();
-  private loadingMnager = new GameLoadingManager();
+  private loadingManager = new GameLoadingManager();
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -36,10 +38,13 @@ export class Game {
 
     this.renderer = new Renderer(canvas);
 
+    this.physicsWorld = new PhysicsWorld();
+
     this.world = new World(
       this.scene,
+      this.physicsWorld,
       this.keyboard,
-      this.loadingMnager.instance,
+      this.loadingManager.instance,
     );
 
     // Start rendering immediately
@@ -63,6 +68,10 @@ export class Game {
     this.timer.update();
 
     const delta = this.timer.getDelta();
+
+    this.world.updateInput(delta);
+
+    this.physicsWorld.step(delta);
 
     this.world.update(delta);
 

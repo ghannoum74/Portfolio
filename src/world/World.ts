@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
+import { PhysicsWorld } from "../physics/PhysicsWorld";
 
 export class World {
   ground: Ground;
@@ -10,18 +11,27 @@ export class World {
 
   constructor(
     private scene: THREE.Scene,
+    private physics: PhysicsWorld,
     private keyboard: Keyboard,
     private loadingManager: THREE.LoadingManager,
   ) {
     this.ground = new Ground(this.scene);
+    this.physics.add(this.ground.physics);
 
     this.addLights();
   }
 
   async init() {
-    this.player = new Player(this.scene, this.keyboard, this.loadingManager);
+    const player = new Player(this.scene, this.keyboard, this.loadingManager);
 
-    await this.player.load();
+    await player.load();
+
+    this.player = player;
+    this.physics.add(this.player.physics);
+  }
+
+  updateInput(delta: number) {
+    this.player?.updateInput(delta);
   }
 
   update(delta: number) {
