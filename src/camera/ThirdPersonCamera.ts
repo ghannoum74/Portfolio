@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 export class ThirdPersonCamera {
-  private offset = new THREE.Vector3(0, 4, -7);
+  private offset = new THREE.Vector3(0, 7, -7);
   private lookAtOffset = new THREE.Vector3(0, 2, 0);
 
   constructor(
@@ -12,6 +12,7 @@ export class ThirdPersonCamera {
   update(delta: number) {
     const cameraOffset = this.offset.clone();
 
+    // this is responsible to rotate the camera around the player based on the player's rotation
     cameraOffset.applyQuaternion(this.player.quaternion);
 
     const idealPosition = this.player.position.clone().add(cameraOffset);

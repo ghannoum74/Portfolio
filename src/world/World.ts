@@ -15,7 +15,7 @@ export class World {
     private keyboard: Keyboard,
     private loadingManager: THREE.LoadingManager,
   ) {
-    this.ground = new Ground(this.scene);
+    this.ground = new Ground(this.scene, loadingManager);
 
     this.addLights();
   }
@@ -25,7 +25,11 @@ export class World {
 
     this.grass = new Grass(this.scene, this.loadingManager);
 
-    await Promise.all([this.player.load(), this.grass.load()]);
+    await Promise.all([
+      this.player.load(),
+      // this.grass.load(),
+      this.ground.load(),
+    ]);
   }
 
   update(delta: number) {
