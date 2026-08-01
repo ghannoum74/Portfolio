@@ -4,6 +4,7 @@ import { Renderer } from "./Renderer";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 import { GameLoadingManager } from "../loaders/GameLoadingManager";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 export class Game {
   private scene: THREE.Scene;
@@ -11,6 +12,7 @@ export class Game {
   private camera: THREE.PerspectiveCamera;
   private world: World;
   private keyboard: Keyboard;
+  private controls!: OrbitControls;
 
   private timer = new THREE.Timer();
   private loadingMnager = new GameLoadingManager();
@@ -35,6 +37,30 @@ export class Game {
     this.keyboard = new Keyboard();
 
     this.renderer = new Renderer(canvas);
+
+    // camera controls
+    this.controls = new OrbitControls(
+      this.camera,
+      this.renderer.instance.domElement,
+    );
+    this.controls.enableDamping = true; // Enable damping for smoother camera movement
+    this.controls.dampingFactor = 0.08;
+
+    this.controls.enableRotate = true;
+    this.controls.enableZoom = true;
+    this.controls.enablePan = false;
+    // max and min zoom
+    this.controls.minDistance = 8;
+    this.controls.maxDistance = 12;
+    // Lock vertical rotation
+    this.controls.minPolarAngle = Math.PI / 3;
+    this.controls.maxPolarAngle = Math.PI / 3;
+
+    this.controls.screenSpacePanning = true;
+
+    // Look toward the center of the world
+    this.controls.target.set(0, 1, 0);
+    this.controls.update();
 
     this.world = new World(
       this.scene,
@@ -65,6 +91,7 @@ export class Game {
     const delta = this.timer.getDelta();
 
     this.world.update(delta);
+    this.controls.update();
 
     this.renderer.instance.render(this.scene, this.camera);
   };

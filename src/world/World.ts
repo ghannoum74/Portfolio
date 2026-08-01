@@ -3,10 +3,12 @@ import * as THREE from "three";
 import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
+import { Grass } from "./Grass";
 
 export class World {
   ground: Ground;
   player!: Player;
+  grass!: Grass;
 
   constructor(
     private scene: THREE.Scene,
@@ -21,7 +23,9 @@ export class World {
   async init() {
     this.player = new Player(this.scene, this.keyboard, this.loadingManager);
 
-    await this.player.load();
+    this.grass = new Grass(this.scene, this.loadingManager);
+
+    await Promise.all([this.player.load(), this.grass.load()]);
   }
 
   update(delta: number) {
