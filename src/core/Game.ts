@@ -22,9 +22,6 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
 
-    // Use a visible color while debugging
-    this.scene.background = new THREE.Color(0x87ceeb);
-
     this.camera = new THREE.PerspectiveCamera(
       45,
       window.innerWidth / window.innerHeight,
@@ -41,10 +38,10 @@ export class Game {
     this.renderer = new Renderer(canvas);
 
     // camera controls
-    // this.controls = new OrbitControls(
-    //   this.camera,
-    //   this.renderer.instance.domElement,
-    // );
+    this.controls = new OrbitControls(
+      this.camera,
+      this.renderer.instance.domElement,
+    );
     // this.controls.enableDamping = true; // Enable damping for smoother camera movement
     // this.controls.dampingFactor = 0.08;
 

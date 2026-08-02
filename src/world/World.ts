@@ -11,32 +11,32 @@ export class World {
   grass!: Grass;
 
   constructor(
-    private scene: THREE.Scene,
-    private keyboard: Keyboard,
-    private loadingManager: THREE.LoadingManager,
+    private readonly scene: THREE.Scene,
+    private readonly keyboard: Keyboard,
+    private readonly loadingManager: THREE.LoadingManager,
   ) {
-    this.ground = new Ground(this.scene, loadingManager);
+    this.ground = new Ground(this.scene, this.loadingManager);
 
     this.addLights();
   }
 
-  async init() {
+  async init(): Promise<void> {
     this.player = new Player(this.scene, this.keyboard, this.loadingManager);
 
     this.grass = new Grass(this.scene, this.loadingManager);
 
     await Promise.all([
-      this.player.load(),
-      // this.grass.load(),
       this.ground.load(),
+      this.player.load(),
+      this.grass.load(),
     ]);
   }
 
-  update(delta: number) {
+  update(delta: number): void {
     this.player?.update(delta);
   }
 
-  private addLights() {
+  private addLights(): void {
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 
     this.scene.add(ambientLight);
@@ -44,8 +44,9 @@ export class World {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
 
     directionalLight.position.set(10, 20, 10);
-
     directionalLight.castShadow = true;
+
+    directionalLight.shadow.mapSize.set(2048, 2048);
 
     this.scene.add(directionalLight);
   }
