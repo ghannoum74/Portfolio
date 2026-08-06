@@ -16,20 +16,25 @@ type GrassPatch = {
   spacing: number;
 };
 
+type GrassPlacement = {
+  position: THREE.Vector3;
+  scale: number;
+};
+
 export class Grass {
   private readonly loader: AssetLoader;
 
   private readonly patches: GrassPatch[] = [
-    // Left-middle patch
+    // center patch
     {
       centerX: -1,
       centerZ: -5,
       radiusX: 4,
-      radiusZ: 8,
-      spacing: 0.35,
+      radiusZ: 4,
+      spacing: 0.2,
     },
 
-    // Back-left patch
+    // Back-right patch
     {
       centerX: -16,
       centerZ: -18,
@@ -38,7 +43,7 @@ export class Grass {
       spacing: 0.36,
     },
 
-    // Small back-center patch
+    // Small back-center
     {
       centerX: -2,
       centerZ: -21,
@@ -47,7 +52,7 @@ export class Grass {
       spacing: 0.38,
     },
 
-    // Back-right patch
+    // Back-left patch
     {
       centerX: 14,
       centerZ: -18,
@@ -56,7 +61,7 @@ export class Grass {
       spacing: 0.36,
     },
 
-    // Right-middle patch
+    // left-middle patch
     {
       centerX: 20,
       centerZ: -2,
@@ -65,7 +70,7 @@ export class Grass {
       spacing: 0.35,
     },
 
-    // Front-right patch
+    // Front-left patch
     {
       centerX: 16,
       centerZ: 16,
@@ -74,7 +79,7 @@ export class Grass {
       spacing: 0.37,
     },
 
-    // Front-left patch
+    // Front-right patch
     {
       centerX: -15,
       centerZ: 17,
@@ -109,6 +114,7 @@ export class Grass {
     this.loader = new AssetLoader(loadingManager);
   }
 
+  // this is to make sure the grass is centered at the origin, so that when we place it in the world, it will be positioned correctly
   private normalizeGeometry(geometry: THREE.BufferGeometry): void {
     geometry.computeBoundingBox();
 
@@ -139,6 +145,14 @@ export class Grass {
       const geometry = object.geometry.clone();
 
       this.normalizeGeometry(geometry);
+
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+
+      materials.forEach((material) => {
+        this.applyBillboardShader(material);
+      });
 
       variants.push({
         name: object.name,
@@ -171,11 +185,8 @@ export class Grass {
   }
 
   private createGrassPatch(variants: GrassVariant[], patch: GrassPatch): void {
-    const matricesByVariant: THREE.Matrix4[][] = variants.map(() => []);
-
-    const dummy = new THREE.Object3D();
+    const placementsByVariant: GrassPlacement[][] = variants.map(() => []);
     const jitter = patch.spacing * 0.1;
-    console.log(patch, dummy, jitter);
 
     for (
       let localZ = -patch.radiusZ;
@@ -212,46 +223,57 @@ export class Grass {
         // Select one of the seven variants.
         const variantIndex = this.selectVariant(variants);
 
-        dummy.position.set(
+        const position = new THREE.Vector3(
           patch.centerX + randomX,
           0.001,
           patch.centerZ + randomZ,
         );
 
-        dummy.updateMatrix();
+        const scale = THREE.MathUtils.randFloat(0.85, 1.15);
 
-        matricesByVariant[variantIndex].push(dummy.matrix.clone());
+        placementsByVariant[variantIndex].push({
+          position,
+          scale,
+        });
       }
     }
 
     variants.forEach((variant, variantIndex) => {
-      const matrices = matricesByVariant[variantIndex];
+      const placements = placementsByVariant[variantIndex];
 
-      if (matrices.length === 0) {
+      if (placements.length === 0) {
         return;
       }
 
       const instances = new THREE.InstancedMesh(
         variant.geometry,
         variant.material,
-        matrices.length,
+        placements.length,
       );
 
       instances.name = `grass-${variant.name}`;
 
-      matrices.forEach((matrix, index) => {
-        instances.setMatrixAt(index, matrix);
+      const dummy = new THREE.Object3D();
+
+      placements.forEach((placement, index) => {
+        dummy.position.copy(placement.position);
+
+        // No billboard rotation here anymore.
+        dummy.rotation.set(0, 0, 0);
+
+        dummy.scale.setScalar(placement.scale);
+
+        dummy.updateMatrix();
+
+        instances.setMatrixAt(index, dummy.matrix);
       });
 
+      // Matrices never change after creation.
       instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-
       instances.instanceMatrix.needsUpdate = true;
 
       instances.castShadow = false;
       instances.receiveShadow = false;
-
-      instances.computeBoundingBox();
-      instances.computeBoundingSphere();
 
       this.scene.add(instances);
     });
@@ -273,5 +295,83 @@ export class Grass {
     for (const patch of this.patches) {
       this.createGrassPatch(variants, patch);
     }
+  }
+
+  private applyBillboardShader(material: THREE.Material): void {
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader.replace(
+        "void main() {",
+        `
+      void main() {
+
+        #ifdef USE_INSTANCING
+
+          vec3 grassWorldPosition = (
+            modelMatrix *
+            instanceMatrix *
+            vec4(0.0, 0.0, 0.0, 1.0)
+          ).xyz;
+
+          vec3 grassToCamera =
+            cameraPosition - grassWorldPosition;
+
+          float grassAngle = atan(
+            grassToCamera.x,
+            grassToCamera.z
+          );
+
+          float grassSin = sin(grassAngle);
+          float grassCos = cos(grassAngle);
+
+        #endif
+      `,
+      );
+
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <beginnormal_vertex>",
+        `
+      #include <beginnormal_vertex>
+
+      #ifdef USE_INSTANCING
+
+        float normalX =
+          grassCos * objectNormal.x +
+          grassSin * objectNormal.z;
+
+        float normalZ =
+          -grassSin * objectNormal.x +
+          grassCos * objectNormal.z;
+
+        objectNormal.x = normalX;
+        objectNormal.z = normalZ;
+
+      #endif
+      `,
+      );
+
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <begin_vertex>",
+        `
+      #include <begin_vertex>
+
+      #ifdef USE_INSTANCING
+
+        float rotatedX =
+          grassCos * transformed.x +
+          grassSin * transformed.z;
+
+        float rotatedZ =
+          -grassSin * transformed.x +
+          grassCos * transformed.z;
+
+        transformed.x = rotatedX;
+        transformed.z = rotatedZ;
+
+      #endif
+      `,
+      );
+    };
+
+    material.needsUpdate = true;
   }
 }

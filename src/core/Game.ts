@@ -99,7 +99,7 @@ export class Game {
     // move the camera using the player's new transform
     this.thirdPersonCamera?.update(delta);
 
-    this.renderer.instance.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   };
   private onResize = () => {
     this.camera.aspect = window.innerWidth / window.innerHeight;
