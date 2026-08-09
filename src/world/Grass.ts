@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { AssetLoader } from "../loaders/AssetLoader";
+import { loadGrassMask, type GrassMaskData } from "../loaders/GrassMaskLoader";
 
 type GrassVariant = {
   name: string;
@@ -8,95 +9,22 @@ type GrassVariant = {
   weight: number;
 };
 
-type GrassPatch = {
-  centerX: number;
-  centerZ: number;
-  radiusX: number;
-  radiusZ: number;
-  spacing: number;
-};
-
 type GrassPlacement = {
   position: THREE.Vector3;
   scale: number;
 };
 
+type MaskBounds = {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+};
+
 export class Grass {
   private readonly loader: AssetLoader;
-
-  private readonly patches: GrassPatch[] = [
-    // center patch
-    {
-      centerX: -1,
-      centerZ: -5,
-      radiusX: 4,
-      radiusZ: 4,
-      spacing: 0.2,
-    },
-
-    // Back-right patch
-    {
-      centerX: -16,
-      centerZ: -18,
-      radiusX: 7,
-      radiusZ: 4,
-      spacing: 0.36,
-    },
-
-    // Small back-center
-    {
-      centerX: -2,
-      centerZ: -21,
-      radiusX: 6,
-      radiusZ: 3,
-      spacing: 0.38,
-    },
-
-    // Back-left patch
-    {
-      centerX: 14,
-      centerZ: -18,
-      radiusX: 6,
-      radiusZ: 4,
-      spacing: 0.36,
-    },
-
-    // left-middle patch
-    {
-      centerX: 20,
-      centerZ: -2,
-      radiusX: 4,
-      radiusZ: 8,
-      spacing: 0.35,
-    },
-
-    // Front-left patch
-    {
-      centerX: 16,
-      centerZ: 16,
-      radiusX: 7,
-      radiusZ: 4,
-      spacing: 0.37,
-    },
-
-    // Front-right patch
-    {
-      centerX: -15,
-      centerZ: 17,
-      radiusX: 7,
-      radiusZ: 4,
-      spacing: 0.37,
-    },
-
-    // Small decorative patch
-    {
-      centerX: 5,
-      centerZ: 19,
-      radiusX: 3,
-      radiusZ: 2,
-      spacing: 0.4,
-    },
-  ];
+  private readonly windTime = { value: 0 };
+  private mask!: GrassMaskData;
 
   private readonly variantWeights: Record<string, number> = {
     shortGrass: 25,
@@ -107,9 +35,16 @@ export class Grass {
     bentRightGrass: 6,
   };
 
+  private readonly maskBounds: MaskBounds = {
+    minX: -100,
+    maxX: 100,
+    minZ: -100,
+    maxZ: 100,
+  };
+
   constructor(
     private readonly scene: THREE.Scene,
-    loadingManager: THREE.LoadingManager,
+    private readonly loadingManager: THREE.LoadingManager,
   ) {
     this.loader = new AssetLoader(loadingManager);
   }
@@ -146,12 +81,14 @@ export class Grass {
 
       this.normalizeGeometry(geometry);
 
+      const grassHeight = geometry.boundingBox!.max.y;
+
       const materials = Array.isArray(object.material)
         ? object.material
         : [object.material];
 
       materials.forEach((material) => {
-        this.applyBillboardShader(material);
+        this.applyBillboardShader(material, grassHeight);
       });
 
       variants.push({
@@ -184,56 +121,40 @@ export class Grass {
     return variants.length - 1;
   }
 
-  private createGrassPatch(variants: GrassVariant[], patch: GrassPatch): void {
+  private createGrassFromMask(variants: GrassVariant[]): void {
     const placementsByVariant: GrassPlacement[][] = variants.map(() => []);
-    const jitter = patch.spacing * 0.1;
 
-    for (
-      let localZ = -patch.radiusZ;
-      localZ <= patch.radiusZ;
-      localZ += patch.spacing
-    ) {
-      for (
-        let localX = -patch.radiusX;
-        localX <= patch.radiusX;
-        localX += patch.spacing
-      ) {
-        // Prevent perfectly straight rows.
-        const randomX = localX + THREE.MathUtils.randFloat(-jitter, jitter);
+    const spacing = 0.25;
 
-        const randomZ = localZ + THREE.MathUtils.randFloat(-jitter, jitter);
+    const jitter = spacing * 0.2;
+    const groundY = 0.001;
 
-        // Check if this position is inside the ellipse.
-        const normalizedX = randomX / patch.radiusX;
-        const normalizedZ = randomZ / patch.radiusZ;
+    const { minX, maxX, minZ, maxZ } = this.maskBounds;
 
-        const distance = normalizedX * normalizedX + normalizedZ * normalizedZ;
+    for (let z = minZ; z <= maxZ; z += spacing) {
+      for (let x = minX; x <= maxX; x += spacing) {
+        // Prevent visible straight rows.
+        const worldX = x + THREE.MathUtils.randFloat(-jitter, jitter);
 
-        if (distance > 1) {
+        const worldZ = z + THREE.MathUtils.randFloat(-jitter, jitter);
+
+        const density = this.sampleMaskDensity(worldX, worldZ);
+
+        // Treat pixels that are almost black as completely empty.
+        if (density < 0.03) {
           continue;
         }
 
-        // Make the border less perfectly shaped.
-        const placementChance = THREE.MathUtils.lerp(0.3, 1, 1 - distance);
-
-        if (Math.random() > placementChance) {
+        // Gray values produce partial density.
+        if (Math.random() > density) {
           continue;
         }
 
-        // Select one of the seven variants.
         const variantIndex = this.selectVariant(variants);
 
-        const position = new THREE.Vector3(
-          patch.centerX + randomX,
-          0.001,
-          patch.centerZ + randomZ,
-        );
-
-        const scale = THREE.MathUtils.randFloat(0.85, 1.15);
-
         placementsByVariant[variantIndex].push({
-          position,
-          scale,
+          position: new THREE.Vector3(worldX, groundY, worldZ),
+          scale: THREE.MathUtils.randFloat(0.85, 1.15),
         });
       }
     }
@@ -257,52 +178,60 @@ export class Grass {
 
       placements.forEach((placement, index) => {
         dummy.position.copy(placement.position);
-
-        // No billboard rotation here anymore.
         dummy.rotation.set(0, 0, 0);
-
         dummy.scale.setScalar(placement.scale);
-
         dummy.updateMatrix();
 
         instances.setMatrixAt(index, dummy.matrix);
       });
 
-      // Matrices never change after creation.
       instances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
       instances.instanceMatrix.needsUpdate = true;
 
-      instances.castShadow = false;
-      instances.receiveShadow = false;
+      instances.castShadow = true;
+      instances.receiveShadow = true;
 
       this.scene.add(instances);
     });
   }
 
   async load(): Promise<void> {
-    const grassAsset = await this.loader.loadGLB(
-      "/assets/models/environment/grass.glb",
-    );
+    const [grassAsset, mask] = await Promise.all([
+      this.loader.loadGLB("/assets/models/environment/grass.glb"),
+
+      loadGrassMask("/assets/mask/grass-mask.png", this.loadingManager),
+    ]);
+
+    this.mask = mask;
 
     const variants = this.extractVariants(grassAsset.scene);
-
-    console.log(variants);
 
     if (variants.length === 0) {
       throw new Error("grass.glb does not contain any grass meshes");
     }
 
-    for (const patch of this.patches) {
-      this.createGrassPatch(variants, patch);
-    }
+    this.createGrassFromMask(variants);
   }
 
-  private applyBillboardShader(material: THREE.Material): void {
+  private applyBillboardShader(
+    material: THREE.Material,
+    grassHeight: number,
+  ): void {
     material.onBeforeCompile = (shader) => {
+      shader.uniforms.uWindTime = this.windTime;
+
+      shader.uniforms.uGrassHeight = {
+        value: grassHeight,
+      };
+
       shader.vertexShader = shader.vertexShader.replace(
         "void main() {",
         `
-      void main() {
+        uniform float uWindTime;
+        uniform float uGrassHeight;
+
+        void main() {
 
         #ifdef USE_INSTANCING
 
@@ -352,26 +281,84 @@ export class Grass {
       shader.vertexShader = shader.vertexShader.replace(
         "#include <begin_vertex>",
         `
-      #include <begin_vertex>
-
-      #ifdef USE_INSTANCING
-
-        float rotatedX =
-          grassCos * transformed.x +
-          grassSin * transformed.z;
-
-        float rotatedZ =
-          -grassSin * transformed.x +
-          grassCos * transformed.z;
-
-        transformed.x = rotatedX;
-        transformed.z = rotatedZ;
-
-      #endif
-      `,
+        #include <begin_vertex>
+            
+        #ifdef USE_INSTANCING
+            
+          // 0 at the root, 1 at the tip.
+          float heightFactor = clamp(
+            position.y / uGrassHeight,
+            0.0,
+            1.0
+          );
+            
+          // Make the bottom much stiffer.
+          heightFactor *= heightFactor;
+            
+          // Different world positions get different wind phases.
+          float windPhase =
+            uWindTime * 2.0 +
+            grassWorldPosition.x * 0.7 +
+            grassWorldPosition.z * 0.5;
+            
+          // Main wind + smaller secondary wave.
+          float wind =
+            sin(windPhase) +
+            sin(windPhase * 2.3 + 1.7) * 0.35;
+            
+          // Bend the grass.
+          transformed.x +=
+            wind * 0.12 * heightFactor;
+            
+            
+          // BILLBOARD
+          float rotatedX =
+            grassCos * transformed.x +
+            grassSin * transformed.z;
+            
+          float rotatedZ =
+            -grassSin * transformed.x +
+            grassCos * transformed.z;
+            
+          transformed.x = rotatedX;
+          transformed.z = rotatedZ;
+            
+        #endif
+        `,
       );
     };
 
     material.needsUpdate = true;
+  }
+
+  update(delta: number): void {
+    this.windTime.value += delta;
+  }
+
+  private sampleMaskDensity(worldX: number, worldZ: number): number {
+    const { minX, maxX, minZ, maxZ } = this.maskBounds;
+
+    const u = (worldX - minX) / (maxX - minX);
+    const v = (worldZ - minZ) / (maxZ - minZ);
+
+    //  check position outside the ground
+    if (u < 0 || u > 1 || v < 0 || v > 1) {
+      return 0;
+    }
+
+    const pixelX = Math.min(
+      this.mask.width - 1,
+      Math.floor(u * this.mask.width),
+    );
+    const pixelY = Math.min(
+      this.mask.height - 1,
+      Math.floor((1 - v) * this.mask.height),
+    );
+
+    const pixelIndex = (pixelY * this.mask.width + pixelX) * 4;
+
+    const brightness = this.mask.pixels[pixelIndex];
+
+    return brightness / 255;
   }
 }

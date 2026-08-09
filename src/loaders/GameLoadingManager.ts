@@ -7,19 +7,18 @@ export class GameLoadingManager {
     this.instance = new THREE.LoadingManager();
 
     this.instance.onStart = (url, itemsLoaded, itemsTotal) => {
-      console.log(`Started loading: ${url}`);
-
-      console.log(`${itemsLoaded}/${itemsTotal}`);
+      // console.log(`Started loading: ${url}`);
+      // console.log(`${itemsLoaded}/${itemsTotal}`);
     };
 
     this.instance.onProgress = (url, itemsLoaded, itemsTotal) => {
       const progress = (itemsLoaded / itemsTotal) * 100;
 
-      console.log(`Loading: ${progress.toFixed(0)}%`);
+      // console.log(`Loading: ${progress.toFixed(0)}%`);
     };
 
     this.instance.onLoad = () => {
-      console.log("All assets loaded");
+      // console.log("All assets loaded");
     };
 
     this.instance.onError = (url) => {

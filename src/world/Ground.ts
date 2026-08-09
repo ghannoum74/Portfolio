@@ -20,7 +20,7 @@ export class Ground {
     this.model = ground.scene;
 
     this.model.position.set(0, 0, 0);
-    this.model.scale.set(1, 1, 1);
+    // this.model.scale.set(1, 1, 1);
 
     this.model.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) {
