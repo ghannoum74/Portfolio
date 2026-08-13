@@ -4,11 +4,13 @@ import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
 import { Grass } from "./Grass";
+import { Trees } from "./Trees";
 
 export class World {
   ground: Ground;
   player!: Player;
   grass!: Grass;
+  tree!: Trees;
   sun!: THREE.DirectionalLight;
   sunPivot!: THREE.Group;
   sunVisual!: THREE.Mesh;
@@ -30,10 +32,13 @@ export class World {
 
     this.grass = new Grass(this.scene, this.loadingManager);
 
+    this.tree = new Trees(this.scene, this.loadingManager);
+
     await Promise.all([
       this.ground.load(),
       this.player.load(),
       this.grass.load(),
+      this.tree.load(),
     ]);
   }
 

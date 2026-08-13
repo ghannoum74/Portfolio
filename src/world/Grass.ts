@@ -200,7 +200,7 @@ export class Grass {
     const [grassAsset, mask] = await Promise.all([
       this.loader.loadGLB("/assets/models/environment/grass.glb"),
 
-      loadGrassMask("/assets/mask/grass-mask.png", this.loadingManager),
+      loadGrassMask("/assets/mask/grass-mask-v2.png", this.loadingManager),
     ]);
 
     this.mask = mask;

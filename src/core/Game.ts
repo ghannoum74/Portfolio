@@ -32,6 +32,8 @@ export class Game {
 
   private timer = new THREE.Timer();
   private loadingMnager = new GameLoadingManager();
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -94,6 +96,25 @@ export class Game {
 
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
+
+    this.renderer.instance.domElement.addEventListener("click", (event) => {
+      const rect = this.renderer.instance.domElement.getBoundingClientRect();
+
+      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.mouse, this.getActiveCamera());
+
+      const intersects = this.raycaster.intersectObjects(
+        this.scene.children,
+        true,
+      );
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        console.log("Clicked point in world coordinates:", point);
+      }
+    });
 
     // Start rendering immediately
     this.renderer.instance.setAnimationLoop(this.update);
