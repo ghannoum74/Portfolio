@@ -1,16 +1,14 @@
 import * as THREE from "three";
 
-import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
-import { Grass } from "./Grass";
-import { Trees } from "./Trees";
+import { AssetLoader } from "../loaders/AssetLoader";
 
 export class World {
-  ground: Ground;
+  model!: THREE.Group;
+  private meshes: THREE.Mesh[] = [];
+  private bounds = new THREE.Box3();
   player!: Player;
-  grass!: Grass;
-  tree!: Trees;
   sun!: THREE.DirectionalLight;
   sunPivot!: THREE.Group;
   sunVisual!: THREE.Mesh;
@@ -22,29 +20,32 @@ export class World {
     private readonly keyboard: Keyboard,
     private readonly loadingManager: THREE.LoadingManager,
   ) {
-    this.ground = new Ground(this.scene, this.loadingManager);
-
     this.addLights();
   }
 
   async init(): Promise<void> {
+    const asset = await new AssetLoader(this.loadingManager).loadGLB(
+      "/assets/models/environment/world.glb",
+    );
+    this.model = asset.scene;
+    // Match the export's roughly 12-unit storeys to the 1.85-unit player.
+    this.model.scale.setScalar(0.25);
+    this.model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      child.castShadow = true;
+      child.receiveShadow = true;
+      child.geometry.computeBoundingBox();
+      this.meshes.push(child);
+    });
+    this.scene.add(this.model);
+    this.model.updateMatrixWorld(true);
+    this.bounds.setFromObject(this.model);
     this.player = new Player(this.scene, this.keyboard, this.loadingManager);
-
-    this.grass = new Grass(this.scene, this.loadingManager);
-
-    this.tree = new Trees(this.scene, this.loadingManager);
-
-    await Promise.all([
-      this.ground.load(),
-      this.player.load(),
-      this.grass.load(),
-      this.tree.load(),
-    ]);
+    await this.player.load();
   }
 
   update(delta: number): void {
     this.player?.update(delta);
-    this.grass.update(delta);
     this.sunHelper?.update();
   }
 
