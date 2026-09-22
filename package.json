@@ -5,6 +5,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.20.0",
     "cannon-es": "^0.20.0",
     "stats-gl": "^4.2.3",
     "three": "^0.184.0"

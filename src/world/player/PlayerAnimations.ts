@@ -25,7 +25,7 @@ export class PlayerAnimations {
     this.actions.set(name, action);
   }
 
-  play(name: string) {
+  play(name: string, fadeDuration = 0.2) {
     if (this.lockedActionName && this.lockedActionName !== name) return;
 
     const nextAction = this.actions.get(name);
@@ -34,14 +34,14 @@ export class PlayerAnimations {
 
     if (nextAction === this.currentAction) return;
 
-    this.currentAction?.fadeOut(0.2);
-    nextAction.reset().fadeIn(0.2).play();
+    this.currentAction?.fadeOut(fadeDuration);
+    nextAction.reset().fadeIn(fadeDuration).play();
 
     this.currentAction = nextAction;
     this.currentActionName = name;
   }
 
-  playOnce(name: string) {
+  playOnce(name: string, fadeDuration = 0.2) {
     const nextAction = this.actions.get(name);
 
     if (!nextAction) return;
@@ -50,7 +50,7 @@ export class PlayerAnimations {
     nextAction.setLoop(THREE.LoopOnce, 1);
     nextAction.clampWhenFinished = true;
 
-    this.play(name);
+    this.play(name, fadeDuration);
   }
 
   isLocked() {

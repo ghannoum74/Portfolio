@@ -3,6 +3,10 @@ import * as THREE from "three";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
 import { AssetLoader } from "../loaders/AssetLoader";
+import { WorldColliders } from "../physics/WorldColliders";
+import { PhysicsWorld } from "../physics/PhysicsWorld";
+import { PhysicsDebugRenderer } from "../physics/PhysicsDebugRenderer";
+import { StairDetector } from "./StairDetector";
 
 export class World {
   model!: THREE.Group;
@@ -14,6 +18,11 @@ export class World {
   sunVisual!: THREE.Mesh;
   sunHelper!: THREE.DirectionalLightHelper;
   ambientLight!: THREE.AmbientLight;
+  physics = new PhysicsWorld();
+  private worldColliders!: WorldColliders;
+  private initialized = false;
+  private physicsDebugRenderer!: PhysicsDebugRenderer;
+  private stairDetector!: StairDetector;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -24,6 +33,20 @@ export class World {
   }
 
   async init(): Promise<void> {
+    /*
+     * Physics must exist first.
+     */
+    await this.physics.init();
+
+    // Rapier exists now, so debug renderer can safely use it.
+    this.physicsDebugRenderer = new PhysicsDebugRenderer(
+      this.scene,
+      this.physics,
+    );
+
+    /*
+     *load the world and create colliders for it.
+     */
     const asset = await new AssetLoader(this.loadingManager).loadGLB(
       "/assets/models/environment/world.glb",
     );
@@ -40,12 +63,52 @@ export class World {
     this.scene.add(this.model);
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
-    this.player = new Player(this.scene, this.keyboard, this.loadingManager);
+
+    this.worldColliders = new WorldColliders(this.physics);
+    this.worldColliders.createFromEnvironment(this.model);
+
+    this.stairDetector = new StairDetector(this.model);
+
+    this.player = new Player(
+      this.scene,
+      this.keyboard,
+      this.loadingManager,
+      this.physics,
+      this.stairDetector,
+    );
     await this.player.load();
+
+    this.initialized = true;
+
+    console.log("World initialized");
   }
 
   update(delta: number): void {
+    if (!this.initialized) {
+      return;
+    }
+    /*
+     * Make physics aware of this frame's timestep.
+     */
+    this.physics.beginFrame(delta);
+
+    /*
+     * Player calculates desired movement.
+     */
     this.player?.update(delta);
+
+    /*
+     * Rapier commits the next kinematic position.
+     */
+    this.physics.step();
+
+    /*
+     * Visual model copies physics position.
+     */
+    this.player?.syncFromPhysics();
+
+    this.physicsDebugRenderer.update();
+
     this.sunHelper?.update();
   }
 
@@ -59,6 +122,10 @@ export class World {
   setSunDebugVisible(visible: boolean): void {
     this.sunVisual.visible = visible;
     this.sunHelper.visible = visible;
+  }
+
+  setPhysicsDebugVisible(visible: boolean): void {
+    this.physicsDebugRenderer?.setVisible(visible);
   }
 
   private addLights(): void {

@@ -155,6 +155,7 @@ export class Game {
     }
     this.cameraHelper.visible = this.debugMode;
     this.world.setSunDebugVisible(this.debugMode);
+    this.world.setPhysicsDebugVisible(this.debugMode);
     this.cameraHelper.update();
 
     this.renderer.render(this.scene, this.getActiveCamera());

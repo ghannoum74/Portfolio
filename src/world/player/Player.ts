@@ -3,6 +3,9 @@ import { PlayerAnimations } from "./PlayerAnimations";
 import { PlayerController } from "./PlayerController";
 import { AssetLoader } from "../../loaders/AssetLoader";
 import { Keyboard } from "../../input/Keyboard";
+import { PhysicsWorld } from "../../physics/PhysicsWorld";
+import { PlayerBody } from "./PlayerBody";
+import { StairDetector } from "../StairDetector";
 
 export class Player {
   model!: THREE.Group;
@@ -12,10 +15,16 @@ export class Player {
   private controller!: PlayerController;
   private loader: AssetLoader;
 
+  private body!: PlayerBody;
+
+  private modelBottomY = 0;
+
   constructor(
     private scene: THREE.Scene,
     private keyboard: Keyboard,
     private loadingManager: THREE.LoadingManager,
+    private physics: PhysicsWorld,
+    private stairDetector: StairDetector,
   ) {
     this.loader = new AssetLoader(loadingManager);
   }
@@ -38,6 +47,13 @@ export class Player {
 
     this.scene.add(this.model);
 
+    this.model.updateMatrixWorld(true);
+    const boundingBox = new THREE.Box3().setFromObject(this.model);
+
+    this.modelBottomY = boundingBox.min.y - this.model.position.y;
+
+    this.body = new PlayerBody(this.physics, new THREE.Vector3(0, 20, 0));
+
     this.mixer = new THREE.AnimationMixer(this.model);
 
     this.animations = new PlayerAnimations(this.mixer);
@@ -48,6 +64,8 @@ export class Player {
       this.model,
       this.keyboard,
       this.animations,
+      this.body,
+      this.stairDetector,
     );
 
     this.animations.play("idle");
@@ -61,6 +79,7 @@ export class Player {
       running,
       runningBackword,
       jump,
+      ascendingStairs,
       // leftTurn,
       // rightTurn,
     ] = await Promise.all([
@@ -80,6 +99,10 @@ export class Player {
 
       this.loader.loadGLB("/assets/models/player/animations/jump-fast.glb"),
 
+      this.loader.loadGLB(
+        "/assets/models/player/animations/ascending-stairs.glb",
+      ),
+
       // this.loader.loadGLB("/assets/models/player/animations/left-turn.glb"),
 
       // this.loader.loadGLB("/assets/models/player/animations/right-turn.glb"),
@@ -96,6 +119,8 @@ export class Player {
     this.animations.add("running_backword", runningBackword.animations[0]);
 
     this.animations.add("jump", jump.animations[0]);
+
+    this.animations.add("ascending_stairs", ascendingStairs.animations[0]);
 
     // this.animations.add(
     //   "left_turn",
@@ -114,5 +139,9 @@ export class Player {
     this.controller?.update(delta);
 
     this.mixer?.update(delta);
+  }
+
+  syncFromPhysics(): void {
+    this.body.syncModel(this.model, this.modelBottomY);
   }
 }
