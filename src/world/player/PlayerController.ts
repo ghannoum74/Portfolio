@@ -7,7 +7,7 @@ import { StairDetector } from "../StairDetector";
 export class PlayerController {
   private walkSpeed = 2;
   private runSpeed = 10;
-  private stairsSpeed = 1.3;
+  private stairsSpeed = 2;
   private rotationSpeed = 4;
 
   private feetPosition = new THREE.Vector3();
@@ -25,9 +25,15 @@ export class PlayerController {
   update(delta: number): void {
     const jumpPressed = this.keyboard.consumeJump();
 
-    // Preserve your existing jump lock.
+    // Read the physics state before updating movement.
+    const falling = this.body.isFalling;
+    const jumping = this.body.isJumping;
+
     const canJump =
-      jumpPressed && !this.animations.isLocked() && this.body.isGrounded;
+      jumpPressed &&
+      !this.animations.isLocked() &&
+      !falling &&
+      this.body.isGrounded;
 
     if (canJump) {
       this.animations.playOnce("jump", 0.05);
@@ -35,10 +41,17 @@ export class PlayerController {
 
     const locked = this.animations.isLocked();
 
+    // Allow air control during an intentional jump,
+    // including the frame when the jump starts.
+    const allowAirControl = jumping || canJump;
+
+    // Accidental falls remain locked.
+    // The jump animation no longer blocks air control.
+    const movementBlocked = !allowAirControl && (locked || falling);
+
     let moveDirection = 0;
 
-    // No forward/backward movement while jumping.
-    if (!locked) {
+    if (!movementBlocked) {
       if (this.keyboard.forward) {
         moveDirection += 1;
       }
@@ -48,16 +61,18 @@ export class PlayerController {
       }
     }
 
-    // Preserve rotation during jumping.
-    if (this.keyboard.left) {
-      this.player.rotation.y += this.rotationSpeed * delta;
+    // Allow rotation while jumping, but not during
+    // an accidental fall.
+    if (!falling || allowAirControl) {
+      if (this.keyboard.left) {
+        this.player.rotation.y += this.rotationSpeed * delta;
+      }
+
+      if (this.keyboard.right) {
+        this.player.rotation.y -= this.rotationSpeed * delta;
+      }
     }
 
-    if (this.keyboard.right) {
-      this.player.rotation.y -= this.rotationSpeed * delta;
-    }
-
-    // Convert requested movement into world direction.
     this.movementDirection
       .set(0, 0, moveDirection)
       .applyAxisAngle(this.up, this.player.rotation.y);
@@ -66,24 +81,25 @@ export class PlayerController {
       this.movementDirection.normalize();
     }
 
-    // Find the capsule's current foot position.
     this.body.getFeetPosition(this.feetPosition);
 
-    // Activate climbing only when grounded,
-    // moving, and heading toward the top marker.
     const ascending =
-      !locked &&
+      !movementBlocked &&
+      !canJump &&
+      !jumping &&
       this.body.isGrounded &&
       moveDirection !== 0 &&
       this.stairDetector.isAscending(this.feetPosition, this.movementDirection);
 
-    const speed = ascending
-      ? this.stairsSpeed
-      : this.keyboard.run
-        ? this.runSpeed
-        : this.walkSpeed;
+    const speed = movementBlocked
+      ? 0
+      : ascending
+        ? this.stairsSpeed
+        : this.keyboard.run
+          ? this.runSpeed
+          : this.walkSpeed;
 
-    // Physics always runs, even during animation lock.
+    // Always update physics, even if movement is locked.
     this.body.update(
       moveDirection,
       this.player.rotation.y,
@@ -92,15 +108,21 @@ export class PlayerController {
       delta,
     );
 
-    this.updateAnimation(moveDirection !== 0, locked, ascending);
+    this.updateAnimation(moveDirection !== 0, locked, ascending, falling);
   }
 
   private updateAnimation(
     moving: boolean,
     locked: boolean,
     ascending: boolean,
+    falling: boolean,
   ): void {
     if (locked) return;
+
+    if (falling) {
+      this.animations.play("idle", 0.1);
+      return;
+    }
 
     if (!moving) {
       this.animations.play("idle");
@@ -110,6 +132,8 @@ export class PlayerController {
     // Stair animation has priority over walking/running.
     if (ascending) {
       this.animations.play("ascending_stairs");
+      this.animations.setPlaybackSpeed("ascending_stairs", 1.5);
+
       return;
     }
 

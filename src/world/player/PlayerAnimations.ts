@@ -69,4 +69,12 @@ export class PlayerAnimations {
     action.setLoop(THREE.LoopRepeat, Infinity);
     action.clampWhenFinished = false;
   };
+
+  setPlaybackSpeed(name: string, speed: number): void {
+    const action = this.actions.get(name);
+
+    if (!action) return;
+
+    action.setEffectiveTimeScale(speed);
+  }
 }

@@ -25,6 +25,20 @@ export class PlayerBody {
   private readonly movement = new THREE.Vector3();
   private readonly up = new THREE.Vector3(0, 1, 0);
 
+  private fallingTime = 0;
+
+  private readonly FALL_GRACE_TIME = 0.12;
+  private readonly MIN_FALL_VELOCITY = -0.5;
+
+  private horizontalVelocity = new THREE.Vector3();
+  private airForward = new THREE.Vector3();
+
+  private readonly AIR_ACCELERATION = 4;
+  private readonly MIN_AIR_SPEED = 2.5;
+
+  private airSpeedLimit = this.MIN_AIR_SPEED;
+  private jumping = false;
+
   constructor(
     private physics: PhysicsWorld,
     spawnPosition: THREE.Vector3,
@@ -72,11 +86,11 @@ export class PlayerBody {
      * Slope behavior.
      */
     this.characterController.setMaxSlopeClimbAngle(
-      THREE.MathUtils.degToRad(45),
+      THREE.MathUtils.degToRad(60),
     );
 
     this.characterController.setMinSlopeSlideAngle(
-      THREE.MathUtils.degToRad(30),
+      THREE.MathUtils.degToRad(75),
     );
   }
 
@@ -87,81 +101,86 @@ export class PlayerBody {
     jumpRequested: boolean,
     delta: number,
   ): void {
-    /*
-     * Jump only if we're standing on something.
-     */
-    if (jumpRequested && this.grounded) {
-      this.verticalVelocity = this.JUMP_SPEED;
-      this.grounded = false;
+    const wasGrounded = this.grounded;
+
+    // Calculate the player's facing direction.
+    this.airForward.set(0, 0, 1).applyAxisAngle(this.up, rotationY);
+
+    // On the ground, movement responds immediately to input.
+    if (wasGrounded) {
+      this.horizontalVelocity
+        .copy(this.airForward)
+        .multiplyScalar(moveDirection * speed);
     }
 
-    /*
-     * Gravity.
-     *
-     * Kinematic characters aren't automatically pulled down,
-     * so we add gravity ourselves.
-     */
+    const jumpStarted = jumpRequested && wasGrounded;
+
+    if (jumpStarted) {
+      this.verticalVelocity = this.JUMP_SPEED;
+      this.grounded = false;
+      this.jumping = true;
+
+      // Remember the player's speed at takeoff.
+      // Running jumps retain their faster momentum.
+      this.airSpeedLimit = Math.max(
+        this.horizontalVelocity.length(),
+        this.MIN_AIR_SPEED,
+      );
+    }
+
+    // Limited forward/backward control during a jump.
+    if (this.jumping && !jumpStarted) {
+      if (moveDirection !== 0) {
+        this.horizontalVelocity.addScaledVector(
+          this.airForward,
+          moveDirection * this.AIR_ACCELERATION * delta,
+        );
+
+        this.horizontalVelocity.clampLength(0, this.airSpeedLimit);
+      }
+    } else if (!wasGrounded && !this.jumping) {
+      // Preserve your existing lock for accidental falls.
+      this.horizontalVelocity.set(0, 0, 0);
+    }
+
+    // Gravity continues to work during the entire jump.
     this.verticalVelocity += this.GRAVITY * delta;
 
-    /*
-     * Start with local movement.
-     *
-     * +Z = forward in your current player system.
-     */
     this.movement.set(
-      0,
+      this.horizontalVelocity.x * delta,
       this.verticalVelocity * delta,
-      moveDirection * speed * delta,
+      this.horizontalVelocity.z * delta,
     );
 
-    /*
-     * Convert local movement into world-space movement
-     * according to the player's Y rotation.
-     */
-    const horizontalMovement = new THREE.Vector3(
-      this.movement.x,
-      0,
-      this.movement.z,
-    );
-
-    horizontalMovement.applyAxisAngle(this.up, rotationY);
-
-    this.movement.x = horizontalMovement.x;
-    this.movement.z = horizontalMovement.z;
-
-    /*
-     * Convert local movement into world-space movement
-     * according to the player's Y rotation.
-     */
     this.characterController.computeColliderMovement(this.collider, {
       x: this.movement.x,
       y: this.movement.y,
       z: this.movement.z,
     });
 
-    /*
-     * Rapier gives us the safe movement.
-     */
     const correctedMovement = this.characterController.computedMovement();
 
-    const currentPosition = this.body.translation();
+    const position = this.body.translation();
 
-    /*
-     * Tell the kinematic body where it should be next.
-     */
     this.body.setNextKinematicTranslation({
-      x: currentPosition.x + correctedMovement.x,
-      y: currentPosition.y + correctedMovement.y,
-      z: currentPosition.z + correctedMovement.z,
+      x: position.x + correctedMovement.x,
+      y: position.y + correctedMovement.y,
+      z: position.z + correctedMovement.z,
     });
 
-    /*
-     * Did Rapier detect ground?
-     */
     this.grounded = this.characterController.computedGrounded();
 
-    if (this.grounded && this.verticalVelocity < 0) {
-      this.verticalVelocity = 0;
+    if (this.grounded) {
+      this.jumping = false;
+      this.fallingTime = 0;
+
+      if (this.verticalVelocity < 0) {
+        this.verticalVelocity = 0;
+      }
+    } else if (this.verticalVelocity < 0) {
+      this.fallingTime += delta;
+    } else {
+      this.fallingTime = 0;
     }
   }
 
@@ -191,5 +210,17 @@ export class PlayerBody {
       position.y - this.CAPSULE_HALF_HEIGHT - this.CAPSULE_RADIUS,
       position.z,
     );
+  }
+
+  get isFalling(): boolean {
+    return (
+      !this.grounded &&
+      this.verticalVelocity < this.MIN_FALL_VELOCITY &&
+      this.fallingTime >= this.FALL_GRACE_TIME
+    );
+  }
+
+  get isJumping(): boolean {
+    return this.jumping && !this.grounded;
   }
 }

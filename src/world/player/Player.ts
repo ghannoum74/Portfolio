@@ -120,7 +120,10 @@ export class Player {
 
     this.animations.add("jump", jump.animations[0]);
 
-    this.animations.add("ascending_stairs", ascendingStairs.animations[0]);
+    this.animations.add(
+      "ascending_stairs",
+      this.stripRootTranslation(ascendingStairs.animations[0]),
+    );
 
     // this.animations.add(
     //   "left_turn",
@@ -137,11 +140,39 @@ export class Player {
 
   update(delta: number) {
     this.controller?.update(delta);
-
     this.mixer?.update(delta);
   }
 
   syncFromPhysics(): void {
     this.body.syncModel(this.model, this.modelBottomY);
+  }
+
+  private stripRootTranslation(
+    clip: THREE.AnimationClip,
+    rootBoneName = "mixamorigHips",
+  ): THREE.AnimationClip {
+    const track = clip.tracks.find(
+      (t) => t.name.startsWith(rootBoneName) && t.name.endsWith(".position"),
+    ) as THREE.VectorKeyframeTrack | undefined;
+
+    if (!track) {
+      console.warn(
+        `No root position track found for "${rootBoneName}" on clip "${clip.name}"`,
+      );
+      return clip;
+    }
+
+    const values = track.values; // [x0,y0,z0, x1,y1,z1, ...]
+    const baseX = values[0];
+    const baseY = values[1];
+    const baseZ = values[2];
+
+    for (let i = 0; i < values.length; i += 3) {
+      values[i] = baseX; // lock X to frame-0 value
+      values[i + 1] = baseY; // lock Y to frame-0 value
+      values[i + 2] = baseZ; // lock Z to frame-0 value
+    }
+
+    return clip;
   }
 }

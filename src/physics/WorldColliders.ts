@@ -8,6 +8,20 @@ export class WorldColliders {
     environment.updateMatrixWorld(true);
 
     environment.traverse((child) => {
+      // Ignore detection zones and their children.
+      let current: THREE.Object3D | null = child;
+
+      while (current) {
+        if (current.name.startsWith("ZONE_")) {
+          if (current === child) {
+            current.visible = false;
+          }
+          return;
+        }
+
+        current = current.parent;
+      }
+
       if (!(child instanceof THREE.Mesh)) {
         return;
       }

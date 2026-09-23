@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 export class PhysicsWorld {
   public world!: RAPIER.World;
   public rapier = RAPIER;
+  public colliderNames = new Map<number, string>();
 
   private initialized = false;
 
