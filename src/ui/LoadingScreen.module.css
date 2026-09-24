@@ -1,23 +1,4 @@
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-#game {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* Fallback shown before the application initializes. */
-.loading-placeholder {
+.screen {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -25,54 +6,49 @@ body {
   display: grid;
   place-items: center;
 
-  background: #101923;
-  color: #f3f6fa;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.loading-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: grid;
-  place-items: center;
   padding: 24px;
   color: #f3f6fa;
+  font-family: Arial, Helvetica, sans-serif;
+
   background: radial-gradient(
     circle at 50% 30%,
     #203a43 0%,
     #101923 55%,
     #080d13 100%
   );
+
+  opacity: 1;
+  visibility: visible;
+
   transition:
     opacity 0.65s ease,
     visibility 0.65s ease;
 }
 
-.loading-screen.is-hidden {
+.isHidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 
-.loading-content {
+.content {
   width: min(100%, 440px);
 }
 
-.loading-content h1 {
+.heading {
   margin: 16px 0 10px;
   font-size: clamp(32px, 5vw, 48px);
   font-weight: 700;
   letter-spacing: -0.04em;
 }
 
-#loading-status {
+.status {
   margin: 0 0 36px;
   color: #a1b1c4;
   font-size: 14px;
 }
 
-.loading-progress {
+.progress {
   width: 100%;
   height: 6px;
   overflow: hidden;
@@ -80,50 +56,53 @@ body {
   background: #344353;
 }
 
-#loading-progress-fill {
+.progressFill {
   width: 0%;
   height: 100%;
   border-radius: inherit;
+
   background: linear-gradient(90deg, #4bc48b, #a0ffd0);
+
   box-shadow: 0 0 16px rgb(119 229 171 / 35%);
   transition: width 0.25s ease;
 }
 
-.loading-details {
+.details {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
+
   margin-top: 12px;
   color: #93a6bc;
   font-size: 12px;
 }
 
-#loading-file {
+.filename {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-#loading-percent {
+.percentage {
   color: #f3f6fa;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.loading-error {
+.error {
   margin-top: 24px;
   color: #ff9999;
   font-size: 14px;
 }
 
-.loading-error[hidden] {
+.error[hidden] {
   display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading-screen,
-  #loading-progress-fill {
+  .screen,
+  .progressFill {
     transition: none;
   }
 }

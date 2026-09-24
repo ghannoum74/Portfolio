@@ -166,6 +166,12 @@ export class Game {
       });
     } catch (error) {
       console.error("Failed to initialize game:", error);
+
+      this.loadingScreen.showError(
+        error instanceof Error
+          ? error.message
+          : "Unable to initialize the world.",
+      );
     }
   }
 
