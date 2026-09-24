@@ -6,6 +6,7 @@ import { GameLoadingManager } from "../loaders/GameLoadingManager";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
+import { LoadingScreen } from "../ui/LoadingScreen";
 
 export class Game {
   private scene: THREE.Scene;
@@ -31,11 +32,19 @@ export class Game {
   };
 
   private timer = new THREE.Timer();
-  private loadingMnager = new GameLoadingManager();
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
+  private readonly loadingManager = new GameLoadingManager();
+
+  private readonly loadingScreen = new LoadingScreen();
+
+  private readonly failedAssets = new Set<string>();
+
+  private ready = false;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.configureLoadingManager();
+
     this.scene = new THREE.Scene();
 
     this.playerCamera = new THREE.PerspectiveCamera(
@@ -75,7 +84,7 @@ export class Game {
     this.world = new World(
       this.scene,
       this.keyboard,
-      this.loadingMnager.instance,
+      this.loadingManager.instance,
     );
     this.cameraDebugMesh = this.createCameraDebugMesh();
     this.scene.add(this.cameraDebugMesh);
@@ -112,7 +121,6 @@ export class Game {
 
       if (intersects.length > 0) {
         const point = intersects[0].point;
-        console.log("Clicked point in world coordinates:", point);
       }
     });
 
@@ -129,37 +137,76 @@ export class Game {
     try {
       await this.world.init();
 
+      if (this.failedAssets.size > 0) {
+        throw new Error(`Failed to load: ${[...this.failedAssets].join(", ")}`);
+      }
+
       this.thirdPersonCamera = new ThirdPersonCamera(
         this.playerCamera,
         this.world.player.model,
       );
+
+      this.thirdPersonCamera.update(1 / 60);
+
+      // Prepare the initial scene while the loading
+      // screen is still covering the canvas.
+      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+
+      // Initialization has fully succeeded.
+      this.ready = true;
+
+      this.loadingScreen.complete();
+
+      // Allow the browser to display the completed
+      // progress bar before fading out.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          this.loadingScreen.hide();
+        });
+      });
     } catch (error) {
       console.error("Failed to initialize game:", error);
     }
   }
+
   private update = () => {
     this.timer.update();
 
     const delta = this.timer.getDelta();
 
-    // move and rotate the player
+    // Do not run physics, player movement or
+    // camera updates until the game is ready.
+    if (!this.ready) {
+      return;
+    }
+
+    // Update physics and player.
     this.world.update(delta);
 
-    // move the camera using the player's new transform
+    // Follow the player's new position.
     this.thirdPersonCamera?.update(delta);
+
+    // Existing debug functionality.
     this.updateSunControls(delta);
     this.syncCameraDebugMesh();
+
     this.controls.enabled = this.debugMode;
+
     if (this.debugMode) {
       this.controls.update();
     }
+
     this.cameraHelper.visible = this.debugMode;
+
     this.world.setSunDebugVisible(this.debugMode);
     this.world.setPhysicsDebugVisible(this.debugMode);
+
     this.cameraHelper.update();
 
+    // Render the active camera.
     this.renderer.render(this.scene, this.getActiveCamera());
   };
+
   private onResize = () => {
     const aspect = window.innerWidth / window.innerHeight;
     this.playerCamera.aspect = aspect;
@@ -350,5 +397,28 @@ export class Game {
       this.world.moveSun(moveX, moveY, moveZ);
       this.updateOverlay();
     }
+  }
+
+  private configureLoadingManager(): void {
+    const manager = this.loadingManager.instance;
+
+    manager.onStart = () => {
+      this.loadingScreen.setStatus("Loading the 3D world...");
+    };
+
+    manager.onProgress = (url, loaded, total) => {
+      const progress = (loaded / total) * 85;
+
+      this.loadingScreen.setProgress(
+        progress,
+        `Loading assets ${loaded}/${total}`,
+        url.split("/").pop() ?? url,
+      );
+    };
+
+    manager.onError = (url) => {
+      this.failedAssets.add(url);
+      console.error("Failed to load:", url);
+    };
   }
 }

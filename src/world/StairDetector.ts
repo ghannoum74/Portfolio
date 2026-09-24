@@ -1,75 +1,109 @@
 import * as THREE from "three";
 
-export class StairDetector {
-  private zone: THREE.Mesh;
-  private bounds: THREE.Box3;
+interface StairZone {
+  name: string;
+  mesh: THREE.Mesh;
+  bounds: THREE.Box3;
+  uphillDirection: THREE.Vector3;
+}
 
-  private uphillDirection = new THREE.Vector3();
+export class StairDetector {
+  private zones: StairZone[] = [];
+
   private localPosition = new THREE.Vector3();
+  private horizontalMovement = new THREE.Vector3();
 
   constructor(environment: THREE.Object3D) {
     environment.updateMatrixWorld(true);
 
-    const zone = environment.getObjectByName("ZONE_STAIRS_01");
-    const bottom = environment.getObjectByName("STAIRS_01_BOTTOM");
-    const top = environment.getObjectByName("STAIRS_01_TOP");
+    // Add more staircase IDs here when needed.
+    const staircaseIds = ["01", "02"];
 
-    if (!(zone instanceof THREE.Mesh) || !bottom || !top) {
-      throw new Error("Missing ZONE_STAIRS_01 or staircase direction markers.");
+    for (const id of staircaseIds) {
+      const zone = environment.getObjectByName(`ZONE_STAIRS_${id}`);
+
+      const bottom = environment.getObjectByName(`STAIRS_BOTTOM_${id}`);
+
+      const top = environment.getObjectByName(`STAIRS_TOP_${id}`);
+
+      if (!(zone instanceof THREE.Mesh) || !bottom || !top) {
+        throw new Error(`Missing staircase zone or markers for stairs ${id}`);
+      }
+
+      zone.geometry.computeBoundingBox();
+
+      if (!zone.geometry.boundingBox) {
+        throw new Error(`Staircase ${id} has no bounding box.`);
+      }
+
+      const bottomPosition = new THREE.Vector3();
+      const topPosition = new THREE.Vector3();
+
+      bottom.getWorldPosition(bottomPosition);
+      top.getWorldPosition(topPosition);
+
+      const uphillDirection = new THREE.Vector3()
+        .subVectors(topPosition, bottomPosition)
+        .setY(0);
+
+      if (uphillDirection.lengthSq() < 0.0001) {
+        throw new Error(
+          `Staircase ${id} markers need different X/Z positions.`,
+        );
+      }
+
+      uphillDirection.normalize();
+
+      this.zones.push({
+        name: zone.name,
+        mesh: zone,
+        bounds: zone.geometry.boundingBox.clone(),
+        uphillDirection,
+      });
+
+      // Hide the detection mesh.
+      zone.visible = false;
+
+      console.log(`Staircase ${id} initialized`, {
+        bottom: bottomPosition,
+        top: topPosition,
+        uphillDirection,
+      });
     }
-
-    this.zone = zone;
-
-    this.zone.geometry.computeBoundingBox();
-
-    if (!this.zone.geometry.boundingBox) {
-      throw new Error("Staircase zone has no bounding box.");
-    }
-
-    // Keep the bounds in the cube's local coordinates.
-    this.bounds = this.zone.geometry.boundingBox.clone();
-
-    const bottomPosition = new THREE.Vector3();
-    const topPosition = new THREE.Vector3();
-
-    bottom.getWorldPosition(bottomPosition);
-    top.getWorldPosition(topPosition);
-
-    // Direction from the bottom of the stairs to the top.
-    this.uphillDirection.subVectors(topPosition, bottomPosition).setY(0);
-
-    if (this.uphillDirection.lengthSq() < 0.0001) {
-      throw new Error("Staircase markers must have different X/Z positions.");
-    }
-
-    this.uphillDirection.normalize();
-
-    // Hide the detection box.
-    this.zone.visible = false;
-
-    console.log("StairDetector initialized", {
-      bottom: bottomPosition,
-      top: topPosition,
-      uphillDirection: this.uphillDirection,
-    });
   }
 
   isAscending(
-    playerposition: THREE.Vector3,
+    playerPosition: THREE.Vector3,
     movementDirection: THREE.Vector3,
   ): boolean {
-    // convert player world position to the rotated
-    // detection cube's local coordinate system
-    this.localPosition.copy(playerposition);
+    this.horizontalMovement.copy(movementDirection).setY(0);
 
-    this.zone.worldToLocal(this.localPosition);
-
-    // Player must actually be inside the zone.
-    if (!this.bounds.containsPoint(this.localPosition)) {
+    if (this.horizontalMovement.lengthSq() < 0.0001) {
       return false;
     }
 
-    // Movement must point toward the upper marker.
-    return movementDirection.dot(this.uphillDirection) > 0.55;
+    this.horizontalMovement.normalize();
+
+    for (const zone of this.zones) {
+      // Convert the player's world position into
+      // this staircase's local coordinate system.
+      this.localPosition.copy(playerPosition);
+
+      zone.mesh.worldToLocal(this.localPosition);
+
+      // Check whether the player is inside this zone.
+      if (!zone.bounds.containsPoint(this.localPosition)) {
+        continue;
+      }
+
+      // Check whether movement is toward the top.
+      const dot = this.horizontalMovement.dot(zone.uphillDirection);
+
+      if (dot > 0.55) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

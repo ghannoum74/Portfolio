@@ -7,7 +7,7 @@ export class AssetLoader {
     this.gltfLoader = new GLTFLoader(loadingManager);
   }
 
-  loadGLB(path: string) {
-    return this.gltfLoader.loadAsync(path);
+  async loadGLB(url: string) {
+    return this.gltfLoader.loadAsync(url);
   }
 }

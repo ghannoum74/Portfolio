@@ -9,6 +9,32 @@
   <body>
     <noscript>You need JavaScript enabled to view this page.</noscript>
     <canvas id="game"></canvas>
+    <div id="loading-screen" class="loading-screen">
+      <div class="loading-content">
+        <h1>Entering my world</h1>
+
+        <p id="loading-status" aria-live="polite">Initializing...</p>
+
+        <div
+          id="loading-progress"
+          class="loading-progress"
+          role="progressbar"
+          aria-label="World loading progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loading-progress-fill"></div>
+        </div>
+
+        <div class="loading-details">
+          <span id="loading-file">Preparing assets</span>
+          <span id="loading-percent">0%</span>
+        </div>
+
+        <p id="loading-error" class="loading-error" hidden></p>
+      </div>
+    </div>
     <script src="src/main.ts" type="module"></script>
   </body>
 </html>

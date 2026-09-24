@@ -79,8 +79,6 @@ export class World {
     await this.player.load();
 
     this.initialized = true;
-
-    console.log("World initialized");
   }
 
   update(delta: number): void {
