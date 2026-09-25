@@ -1,11 +1,3 @@
-// Vite resolves the `?raw` asset at build time; TypeScript may not know this
-// query-string module when the project does not include Vite's client types.
-// @ts-expect-error The bundler provides the raw HTML module.
-import template from "./LoadingScreen.html?raw";
-// Vite handles CSS imports at build time; TypeScript may not know this module
-// @ts-expect-error The bundler provides the CSS module.
-import "./LoadingScreen.css";
-
 export class LoadingScreen {
   private readonly root: HTMLElement;
   private readonly status: HTMLElement;
@@ -23,11 +15,6 @@ export class LoadingScreen {
     }
 
     this.root = root;
-
-    // Our trusted static template is mounted only once.
-    this.root.innerHTML = template;
-    this.root.classList.add("loading-screen");
-    this.root.classList.remove("loading-placeholder");
 
     this.status = this.find("loading-status");
     this.file = this.find("loading-file");
