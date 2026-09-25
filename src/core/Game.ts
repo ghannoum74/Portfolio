@@ -7,6 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 import { LoadingScreen } from "../ui/LoadingScreen";
+import { StartupLoading } from "../loaders/StartupLoading";
 
 export class Game {
   private scene: THREE.Scene;
@@ -34,17 +35,11 @@ export class Game {
   private timer = new THREE.Timer();
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
-  private readonly loadingManager = new GameLoadingManager();
-
-  private readonly loadingScreen = new LoadingScreen();
-
-  private readonly failedAssets = new Set<string>();
+  private readonly loading = new StartupLoading();
 
   private ready = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.configureLoadingManager();
-
     this.scene = new THREE.Scene();
 
     this.playerCamera = new THREE.PerspectiveCamera(
@@ -84,7 +79,9 @@ export class Game {
     this.world = new World(
       this.scene,
       this.keyboard,
-      this.loadingManager.instance,
+      this.loading.manager,
+      this.loading.assetReady,
+      (stage) => this.loading.setStatus(stage),
     );
     this.cameraDebugMesh = this.createCameraDebugMesh();
     this.scene.add(this.cameraDebugMesh);
@@ -133,13 +130,14 @@ export class Game {
     window.addEventListener("resize", this.onResize);
   }
 
-  private async init() {
+  private async init(): Promise<void> {
     try {
       await this.world.init();
 
-      if (this.failedAssets.size > 0) {
-        throw new Error(`Failed to load: ${[...this.failedAssets].join(", ")}`);
-      }
+      // All nine startup GLBs must have loaded.
+      this.loading.verify();
+
+      this.loading.setStatus("Preparing the camera...");
 
       this.thirdPersonCamera = new ThirdPersonCamera(
         this.playerCamera,
@@ -148,30 +146,27 @@ export class Game {
 
       this.thirdPersonCamera.update(1 / 60);
 
-      // Prepare the initial scene while the loading
-      // screen is still covering the canvas.
+      this.loading.setStatus("Compiling shaders...");
+
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
 
-      // Initialization has fully succeeded.
+      this.cameraHelper.visible = false;
+      this.cameraDebugMesh.visible = false;
+
+      this.world.setSunDebugVisible(false);
+      this.world.setPhysicsDebugVisible(false);
+
+      // Prepare the first scene behind the overlay.
+      this.renderer.render(this.scene, this.playerCamera);
+
+      // Only now can gameplay begin.
       this.ready = true;
 
-      this.loadingScreen.complete();
-
-      // Allow the browser to display the completed
-      // progress bar before fading out.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          this.loadingScreen.hide();
-        });
-      });
+      this.loading.complete();
     } catch (error) {
       console.error("Failed to initialize game:", error);
 
-      this.loadingScreen.showError(
-        error instanceof Error
-          ? error.message
-          : "Unable to initialize the world.",
-      );
+      this.loading.showError(error);
     }
   }
 
@@ -403,28 +398,5 @@ export class Game {
       this.world.moveSun(moveX, moveY, moveZ);
       this.updateOverlay();
     }
-  }
-
-  private configureLoadingManager(): void {
-    const manager = this.loadingManager.instance;
-
-    manager.onStart = () => {
-      this.loadingScreen.setStatus("Loading the 3D world...");
-    };
-
-    manager.onProgress = (url, loaded, total) => {
-      const progress = (loaded / total) * 85;
-
-      this.loadingScreen.setProgress(
-        progress,
-        `Loading assets ${loaded}/${total}`,
-        url.split("/").pop() ?? url,
-      );
-    };
-
-    manager.onError = (url) => {
-      this.failedAssets.add(url);
-      console.error("Failed to load:", url);
-    };
   }
 }

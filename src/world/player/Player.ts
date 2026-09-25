@@ -6,6 +6,7 @@ import { Keyboard } from "../../input/Keyboard";
 import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { PlayerBody } from "./PlayerBody";
 import { StairDetector } from "../StairDetector";
+import { ASSETS } from "../../loaders/AssetManifest";
 
 export class Player {
   model!: THREE.Group;
@@ -25,14 +26,13 @@ export class Player {
     private loadingManager: THREE.LoadingManager,
     private physics: PhysicsWorld,
     private stairDetector: StairDetector,
+    private readonly onAssetReady?: (url: string) => void,
   ) {
-    this.loader = new AssetLoader(loadingManager);
+    this.loader = new AssetLoader(loadingManager, onAssetReady);
   }
 
   async load() {
-    const playerAsset = await this.loader.loadGLB(
-      "/assets/models/player/player.glb",
-    );
+    const playerAsset = await this.loader.loadGLB(ASSETS.player);
 
     this.model = playerAsset.scene;
 
@@ -83,25 +83,19 @@ export class Player {
       // leftTurn,
       // rightTurn,
     ] = await Promise.all([
-      this.loader.loadGLB("/assets/models/player/animations/idle.glb"),
+      this.loader.loadGLB(ASSETS.animations.idle),
 
-      this.loader.loadGLB("/assets/models/player/animations/walking.glb"),
+      this.loader.loadGLB(ASSETS.animations.walking),
 
-      this.loader.loadGLB(
-        "/assets/models/player/animations/walking-backwords.glb",
-      ),
+      this.loader.loadGLB(ASSETS.animations.walkingBackward),
 
-      this.loader.loadGLB("/assets/models/player/animations/running.glb"),
+      this.loader.loadGLB(ASSETS.animations.running),
 
-      this.loader.loadGLB(
-        "/assets/models/player/animations/running-backwords.glb",
-      ),
+      this.loader.loadGLB(ASSETS.animations.runningBackward),
 
-      this.loader.loadGLB("/assets/models/player/animations/jump-fast.glb"),
+      this.loader.loadGLB(ASSETS.animations.jump),
 
-      this.loader.loadGLB(
-        "/assets/models/player/animations/ascending-stairs.glb",
-      ),
+      this.loader.loadGLB(ASSETS.animations.ascendingStairs),
 
       // this.loader.loadGLB("/assets/models/player/animations/left-turn.glb"),
 

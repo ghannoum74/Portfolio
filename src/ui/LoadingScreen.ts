@@ -1,16 +1,19 @@
-import template from "./LoadingScreen.html?row";
-import styles from "./LoadingScreen.module.css";
+// Vite resolves the `?raw` asset at build time; TypeScript may not know this
+// query-string module when the project does not include Vite's client types.
+// @ts-expect-error The bundler provides the raw HTML module.
+import template from "./LoadingScreen.html?raw";
+// Vite handles CSS imports at build time; TypeScript may not know this module
+// @ts-expect-error The bundler provides the CSS module.
+import "./LoadingScreen.css";
 
 export class LoadingScreen {
   private readonly root: HTMLElement;
   private readonly status: HTMLElement;
   private readonly file: HTMLElement;
   private readonly fill: HTMLElement;
-  private readonly percent: HTMLElement;
+  private readonly count: HTMLElement;
   private readonly progress: HTMLElement;
   private readonly error: HTMLElement;
-
-  private currentProgress = 0;
 
   constructor() {
     const root = document.getElementById("loading-screen");
@@ -21,42 +24,15 @@ export class LoadingScreen {
 
     this.root = root;
 
-    // Parse the static HTML template once.
-    const parsedTemplate = document.createElement("template");
-
-    parsedTemplate.innerHTML = template.trim();
-
-    // Resolve CSS Module names before mounting.
-    const styledElements =
-      parsedTemplate.content.querySelectorAll<HTMLElement>("[data-style]");
-
-    styledElements.forEach((element) => {
-      const name = element.dataset.style;
-
-      if (!name) return;
-
-      const className = styles[name];
-
-      if (!className) {
-        throw new Error(`Unknown loading style: ${name}`);
-      }
-
-      element.classList.add(className);
-    });
-
-    // Mount the full component.
-    this.root.classList.add(styles.screen);
-
-    this.root.replaceChildren(parsedTemplate.content);
-
-    // The initial fallback is no longer needed.
+    // Our trusted static template is mounted only once.
+    this.root.innerHTML = template;
+    this.root.classList.add("loading-screen");
     this.root.classList.remove("loading-placeholder");
 
-    // Cache DOM references.
     this.status = this.find("loading-status");
     this.file = this.find("loading-file");
     this.fill = this.find("loading-progress-fill");
-    this.percent = this.find("loading-percent");
+    this.count = this.find("loading-count");
     this.progress = this.find("loading-progress");
     this.error = this.find("loading-error");
   }
@@ -75,23 +51,19 @@ export class LoadingScreen {
     this.status.textContent = message;
   }
 
-  setProgress(value: number, status?: string, filename?: string): void {
-    this.currentProgress = Math.max(
-      this.currentProgress,
-      Math.min(100, Math.max(0, value)),
-    );
+  setAssetProgress(loaded: number, total: number, filename?: string): void {
+    const safeTotal = Math.max(total, 1);
+    const safeLoaded = Math.min(Math.max(loaded, 0), safeTotal);
 
-    const rounded = Math.floor(this.currentProgress);
+    const percentage = (safeLoaded / safeTotal) * 100;
 
-    this.fill.style.width = `${this.currentProgress}%`;
+    this.fill.style.width = `${percentage}%`;
 
-    this.percent.textContent = `${rounded}%`;
+    this.count.textContent = `${safeLoaded} / ${total} assets`;
 
-    this.progress.setAttribute("aria-valuenow", String(rounded));
+    this.progress.setAttribute("aria-valuemax", String(total));
 
-    if (status) {
-      this.setStatus(status);
-    }
+    this.progress.setAttribute("aria-valuenow", String(safeLoaded));
 
     if (filename) {
       this.file.textContent = filename;
@@ -99,15 +71,12 @@ export class LoadingScreen {
   }
 
   complete(): void {
-    this.setProgress(
-      100,
-      "Your adventure is ready!",
-      "All initial assets loaded",
-    );
+    this.setStatus("Your adventure is ready!");
+    this.file.textContent = "All startup assets prepared";
   }
 
   hide(): void {
-    this.root.classList.add(styles.isHidden);
+    this.root.classList.add("loading-screen--hidden");
   }
 
   showError(message: string): void {

@@ -1,27 +1,27 @@
-<div data-style="content">
-  <h1 data-style="heading">Entering my world</h1>
+<div class="loading-screen_content">
+  <h1 class="loading-screen_title">Entering my world</h1>
 
-  <p id="loading-status" data-style="status" aria-live="polite">
+  <p id="loading-status" class="loading-screen_status" aria-live="polite">
     Initializing...
   </p>
 
   <div
     id="loading-progress"
-    data-style="progress"
+    class="loading-screen_progress"
     role="progressbar"
-    aria-label="World loading progress"
+    aria-label="Startup assets loaded"
     aria-valuemin="0"
-    aria-valuemax="100"
+    aria-valuemax="9"
     aria-valuenow="0"
   >
-    <div id="loading-progress-fill" data-style="progressFill"></div>
+    <div id="loading-progress-fill" class="loading-screen_progress-fill"></div>
   </div>
 
-  <div data-style="details">
-    <span id="loading-file" data-style="filename"> Preparing assets </span>
+  <div class="loading-screen_details">
+    <span id="loading-file"> Preparing assets </span>
 
-    <span id="loading-percent" data-style="percentage"> 0% </span>
+    <span id="loading-count"> 0 / 9 assets </span>
   </div>
 
-  <p id="loading-error" data-style="error" role="alert" hidden></p>
+  <p id="loading-error" class="loading-screen_error" role="alert" hidden></p>
 </div>
