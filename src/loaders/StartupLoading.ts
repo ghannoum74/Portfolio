@@ -25,10 +25,6 @@ export class StartupLoading {
     };
   }
 
-  setStatus(message: string): void {
-    this.screen.setStatus(message);
-  }
-
   // Arrow property preserves `this` when passed
   // directly to AssetLoader as a callback.
   assetReady = (url: string): void => {
@@ -43,7 +39,6 @@ export class StartupLoading {
     this.screen.setAssetProgress(
       this.completed.size,
       this.expected.size,
-      url.split("/").pop(),
     );
   };
 
@@ -71,11 +66,4 @@ export class StartupLoading {
     });
   }
 
-  showError(error: unknown): void {
-    this.screen.showError(
-      error instanceof Error
-        ? error.message
-        : "Unable to initialize the world.",
-    );
-  }
 }

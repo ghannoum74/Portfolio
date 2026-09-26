@@ -6,8 +6,9 @@ import { GameLoadingManager } from "../loaders/GameLoadingManager";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
-import { LoadingScreen } from "../ui/LoadingScreen";
 import { StartupLoading } from "../loaders/StartupLoading";
+import { PaperPanel } from "../ui/PaperPanel/PaperPanel";
+import rulesHtml from "../ui/PaperPanelContent/rules.html?raw";
 
 export class Game {
   private scene: THREE.Scene;
@@ -31,6 +32,7 @@ export class Game {
     z: number;
     intensity: number;
   };
+  private readonly paperPanel: PaperPanel;
 
   private timer = new THREE.Timer();
   private raycaster = new THREE.Raycaster();
@@ -63,6 +65,7 @@ export class Game {
     this.debugCamera.lookAt(0, 2, 0);
 
     this.keyboard = new Keyboard();
+    this.keyboard.setEnabled(false);
 
     this.renderer = new Renderer(canvas);
 
@@ -76,12 +79,24 @@ export class Game {
     this.controls.enabled = false;
     this.controls.update();
 
+    this.keyboard.setEnabled(false);
+
+    this.paperPanel = new PaperPanel({
+      onOpen: () => {
+        this.keyboard.setEnabled(false);
+        this.controls.enabled = false;
+      },
+
+      onClose: () => {
+        this.keyboard.setEnabled(true);
+      },
+    });
+
     this.world = new World(
       this.scene,
       this.keyboard,
       this.loading.manager,
       this.loading.assetReady,
-      (stage) => this.loading.setStatus(stage),
     );
     this.cameraDebugMesh = this.createCameraDebugMesh();
     this.scene.add(this.cameraDebugMesh);
@@ -134,10 +149,8 @@ export class Game {
     try {
       await this.world.init();
 
-      // All nine startup GLBs must have loaded.
       this.loading.verify();
 
-      this.loading.setStatus("Preparing the camera...");
 
       this.thirdPersonCamera = new ThirdPersonCamera(
         this.playerCamera,
@@ -146,7 +159,6 @@ export class Game {
 
       this.thirdPersonCamera.update(1 / 60);
 
-      this.loading.setStatus("Compiling shaders...");
 
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
 
@@ -156,17 +168,21 @@ export class Game {
       this.world.setSunDebugVisible(false);
       this.world.setPhysicsDebugVisible(false);
 
-      // Prepare the first scene behind the overlay.
       this.renderer.render(this.scene, this.playerCamera);
 
-      // Only now can gameplay begin.
       this.ready = true;
 
+      // 1. Wait until the loading screen has disappeared.
       this.loading.complete();
+
+      // 2. Prepare the static rules content.
+      const template = document.createElement("template");
+      template.innerHTML = rulesHtml.trim();
+
+      // 3. Open the reusable paper dialog.
+      this.paperPanel.open(template.content, "World rules");
     } catch (error) {
       console.error("Failed to initialize game:", error);
-
-      this.loading.showError(error);
     }
   }
 

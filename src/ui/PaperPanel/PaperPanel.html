@@ -1,20 +1,13 @@
-<dialog class="paper-panel" aria-labelledby="paper-panel-title">
-  <header class="paper-panel_header">
-    <h2 id="paper-panel-title" class="paper-panel_title">World Rules</h2>
+<dialog class="paper-panel">
+  <button
+    type="button"
+    class="paper-panel_close"
+    data-paper-close
+    aria-label="Close paper"
+    autofocus
+  >
+    &times;
+  </button>
 
-    <button
-      type="button"
-      class="paper-panel_close"
-      data-paper-close
-      aria-label="Close paper"
-    >
-      &times;
-    </button>
-  </header>
-
-  <div class="paper-panel_content" data-paper-content>
-    <!-- Rules or mailbox content goes here. -->
-  </div>
-
-  <footer class="paper-panel_footer">Explore at your own pace.</footer>
+  <div class="paper-panel_content" data-paper-content></div>
 </dialog>

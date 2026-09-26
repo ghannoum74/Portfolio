@@ -16,42 +16,38 @@
     <canvas id="game"></canvas>
 
     <div id="loading-screen" class="loading-screen">
-      <div class="loading-screen_content">
-        <h1 class="loading-screen_title">Entering my world</h1>
-
-        <p id="loading-status" class="loading-screen_status" aria-live="polite">
-          Starting your adventure...
-        </p>
-
+      <div class="loader">
         <div
           id="loading-progress"
-          class="loading-screen_progress"
+          class="bar"
           role="progressbar"
-          aria-label="3D asset loading progress"
+          aria-label="Loading"
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow="0"
         >
-          <div
-            id="loading-progress-fill"
-            class="loading-screen_progress-fill"
-          ></div>
+          <div id="loading-progress-fill" class="fill"></div>
         </div>
-
-        <div class="loading-screen_details">
-          <span id="loading-file"> Preparing assets </span>
-
-          <span id="loading-count"> 0% of 3D assets </span>
-        </div>
-
-        <p
-          id="loading-error"
-          class="loading-screen_error"
-          role="alert"
-          hidden
-        ></p>
       </div>
+      <p class="loading-text">Entering the Portfolio...</p>
+      <svg style="display: none">
+        <filter id="wobble">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="1"
+            numOctaves="1"
+            result="turbulence"
+          ></feTurbulence>
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="turbulence"
+            scale="2"
+          ></feDisplacementMap>
+        </filter>
+      </svg>
     </div>
+
+    <div id="ui-root"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

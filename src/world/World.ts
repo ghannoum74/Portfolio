@@ -30,12 +30,10 @@ export class World {
     private readonly keyboard: Keyboard,
     private readonly loadingManager: THREE.LoadingManager,
     private readonly onAssetReady?: (url: string) => void,
-    private readonly onStage?: (stage: string) => void,
   ) {
     this.addLights();
   }
   async init(): Promise<void> {
-    this.onStage?.("Initializing physics...");
     await this.physics.init();
 
     // Rapier exists now, so debug renderer can safely use it.
@@ -44,7 +42,6 @@ export class World {
       this.physics,
     );
 
-    this.onStage?.("Loading the environment...");
 
     /*
      *load the world and create colliders for it.
@@ -67,14 +64,12 @@ export class World {
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
 
-    this.onStage?.("Building world colliders...");
 
     this.worldColliders = new WorldColliders(this.physics);
     this.worldColliders.createFromEnvironment(this.model);
 
     this.stairDetector = new StairDetector(this.model);
 
-    this.onStage?.("Preparing the player...");
 
     this.player = new Player(
       this.scene,
