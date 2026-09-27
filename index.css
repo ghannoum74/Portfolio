@@ -2,6 +2,7 @@
   box-sizing: border-box;
 }
 
+/* Hide the scrollbar without disabling scrolling. */
 html {
   scrollbar-width: none;
 }
@@ -11,21 +12,9 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-html.is-loading,
-html.is-world {
-  overflow: hidden;
-}
-
-body {
-  background: #fffdf0;
-}
-
 /*
- * During loading and gameplay, normal
- * document scrolling must be disabled.
- *
- * During the introduction, neither
- * class is present, so scrolling works.
+ * Lock scrolling during loading and gameplay.
+ * Scrolling is enabled during the introduction.
  */
 html.is-loading,
 html.is-world {
@@ -34,6 +23,10 @@ html.is-world {
 
 html.is-world body {
   overflow: hidden;
+}
+
+body {
+  background: #fffdf0;
 }
 
 #game {

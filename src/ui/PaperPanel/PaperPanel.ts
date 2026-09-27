@@ -71,7 +71,6 @@ export class PaperPanel {
   };
 
   private handleClose = (): void => {
-    console.trace("[Paper] Dialog closed");
     this.options.onClose?.();
   };
 

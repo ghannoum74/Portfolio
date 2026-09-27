@@ -1,6 +1,6 @@
 import { GameLoadingManager } from "./GameLoadingManager";
-import { LoadingScreen } from "../ui/LoadingScreen";
 import { STARTUP_ASSETS } from "./AssetManifest";
+import { LoadingScreen } from "../ui/LoadingScreen/LoadingScreen";
 
 export class StartupLoading {
   private readonly assetManager = new GameLoadingManager();

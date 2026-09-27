@@ -8,7 +8,6 @@ type EntranceState = "idle" | "active" | "complete";
 export class WorldEntrance {
   private readonly section: HTMLElement;
   private readonly portal: HTMLElement;
-  private readonly shape: SVGPathElement;
 
   private state: EntranceState = "idle";
 
@@ -30,8 +29,6 @@ export class WorldEntrance {
     if (!(shape instanceof SVGPathElement)) {
       throw new Error("Missing SVG world-portal-shape");
     }
-
-    this.shape = shape;
 
     this.mask = new OrganicPortalMask(shape);
 

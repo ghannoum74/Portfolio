@@ -20,8 +20,9 @@
 }
 
 /*
- * The full-sized canvas is visually scaled
- * down to a tiny point at the beginning.
+ * The canvas remains full-screen.
+ * The animated SVG clip-path controls
+ * how much of the world is visible.
  */
 
 .world-entrance_portal {
@@ -185,6 +186,7 @@
 }
 
 .world-entrance_complete .world-entrance_intro,
+.world-entrance_complete .world-entrance_scroll-hint,
 .world-entrance_complete .world-entrance_scroll-space {
   display: none;
 }
