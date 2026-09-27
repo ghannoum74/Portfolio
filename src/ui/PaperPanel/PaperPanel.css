@@ -52,12 +52,28 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-
   padding: 64px 40px 40px;
-
   font-family: Georgia, "Times New Roman", serif;
   font-size: 16px;
   line-height: 1.7;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    transparent 10%,
+    black 20%,
+    black 80%,
+    transparent 90%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    transparent 10%,
+    black 20%,
+    black 80%,
+    transparent 90%,
+    transparent
+  );
 }
 
 @keyframes paper-fade-in {

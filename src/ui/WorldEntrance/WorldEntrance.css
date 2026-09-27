@@ -7,7 +7,7 @@
  * The world stays behind the introduction
  * while the entrance section is scrolling.
  */
-.world-entrance__sticky {
+.world-entrance_sticky {
   position: sticky;
   top: 0;
 
@@ -24,7 +24,7 @@
  * down to a tiny point at the beginning.
  */
 
-.world-entrance__portal {
+.world-entrance_portal {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -37,7 +37,7 @@
   will-change: opacity;
 }
 
-.world-entrance__mask-defs {
+.world-entrance_mask-defs {
   position: absolute;
   width: 0;
   height: 0;
@@ -74,7 +74,7 @@
   border: 3px solid #5c4534;
 } */
 
-.world-entrance__intro {
+.world-entrance_intro {
   position: relative;
   z-index: 2;
 
@@ -92,21 +92,21 @@
  * No visible second section.
  * This element only supplies scroll distance.
  */
-.world-entrance__scroll-space {
+.world-entrance_scroll-space {
   height: 180svh;
   pointer-events: none;
 }
 
 /* Introduction appearance */
 
-.world-entrance__content {
+.world-entrance_content {
   width: min(600px, 100%);
   margin: auto 0;
 
   text-align: center;
 }
 
-.world-entrance__illustration {
+.world-entrance_illustration {
   display: grid;
   place-items: center;
 
@@ -124,7 +124,7 @@
   font-size: 60px;
 }
 
-.world-entrance__eyebrow {
+.world-entrance_eyebrow {
   margin: 0;
 
   color: #9b7853;
@@ -135,7 +135,7 @@
   letter-spacing: 0.24em;
 }
 
-.world-entrance__content h1 {
+.world-entrance_content h1 {
   margin: 16px 0 20px;
 
   color: #493522;
@@ -146,7 +146,7 @@
   letter-spacing: -0.04em;
 }
 
-.world-entrance__description {
+.world-entrance_description {
   max-width: 480px;
   margin: 0 auto;
   font-family: "Alex Brush", cursive;
@@ -155,7 +155,7 @@
   line-height: 1.7;
 }
 
-.world-entrance__scroll-hint {
+.world-entrance_scroll-hint {
   margin: 32px 0 0;
 
   color: #806747;
@@ -165,17 +165,17 @@
 
 /* Irreversible completed state */
 
-.world-entrance--complete {
+.world-entrance_complete {
   height: 100dvh;
 }
 
-.world-entrance--complete .world-entrance__sticky {
+.world-entrance_complete .world-entrance_sticky {
   position: fixed;
   inset: 0;
   height: 100dvh;
 }
 
-.world-entrance--complete .world-entrance__portal {
+.world-entrance_complete .world-entrance_portal {
   transform: none;
   clip-path: none;
   opacity: 1;
@@ -184,17 +184,17 @@
   will-change: auto;
 }
 
-.world-entrance--complete .world-entrance__intro,
-.world-entrance--complete .world-entrance__scroll-space {
+.world-entrance_complete .world-entrance_intro,
+.world-entrance_complete .world-entrance_scroll-space {
   display: none;
 }
 
 @media (max-width: 600px) {
-  .world-entrance__intro {
+  .world-entrance_intro {
     padding: 7dvh 20px 5dvh;
   }
 
-  .world-entrance__illustration {
+  .world-entrance_illustration {
     width: 80px;
     height: 80px;
     font-size: 44px;

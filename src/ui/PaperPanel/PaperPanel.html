@@ -1,4 +1,27 @@
 <dialog class="paper-panel">
+  <svg style="position: absolute; width: 0px; height: 0px">
+    <defs>
+      <filter id="crumple-effect">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.003"
+          numOctaves="10"
+          result="turbulence"
+        ></feTurbulence>
+        <feDisplacementMap
+          in2="turbulence"
+          in="SourceGraphic"
+          scale="50"
+        ></feDisplacementMap>
+        <feDropShadow
+          dx="0"
+          dy="0"
+          stdDeviation="2"
+          flood-color="#5c4534"
+        ></feDropShadow>
+      </filter>
+    </defs>
+  </svg>
   <button
     type="button"
     class="paper-panel_close"

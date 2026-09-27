@@ -165,7 +165,7 @@ export class WorldEntrance {
     this.renderProgress(1);
 
     // The portal becomes fixed and full-screen.
-    this.section.classList.add("world-entrance--complete");
+    this.section.classList.add("world-entrance_complete");
 
     document.documentElement.classList.add("is-world");
 
