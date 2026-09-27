@@ -1,0 +1,202 @@
+.world-entrance {
+  position: relative;
+  background: #fffdf0;
+}
+
+/*
+ * The world stays behind the introduction
+ * while the entrance section is scrolling.
+ */
+.world-entrance__sticky {
+  position: sticky;
+  top: 0;
+
+  width: 100%;
+  height: 100dvh;
+
+  overflow: hidden;
+  isolation: isolate;
+  z-index: 0;
+}
+
+/*
+ * The full-sized canvas is visually scaled
+ * down to a tiny point at the beginning.
+ */
+
+.world-entrance__portal {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #9cddd8;
+  transform: none;
+  clip-path: url(#world-portal-clip);
+  opacity: var(--entrance-opacity, 0);
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.world-entrance__mask-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/*
+ * Pull the introduction over the sticky layer.
+ *
+ * It stays in normal document flow and will
+ * move upward as the visitor scrolls.
+ */
+/* .world-mask_container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: auto;
+  inset: 0;
+  touch-action: none;
+  mask-image: url(/public/assets/edge-mask.webp);
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  mask-position: center;
+  -webkit-mask-image: url(/public/assets/edge-mask.webp);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 8;
+  pointer-events: none;
+  border: 3px solid #5c4534;
+} */
+
+.world-entrance__intro {
+  position: relative;
+  z-index: 2;
+
+  margin-top: -100dvh;
+  min-height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  padding: 8dvh 24px 5dvh;
+}
+
+/*
+ * No visible second section.
+ * This element only supplies scroll distance.
+ */
+.world-entrance__scroll-space {
+  height: 180svh;
+  pointer-events: none;
+}
+
+/* Introduction appearance */
+
+.world-entrance__content {
+  width: min(600px, 100%);
+  margin: auto 0;
+
+  text-align: center;
+}
+
+.world-entrance__illustration {
+  display: grid;
+  place-items: center;
+
+  width: 110px;
+  height: 110px;
+
+  margin: 0 auto 28px;
+
+  border: 1px solid #bca783;
+  border-radius: 50%;
+
+  color: #a88a5e;
+  background: #f6ead1;
+
+  font-size: 60px;
+}
+
+.world-entrance__eyebrow {
+  margin: 0;
+
+  color: #9b7853;
+  font-size: 11px;
+  font-weight: 600;
+
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+}
+
+.world-entrance__content h1 {
+  margin: 16px 0 20px;
+
+  color: #493522;
+  font-family: Georgia, serif;
+
+  font-size: clamp(38px, 6vw, 76px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.world-entrance__description {
+  max-width: 480px;
+  margin: 0 auto;
+  font-family: "Alex Brush", cursive;
+  color: #806747;
+  font-size: clamp(14px, 2vw, 18px);
+  line-height: 1.7;
+}
+
+.world-entrance__scroll-hint {
+  margin: 32px 0 0;
+
+  color: #806747;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+
+/* Irreversible completed state */
+
+.world-entrance--complete {
+  height: 100dvh;
+}
+
+.world-entrance--complete .world-entrance__sticky {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+}
+
+.world-entrance--complete .world-entrance__portal {
+  transform: none;
+  clip-path: none;
+  opacity: 1;
+
+  pointer-events: auto;
+  will-change: auto;
+}
+
+.world-entrance--complete .world-entrance__intro,
+.world-entrance--complete .world-entrance__scroll-space {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .world-entrance__intro {
+    padding: 7dvh 20px 5dvh;
+  }
+
+  .world-entrance__illustration {
+    width: 80px;
+    height: 80px;
+    font-size: 44px;
+  }
+}

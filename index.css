@@ -1,14 +1,38 @@
-@import url("https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap");
-
 * {
   box-sizing: border-box;
 }
 
-html,
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+html.is-loading,
+html.is-world {
+  overflow: hidden;
+}
+
 body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
+  background: #fffdf0;
+}
+
+/*
+ * During loading and gameplay, normal
+ * document scrolling must be disabled.
+ *
+ * During the introduction, neither
+ * class is present, so scrolling works.
+ */
+html.is-loading,
+html.is-world {
+  overflow: hidden;
+}
+
+html.is-world body {
   overflow: hidden;
 }
 
@@ -16,8 +40,4 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-p {
-  color: #5c4534;
 }

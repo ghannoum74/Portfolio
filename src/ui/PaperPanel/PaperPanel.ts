@@ -66,7 +66,7 @@ export class PaperPanel {
 
   close = (): void => {
     if (this.dialog.open) {
-      this.dialog.close;
+      this.dialog.close();
     }
   };
 

@@ -18,28 +18,21 @@ export class StartupLoading {
   constructor() {
     this.screen.setAssetProgress(0, this.expected.size);
 
-    // Track errors in the underlying loading system.
     this.manager.onError = (url) => {
       this.failures.add(url);
+
       console.error("Asset loading failed:", url);
     };
   }
 
-  // Arrow property preserves `this` when passed
-  // directly to AssetLoader as a callback.
   assetReady = (url: string): void => {
     if (!this.expected.has(url)) {
       throw new Error(`Unregistered startup asset: ${url}`);
     }
 
-    // A Set prevents accidentally counting
-    // the same asset twice.
     this.completed.add(url);
 
-    this.screen.setAssetProgress(
-      this.completed.size,
-      this.expected.size,
-    );
+    this.screen.setAssetProgress(this.completed.size, this.expected.size);
   };
 
   verify(): void {
@@ -56,14 +49,24 @@ export class StartupLoading {
     }
   }
 
-  complete(): void {
+  async complete(): Promise<void> {
     this.screen.complete();
 
-    requestAnimationFrame(() => {
+    // Display the completed loading bar
+    // before beginning the fade-out.
+    await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
-        this.screen.hide();
+        requestAnimationFrame(resolve);
       });
     });
+
+    // Wait until the overlay has disappeared.
+    await this.screen.hide();
   }
 
+  showError(error: unknown): void {
+    console.error("Startup loading error:", error);
+
+    this.screen.showError();
+  }
 }
