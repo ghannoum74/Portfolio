@@ -1,3 +1,32 @@
+.loading-screen::before,
+.world-entrance:not(.world-entrance_complete)::before {
+  --corner-size: clamp(80px, 25vmin, 180px);
+  --corner-tint: rgba(76, 58, 43, 0.28);
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at top left, var(--corner-tint), transparent 75%)
+      top left,
+    radial-gradient(ellipse at top right, var(--corner-tint), transparent 75%)
+      top right,
+    radial-gradient(ellipse at bottom left, var(--corner-tint), transparent 75%)
+      bottom left,
+    radial-gradient(
+        ellipse at bottom right,
+        var(--corner-tint),
+        transparent 75%
+      )
+      bottom right;
+  background-size: var(--corner-size) var(--corner-size);
+  background-repeat: no-repeat;
+  mix-blend-mode: multiply;
+  -webkit-mask: url("/assets/edge-mask.webp") center / cover no-repeat;
+  mask: url("/assets/edge-mask.webp") center / cover no-repeat;
+}
+
 .loading-screen {
   position: fixed;
   top: 0;

@@ -157,11 +157,16 @@
 }
 
 .world-entrance_scroll-hint {
-  margin: 32px 0 0;
-
-  color: #806747;
-  font-size: 13px;
-  letter-spacing: 0.1em;
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 28px;
+  height: auto;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0.8;
 }
 
 /* Irreversible completed state */

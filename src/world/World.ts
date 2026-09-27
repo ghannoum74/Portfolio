@@ -42,7 +42,6 @@ export class World {
       this.physics,
     );
 
-
     /*
      *load the world and create colliders for it.
      */
@@ -64,12 +63,10 @@ export class World {
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
 
-
     this.worldColliders = new WorldColliders(this.physics);
     this.worldColliders.createFromEnvironment(this.model);
 
     this.stairDetector = new StairDetector(this.model);
-
 
     this.player = new Player(
       this.scene,

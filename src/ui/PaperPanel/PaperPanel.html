@@ -1,5 +1,5 @@
 <dialog class="paper-panel">
-  <svg style="position: absolute; width: 0px; height: 0px">
+  <svg class="paper-panel_filters">
     <defs>
       <filter id="crumple-effect">
         <feTurbulence
@@ -22,6 +22,7 @@
       </filter>
     </defs>
   </svg>
+
   <button
     type="button"
     class="paper-panel_close"
@@ -29,7 +30,7 @@
     aria-label="Close paper"
     autofocus
   >
-    &times;
+    <img src="/assets/icons/close-icon.webp" alt="close icon" />
   </button>
 
   <div class="paper-panel_content" data-paper-content></div>
