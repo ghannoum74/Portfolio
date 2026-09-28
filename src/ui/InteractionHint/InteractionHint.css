@@ -1,0 +1,43 @@
+.interaction-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 70px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  opacity: 0;
+  transform: translate(-50%, 8px);
+
+  pointer-events: none;
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+
+  color: #5c4534;
+  font-family: "IM Fell English", serif;
+}
+
+.interaction-hint_visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.interaction-hint kbd {
+  display: grid;
+  place-items: center;
+
+  min-width: 34px;
+  height: 34px;
+
+  padding: 0 9px;
+
+  border: 1.5px solid currentColor;
+  border-radius: 5px;
+
+  background: #f3e7c2;
+
+  font: inherit;
+}
