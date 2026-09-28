@@ -44,6 +44,8 @@ export class Game {
 
   private phase: GamePhase = "loading";
 
+  private entranceCameraProgress = 0;
+
   private debugMode = false;
 
   private cameraDebugMesh: THREE.Group;

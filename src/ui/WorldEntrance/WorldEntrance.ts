@@ -5,6 +5,11 @@ import { OrganicPortalMask } from "./OrganicPortalMask";
 
 type EntranceState = "idle" | "active" | "complete";
 
+interface WorldEntranceOptions {
+  onProgress?: (progress: number) => void;
+  onComplete: () => void;
+}
+
 export class WorldEntrance {
   private readonly section: HTMLElement;
   private readonly portal: HTMLElement;
@@ -20,7 +25,10 @@ export class WorldEntrance {
     "(prefers-reduced-motion: reduce)",
   ).matches;
 
-  constructor(private readonly onComplete: () => void) {
+  constructor(
+    private readonly onProgress: (progress: number) => void,
+    private readonly onComplete: () => void,
+  ) {
     this.section = this.find("world-entrance");
     this.portal = this.find("world-portal");
 
@@ -144,6 +152,12 @@ export class WorldEntrance {
     const opacity = this.clamp((progress - 0.12) / 0.08);
 
     this.portal.style.setProperty("--entrance-opacity", String(opacity));
+
+    /*
+     * The camera receives exactly the same progress
+     * as the SVG world reveal.
+     */
+    this.options.onProgress?.(revealProgress);
   }
 
   private finish(): void {
@@ -173,7 +187,7 @@ export class WorldEntrance {
     // Game.ts opens the rules dialog.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        this.onComplete();
+        this.options.onComplete();
       });
     });
   }
