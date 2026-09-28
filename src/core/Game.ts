@@ -16,6 +16,7 @@ import { PaperPanel } from "../ui/PaperPanel/PaperPanel";
 import { WorldEntrance } from "../ui/WorldEntrance/WorldEntrance";
 
 import rulesHtml from "../ui/PaperPanelContent/rules.html?raw";
+import "../ui/PaperPanelContent/rules.css";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 

@@ -1,5 +1,8 @@
 * {
   box-sizing: border-box;
+  --paper-background: #f3e7c2;
+  --paper-ink: #5c4534;
+  --font-root: "Coiny", system-ui;
 }
 
 /* Hide the scrollbar without disabling scrolling. */
@@ -26,7 +29,7 @@ html.is-world body {
 }
 
 body {
-  background: #fffdf0;
+  background: var(--paper-background);
 }
 
 #game {

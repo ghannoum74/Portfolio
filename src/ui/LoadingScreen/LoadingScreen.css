@@ -33,7 +33,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: #fffdf0;
+  background: var(--paper-background);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -64,18 +64,19 @@
 }
 
 .loading-text {
+  color: var(--paper-ink);
   font-size: clamp(1.2rem, 2.2vw, 1.2rem);
   width: 100%;
   text-align: center;
   margin-top: 1rem;
   letter-spacing: 0.1em;
-  font-family: "Alex Brush", cursive;
+  font-family: var(--font-root);
 }
 
 .bar {
   width: 100%;
   height: 4px;
-  background: #fffdf0;
+  background: var(--paper-background);
   overflow: hidden;
   border-radius: 2px;
   box-shadow:
@@ -85,7 +86,7 @@
 
 .fill {
   height: 100%;
-  background: #5c4534;
+  background: var(--paper-ink);
   width: 0%;
   transition: width 0.2s ease-out;
 }

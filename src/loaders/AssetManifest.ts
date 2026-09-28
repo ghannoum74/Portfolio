@@ -9,7 +9,7 @@ export const ASSETS = {
     walkingBackward: "/assets/models/player/animations/walking-backwords.glb",
     running: "/assets/models/player/animations/running.glb",
     runningBackward: "/assets/models/player/animations/running-backwords.glb",
-    jump: "/assets/models/player/animations/jump-fast.glb",
+    jump: "/assets/models/player/animations/jump.glb",
     ascendingStairs: "/assets/models/player/animations/ascending-stairs.glb",
   },
 } as const;
