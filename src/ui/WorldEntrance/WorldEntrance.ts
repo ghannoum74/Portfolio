@@ -25,10 +25,7 @@ export class WorldEntrance {
     "(prefers-reduced-motion: reduce)",
   ).matches;
 
-  constructor(
-    private readonly onProgress: (progress: number) => void,
-    private readonly onComplete: () => void,
-  ) {
+  constructor(private readonly options: WorldEntranceOptions) {
     this.section = this.find("world-entrance");
     this.portal = this.find("world-portal");
 

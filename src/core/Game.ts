@@ -176,7 +176,15 @@ export class Game {
      * The entrance owns the scrolling effect.
      * Game owns what happens afterward.
      */
-    this.entrance = new WorldEntrance(() => this.openIntroductionRules());
+    this.entrance = new WorldEntrance({
+      onProgress: (progress) => {
+        this.entranceCameraProgress = progress;
+      },
+
+      onComplete: () => {
+        this.openIntroductionRules();
+      },
+    });
 
     this.hideDebugUI();
 
@@ -214,8 +222,6 @@ export class Game {
         this.playerCamera,
         this.world.player.model,
       );
-
-      this.thirdPersonCamera.update(1 / 60);
 
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
 
@@ -279,7 +285,11 @@ export class Game {
      */
     this.world.update(delta);
 
-    this.thirdPersonCamera?.update(delta);
+    if (this.phase === "introduction") {
+      this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
+    } else {
+      this.thirdPersonCamera?.update(delta);
+    }
 
     const gameplayActive = this.phase === "playing" && !this.paperPanel.isOpen;
 

@@ -4,58 +4,91 @@ export class ThirdPersonCamera {
   private readonly offset = new THREE.Vector3(0, 7, -7);
   private readonly lookAtOffset = new THREE.Vector3(0, 2, 0);
 
-  /*
-   * Exact camera state shown when the entrance begins.
-   */
-  private readonly entrancePosition: THREE.Vector3;
-  private readonly entranceLookAt: THREE.Vector3;
+  private readonly entranceOffset = new THREE.Vector3(16, 8, 8);
+
+  private readonly entranceControlOffset = new THREE.Vector3(9, 10, 2);
 
   private readonly tempPosition = new THREE.Vector3();
+
   private readonly tempLookAt = new THREE.Vector3();
-  private readonly cameraDirection = new THREE.Vector3();
+
+  private readonly startPosition = new THREE.Vector3();
+
+  private readonly controlPosition = new THREE.Vector3();
+
+  private readonly gameplayPosition = new THREE.Vector3();
+
+  private readonly entranceLookAt = new THREE.Vector3();
+
+  private readonly gameplayLookAt = new THREE.Vector3();
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly player: THREE.Object3D,
-  ) {
-    /*
-     * Game already positioned the camera before this
-     * controller is created.
-     *
-     * Capture that exact view and use it as the beginning
-     * of the entrance animation.
-     */
-    this.entrancePosition = this.camera.position.clone();
+  ) {}
 
-    this.camera.getWorldDirection(this.cameraDirection);
-
-    this.entranceLookAt = this.camera.position
-      .clone()
-      .add(this.cameraDirection.multiplyScalar(10));
-  }
-
-  /**
-   * Used only while the entrance scroll is active.
-   *
-   * progress:
-   * 0 = original cinematic entrance camera
-   * 1 = exact gameplay camera position
-   */
   updateEntrance(progress: number): void {
-    const t = THREE.MathUtils.smoothstep(
-      THREE.MathUtils.clamp(progress, 0, 1),
-      0,
-      1,
+    const p = THREE.MathUtils.clamp(progress, 0, 1);
+
+    /*
+     * Smooth the camera movement.
+     */
+    const movementProgress = THREE.MathUtils.smoothstep(p, 0, 1);
+
+    /*
+     * Final gameplay camera.
+     */
+    this.gameplayPosition.copy(this.getIdealPosition());
+
+    /*
+     * Entrance begins on the right side
+     * of the player/world.
+     */
+    this.startPosition.copy(this.player.position).add(this.entranceOffset);
+
+    /*
+     * Middle control point creates the
+     * curved sideways sweep.
+     */
+    this.controlPosition
+      .copy(this.player.position)
+      .add(this.entranceControlOffset);
+
+    this.quadraticBezier(
+      this.startPosition,
+      this.controlPosition,
+      this.gameplayPosition,
+      movementProgress,
+      this.tempPosition,
     );
 
-    const gameplayPosition = this.getIdealPosition();
-    const gameplayLookAt = this.getIdealLookAt();
-
-    this.tempPosition.lerpVectors(this.entrancePosition, gameplayPosition, t);
-
-    this.tempLookAt.lerpVectors(this.entranceLookAt, gameplayLookAt, t);
-
     this.camera.position.copy(this.tempPosition);
+
+    /*
+     * Initial camera looks more toward
+     * the world rather than directly
+     * locking onto the player.
+     */
+    this.entranceLookAt.set(
+      this.player.position.x,
+      this.player.position.y + 1,
+      this.player.position.z + 5,
+    );
+
+    this.gameplayLookAt.copy(this.getIdealLookAt());
+
+    /*
+     * Start focusing on the player only
+     * during the last ~40% of the reveal.
+     */
+    const focusProgress = THREE.MathUtils.smoothstep(p, 0.6, 1);
+
+    this.tempLookAt.lerpVectors(
+      this.entranceLookAt,
+      this.gameplayLookAt,
+      focusProgress,
+    );
+
     this.camera.lookAt(this.tempLookAt);
   }
 
@@ -64,6 +97,7 @@ export class ThirdPersonCamera {
    */
   update(delta: number): void {
     const idealPosition = this.getIdealPosition();
+
     const smoothness = 1 - Math.exp(-5 * delta);
 
     this.camera.position.lerp(idealPosition, smoothness);
@@ -81,5 +115,23 @@ export class ThirdPersonCamera {
 
   private getIdealLookAt(): THREE.Vector3 {
     return this.player.position.clone().add(this.lookAtOffset);
+  }
+
+  private quadraticBezier(
+    start: THREE.Vector3,
+    control: THREE.Vector3,
+    end: THREE.Vector3,
+    t: number,
+    target: THREE.Vector3,
+  ): void {
+    const inverse = 1 - t;
+
+    target.set(
+      inverse * inverse * start.x + 2 * inverse * t * control.x + t * t * end.x,
+
+      inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y,
+
+      inverse * inverse * start.z + 2 * inverse * t * control.z + t * t * end.z,
+    );
   }
 }
