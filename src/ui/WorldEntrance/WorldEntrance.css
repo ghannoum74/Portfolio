@@ -139,7 +139,6 @@
 .world-entrance_content h1 {
   margin: 16px 0 20px;
   color: #493522;
-  font-family: var(--font-root);
   font-size: clamp(38px, 6vw, 76px);
   line-height: 1.1;
   letter-spacing: -0.04em;
@@ -148,7 +147,6 @@
 .world-entrance_description {
   max-width: 480px;
   margin: 0 auto;
-  font-family: var(--font-root);
   color: var(--paper-ink);
   font-size: clamp(14px, 2vw, 18px);
   line-height: 1.7;

@@ -8,6 +8,7 @@
 /* Hide the scrollbar without disabling scrolling. */
 html {
   scrollbar-width: none;
+  font-family: var(--font-root);
 }
 
 html::-webkit-scrollbar,

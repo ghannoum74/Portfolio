@@ -39,6 +39,11 @@ export class InteractionSystem {
   }
 
   interact(): void {
-    this.active?.interact();
+    if (!this.active) {
+      return;
+    }
+
+    this.hint.hide();
+    this.active.interact();
   }
 }

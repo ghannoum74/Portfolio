@@ -1,23 +1,23 @@
 import * as THREE from "three";
-import { Vector3 } from "three";
-import { Interactable } from "../Interactable";
+import type { Interactable } from "../Interactable";
 
 export class DoorInteraction implements Interactable {
-  readonly interactionDistance: number = 2;
+  readonly interactionDistance = 2;
 
-  readonly position: Vector3 = new THREE.Vector3();
+  readonly position = new THREE.Vector3();
 
-  private opened = false;
-
-  constructor(private readonly door: THREE.Object3D) {
+  constructor(
+    door: THREE.Object3D,
+    private readonly onInteract: () => void,
+  ) {
     door.getWorldPosition(this.position);
   }
 
   getHint(): string {
-    return this.opened ? "Close door" : "Open door";
+    return "Enter";
   }
 
   interact(): void {
-    this.opened = !this.opened;
+    this.onInteract();
   }
 }

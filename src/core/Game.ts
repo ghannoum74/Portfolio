@@ -15,8 +15,12 @@ import { PaperPanel } from "../ui/PaperPanel/PaperPanel";
 
 import { WorldEntrance } from "../ui/WorldEntrance/WorldEntrance";
 
+import { InteractionSystem } from "../interactions/InteractionSystem";
+
 import rulesHtml from "../ui/PaperPanelContent/rules.html?raw";
 import "../ui/PaperPanelContent/rules.css";
+import { MailboxInteraction } from "../interactions/interactions/MailboxInteraction";
+import { DoorInteraction } from "../interactions/interactions/DoorInteraction";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -62,6 +66,8 @@ export class Game {
   private timer = new THREE.Timer();
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
+
+  private readonly interactionSystem: InteractionSystem;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -133,6 +139,8 @@ export class Game {
       },
     });
 
+    this.interactionSystem = new InteractionSystem();
+
     this.world = new World(
       this.scene,
       this.keyboard,
@@ -190,6 +198,14 @@ export class Game {
     try {
       await this.world.init();
 
+      this.setupInteractions();
+
+      const mailbox = this.world.model.getObjectByName("INTERACT_MAILBOX_01");
+
+      if (!mailbox) {
+        throw new Error("Missing INTERACT_MAILBOX_01");
+      }
+
       this.loading.verify();
 
       this.thirdPersonCamera = new ThirdPersonCamera(
@@ -237,17 +253,7 @@ export class Game {
 
     this.phase = "rules";
 
-    const template = document.createElement("template");
-
-    template.innerHTML = rulesHtml.trim();
-
-    /*
-     * The world has fully expanded
-     * and document scrolling is locked.
-     *
-     * Display the existing rules paper.
-     */
-    this.paperPanel.open(template.content, "World rules");
+    this.paperPanel.open(this.createRulesContent(), "World rules");
   }
 
   private update = (): void => {
@@ -276,6 +282,8 @@ export class Game {
     const gameplayActive = this.phase === "playing" && !this.paperPanel.isOpen;
 
     if (gameplayActive) {
+      this.interactionSystem.update(this.world.player.model.position);
+
       this.updateSunControls(delta);
     }
 
@@ -515,6 +523,11 @@ export class Game {
       return;
     }
 
+    if (event.code === "KeyE") {
+      this.interactionSystem.interact();
+      return;
+    }
+
     if (event.code === "KeyC") {
       this.debugMode = !this.debugMode;
 
@@ -577,5 +590,41 @@ export class Game {
 
       this.updateOverlay();
     }
+  }
+
+  private createRulesContent(): DocumentFragment {
+    const template = document.createElement("template");
+
+    template.innerHTML = rulesHtml.trim();
+
+    return template.content;
+  }
+
+  private setupInteractions(): void {
+    const mailbox = this.world.model.getObjectByName("INTERACT_MAILBOX_01");
+
+    if (!mailbox) {
+      throw new Error("Missing INTERACT_MAILBOX_01");
+    }
+
+    this.interactionSystem.register(
+      new MailboxInteraction(
+        mailbox,
+        this.paperPanel,
+        this.createRulesContent(),
+      ),
+    );
+
+    const door = this.world.model.getObjectByName("INTERACT_DOOR_01");
+
+    if (!door) {
+      throw new Error("Missing INTERACT_DOOR_01");
+    }
+
+    this.interactionSystem.register(
+      new DoorInteraction(door, () => {
+        console.log("Door entered");
+      }),
+    );
   }
 }

@@ -34,7 +34,7 @@
   inset: 12px;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(#fefdf0 60%, #d0c8b7);
+  background-color: var(--paper-background);
   filter: url("#crumple-effect");
 }
 
@@ -84,7 +84,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 100px 95px 78px;
-  font-family: var(--font-root);
   font-size: 17px;
   line-height: 1.6;
   color: var(--paper-ink);

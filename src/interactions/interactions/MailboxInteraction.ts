@@ -16,7 +16,7 @@ export class MailboxInteraction implements Interactable {
   }
 
   getHint(): string {
-    return "Open mailbox";
+    return "Open the mailbox";
   }
 
   interact(): void {
