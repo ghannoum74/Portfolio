@@ -8,6 +8,7 @@ import { PhysicsWorld } from "../physics/PhysicsWorld";
 import { PhysicsDebugRenderer } from "../physics/PhysicsDebugRenderer";
 import { StairDetector } from "./StairDetector";
 import { ASSETS } from "../loaders/AssetManifest";
+import { DayNightCycle } from "./environment/DayNightCycle";
 
 export class World {
   model!: THREE.Group;
@@ -24,6 +25,7 @@ export class World {
   private initialized = false;
   private physicsDebugRenderer!: PhysicsDebugRenderer;
   private stairDetector!: StairDetector;
+  private dayNightCycle: DayNightCycle;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -32,6 +34,13 @@ export class World {
     private readonly onAssetReady?: (url: string) => void,
   ) {
     this.addLights();
+
+    this.dayNightCycle = new DayNightCycle(
+      this.scene,
+      this.sunPivot,
+      this.sun,
+      this.ambientLight,
+    );
   }
   async init(): Promise<void> {
     await this.physics.init();
@@ -85,31 +94,21 @@ export class World {
     if (!this.initialized) {
       return;
     }
-    /*
-     * Make physics aware of this frame's timestep.
-     */
+
+    this.dayNightCycle.update(delta);
+
     this.physics.beginFrame(delta);
 
-    /*
-     * Player calculates desired movement.
-     */
     this.player?.update(delta);
 
-    /*
-     * Rapier commits the next kinematic position.
-     */
     this.physics.step();
 
-    /*
-     * Visual model copies physics position.
-     */
     this.player?.syncFromPhysics();
 
     this.physicsDebugRenderer.update();
 
     this.sunHelper?.update();
   }
-
   moveSun(x: number, y: number, z: number): void {
     this.sunPivot.position.x += x;
     this.sunPivot.position.y += y;
@@ -153,5 +152,9 @@ export class World {
 
     this.sunHelper = new THREE.DirectionalLightHelper(this.sun, 2, 0xffcc55);
     this.scene.add(this.sunHelper);
+  }
+
+  setTimeOfDay(hour: number | null): void {
+    this.dayNightCycle.setTimeOverride(hour);
   }
 }
