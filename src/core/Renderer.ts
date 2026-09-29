@@ -72,10 +72,21 @@ export class Renderer {
     this.outlinePass.selectedObjects = object ? [object] : [];
   }
 
-  render(scene: THREE.Scene, camera: THREE.Camera) {
+  render(scene: THREE.Scene, camera: THREE.Camera): void {
     this.stats.begin();
 
-    this.instance.render(scene, camera);
+    if (this.composer && this.renderPass && this.outlinePass) {
+      this.renderPass.scene = scene;
+      this.renderPass.camera = camera;
+
+      this.outlinePass.renderScene = scene;
+
+      this.outlinePass.renderCamera = camera;
+
+      this.composer.render();
+    } else {
+      this.instance.render(scene, camera);
+    }
 
     this.stats.end();
     this.stats.update();
