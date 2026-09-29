@@ -53,17 +53,15 @@ export class Game {
 
   private overlay: HTMLDivElement;
 
-  private pressedDebugKeys = new Set<string>();
-
   private gui: GUI;
 
-  private sunDebugState: {
+  private environmentDebugState: {
     debugView: boolean;
-    x: number;
-    y: number;
-    z: number;
-    intensity: number;
+    realTime: boolean;
+    hour: number;
   };
+
+  private debugUiElapsed = 0;
 
   private timer = new THREE.Timer();
   private raycaster = new THREE.Raycaster();
@@ -103,6 +101,8 @@ export class Game {
 
     this.renderer = new Renderer(canvas);
 
+    this.renderer.setupInteractionOutline(this.scene, this.playerCamera);
+
     this.controls = new OrbitControls(
       this.debugCamera,
       this.renderer.instance.domElement,
@@ -124,7 +124,6 @@ export class Game {
       onOpen: () => {
         this.keyboard.setEnabled(false);
         this.controls.enabled = false;
-        this.pressedDebugKeys.clear();
       },
 
       onClose: () => {
@@ -141,7 +140,11 @@ export class Game {
       },
     });
 
-    this.interactionSystem = new InteractionSystem();
+    this.interactionSystem = new InteractionSystem((interactable) => {
+      this.renderer.setInteractionOutline(
+        interactable?.highlightTarget ?? null,
+      );
+    });
 
     this.world = new World(
       this.scene,
@@ -160,12 +163,10 @@ export class Game {
 
     this.overlay = this.createOverlay();
 
-    this.sunDebugState = {
+    this.environmentDebugState = {
       debugView: this.debugMode,
-      x: this.world.sunPivot.position.x,
-      y: this.world.sunPivot.position.y,
-      z: this.world.sunPivot.position.z,
-      intensity: this.world.sun.intensity,
+      realTime: this.world.isUsingRealTime(),
+      hour: this.world.getTimeOfDay(),
     };
 
     this.gui = this.createGui();
@@ -189,8 +190,6 @@ export class Game {
     this.hideDebugUI();
 
     window.addEventListener("keydown", this.onKeyDown);
-
-    window.addEventListener("keyup", this.onKeyUp);
 
     this.renderer.instance.domElement.addEventListener(
       "click",
@@ -269,6 +268,14 @@ export class Game {
 
     const delta = this.timer.getDelta();
 
+    this.debugUiElapsed += delta;
+
+    if (this.debugMode && this.debugUiElapsed >= 0.25) {
+      this.debugUiElapsed = 0;
+
+      this.updateOverlay();
+    }
+
     // smooth scrolling
     this.entrance.raf(performance.now());
 
@@ -295,8 +302,6 @@ export class Game {
 
     if (gameplayActive) {
       this.interactionSystem.update(this.world.player.model.position);
-
-      this.updateSunControls(delta);
     }
 
     this.syncCameraDebugMesh();
@@ -456,51 +461,63 @@ export class Game {
       width: 320,
     });
 
-    const sunFolder = gui.addFolder("Sun Test Controls");
-
     gui
-      .add(this.sunDebugState, "debugView")
+      .add(this.environmentDebugState, "debugView")
       .name("Debug view")
       .onChange((value: boolean) => {
         this.debugMode = value;
-        this.updateOverlay();
-      });
-
-    sunFolder
-      .add(this.sunDebugState, "x", -50, 50, 0.1)
-      .name("Sun X")
-      .onChange((value: number) => {
-        this.world.sunPivot.position.x = value;
 
         this.updateOverlay();
       });
 
-    sunFolder
-      .add(this.sunDebugState, "y", 1, 60, 0.1)
-      .name("Sun Y")
+    const environmentFolder = gui.addFolder("Day / Night");
+
+    const hourController = environmentFolder
+      .add(this.environmentDebugState, "hour", 0, 23.99, 0.01)
+      .name("Preview hour")
       .onChange((value: number) => {
-        this.world.sunPivot.position.y = value;
+        if (this.environmentDebugState.realTime) {
+          return;
+        }
+
+        this.world.setTimeOfDay(value);
 
         this.updateOverlay();
       });
 
-    sunFolder
-      .add(this.sunDebugState, "z", -50, 50, 0.1)
-      .name("Sun Z")
-      .onChange((value: number) => {
-        this.world.sunPivot.position.z = value;
+    environmentFolder
+      .add(this.environmentDebugState, "realTime")
+      .name("Real time")
+      .onChange((realTime: boolean) => {
+        if (realTime) {
+          /*
+           * null means:
+           * return control to the visitor's
+           * actual local clock.
+           */
+          this.world.setTimeOfDay(null);
+
+          this.environmentDebugState.hour = this.world.getTimeOfDay();
+
+          hourController.disable();
+        } else {
+          /*
+           * Freeze the world at whatever
+           * hour the slider currently shows.
+           */
+          this.world.setTimeOfDay(this.environmentDebugState.hour);
+
+          hourController.enable();
+        }
 
         this.updateOverlay();
       });
 
-    sunFolder
-      .add(this.sunDebugState, "intensity", 0, 8, 0.1)
-      .name("Intensity")
-      .onChange((value: number) => {
-        this.world.sun.intensity = value;
-      });
+    if (this.environmentDebugState.realTime) {
+      hourController.disable();
+    }
 
-    sunFolder.open();
+    environmentFolder.open();
 
     return gui;
   }
@@ -508,26 +525,58 @@ export class Game {
   private updateOverlay(): void {
     const modeLabel = this.debugMode ? "ON" : "OFF";
 
+    const hour = this.world.getTimeOfDay();
+
+    const hours = Math.floor(hour);
+
+    const minutes = Math.floor((hour - hours) * 60);
+
+    const formattedTime =
+      `${String(hours).padStart(2, "0")}:` +
+      `${String(minutes).padStart(2, "0")}`;
+
+    const timeMode = this.world.isUsingRealTime() ? "REAL TIME" : "PREVIEW";
+
+    this.environmentDebugState.debugView = this.debugMode;
+
+    this.environmentDebugState.realTime = this.world.isUsingRealTime();
+
+    if (this.environmentDebugState.realTime) {
+      this.environmentDebugState.hour = hour;
+    }
+
+    const period = this.getTimePeriod(hour);
+
     const { x, y, z } = this.world.sunPivot.position;
-
-    this.sunDebugState.debugView = this.debugMode;
-
-    this.sunDebugState.x = x;
-    this.sunDebugState.y = y;
-    this.sunDebugState.z = z;
-
-    this.sunDebugState.intensity = this.world.sun.intensity;
 
     this.overlay.textContent =
       `Debug view: ${modeLabel} (press C)\n` +
-      `GUI: top-right sliders\n` +
-      `Sun move: J/L = X, U/O = Y, I/K = Z\n` +
-      `Sun position: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}\n` +
-      `Sun intensity: ${this.world.sun.intensity.toFixed(1)}`;
+      `Time mode: ${timeMode}\n` +
+      `World time: ${formattedTime}\n` +
+      `Period: ${period}\n` +
+      `Sun: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}\n` +
+      `Sun intensity: ${this.world.sun.intensity.toFixed(2)}\n` +
+      `Ambient: ${this.world.ambientLight.intensity.toFixed(2)}`;
 
     for (const controller of this.gui.controllersRecursive()) {
       controller.updateDisplay();
     }
+  }
+
+  private getTimePeriod(hour: number): string {
+    if (hour >= 5 && hour < 8) {
+      return "Morning";
+    }
+
+    if (hour >= 8 && hour < 17) {
+      return "Day";
+    }
+
+    if (hour >= 17 && hour < 20) {
+      return "Sunset";
+    }
+
+    return "Night";
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
@@ -547,62 +596,7 @@ export class Game {
 
       return;
     }
-
-    if (this.isSunControlKey(event.code)) {
-      this.pressedDebugKeys.add(event.code);
-    }
   };
-
-  private onKeyUp = (event: KeyboardEvent): void => {
-    this.pressedDebugKeys.delete(event.code);
-  };
-
-  private isSunControlKey(code: string): boolean {
-    return ["KeyJ", "KeyL", "KeyU", "KeyO", "KeyI", "KeyK"].includes(code);
-  }
-
-  private updateSunControls(delta: number): void {
-    if (!this.debugMode) {
-      this.pressedDebugKeys.clear();
-      return;
-    }
-
-    const speed = 8 * delta;
-
-    let moveX = 0;
-    let moveY = 0;
-    let moveZ = 0;
-
-    if (this.pressedDebugKeys.has("KeyJ")) {
-      moveX -= speed;
-    }
-
-    if (this.pressedDebugKeys.has("KeyL")) {
-      moveX += speed;
-    }
-
-    if (this.pressedDebugKeys.has("KeyU")) {
-      moveY += speed;
-    }
-
-    if (this.pressedDebugKeys.has("KeyO")) {
-      moveY -= speed;
-    }
-
-    if (this.pressedDebugKeys.has("KeyI")) {
-      moveZ -= speed;
-    }
-
-    if (this.pressedDebugKeys.has("KeyK")) {
-      moveZ += speed;
-    }
-
-    if (moveX !== 0 || moveY !== 0 || moveZ !== 0) {
-      this.world.moveSun(moveX, moveY, moveZ);
-
-      this.updateOverlay();
-    }
-  }
 
   private createRulesContent(): DocumentFragment {
     const template = document.createElement("template");

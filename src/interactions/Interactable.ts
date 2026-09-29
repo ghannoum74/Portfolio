@@ -5,6 +5,8 @@ export interface Interactable {
 
   interactionDistance: number;
 
+  highlightTarget: THREE.Object3D;
+
   getHint(): string;
 
   interact(): void;

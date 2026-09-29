@@ -9,6 +9,12 @@ export class InteractionSystem {
 
   private readonly hint = new InteractionHint();
 
+  constructor(
+    private readonly onActiveChange?: (
+      Interactable: Interactable | null,
+    ) => void,
+  ) {}
+
   register(interactable: Interactable): void {
     this.interactables.push(interactable);
   }
@@ -29,7 +35,11 @@ export class InteractionSystem {
       }
     }
 
-    this.active = closest;
+    if (closest !== this.active) {
+      this.active = closest;
+
+      this.onActiveChange?.(this.active);
+    }
 
     if (this.active) {
       this.hint.show(this.active.getHint());
@@ -43,7 +53,12 @@ export class InteractionSystem {
       return;
     }
 
+    const active = this.active;
+
+    this.active = null;
+
+    this.onActiveChange?.(null);
     this.hint.hide();
-    this.active.interact();
+    active.interact();
   }
 }

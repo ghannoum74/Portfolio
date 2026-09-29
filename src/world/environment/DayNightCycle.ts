@@ -29,6 +29,8 @@ export class DayNightCycle {
 
   private readonly nightSkyColor = new THREE.Color(0x111827);
 
+  private readonly daySunColor = new THREE.Color(0xfff1bf);
+
   private readonly calculatedSkyColor = new THREE.Color();
 
   constructor(
@@ -69,19 +71,6 @@ export class DayNightCycle {
     const hour = this.overrideHours ?? this.getCurrentHour();
 
     this.applyTime(hour);
-  }
-
-  setTimeOverride(hour: number | null): void {
-    if (hour === null) {
-      this.overrideHours = null;
-
-      this.applyTime(this.getCurrentHour());
-      return;
-    }
-
-    this.overrideHours = THREE.MathUtils.clamp(hour, 0, 23.99);
-
-    this.applyTime(this.overrideHours);
   }
 
   private getCurrentHour(): number {
@@ -155,7 +144,7 @@ export class DayNightCycle {
 
     this.sun.color
       .copy(this.horizonSunColor)
-      .lerp(this.daySkyColor, 1 - horizonWarmth);
+      .lerp(this.daySunColor, 1 - horizonWarmth);
 
     /*
      * ----- AMBIENT LIGHT -----
@@ -184,5 +173,26 @@ export class DayNightCycle {
     if (this.scene.background instanceof THREE.Color) {
       this.scene.background.copy(this.calculatedSkyColor);
     }
+  }
+
+  setTimeOverride(hour: number | null): void {
+    if (hour === null) {
+      this.overrideHours = null;
+
+      this.applyTime(this.getCurrentHour());
+      return;
+    }
+
+    this.overrideHours = THREE.MathUtils.clamp(hour, 0, 23.99);
+
+    this.applyTime(this.overrideHours);
+  }
+
+  getTimeOfDay(): number {
+    return this.overrideHours ?? this.getCurrentHour();
+  }
+
+  isUsingRealTime(): boolean {
+    return this.overrideHours === null;
   }
 }

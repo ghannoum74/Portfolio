@@ -109,12 +109,6 @@ export class World {
 
     this.sunHelper?.update();
   }
-  moveSun(x: number, y: number, z: number): void {
-    this.sunPivot.position.x += x;
-    this.sunPivot.position.y += y;
-    this.sunPivot.position.z += z;
-    this.sunHelper.update();
-  }
 
   setSunDebugVisible(visible: boolean): void {
     this.sunVisual.visible = visible;
@@ -156,5 +150,13 @@ export class World {
 
   setTimeOfDay(hour: number | null): void {
     this.dayNightCycle.setTimeOverride(hour);
+  }
+
+  getTimeOfDay(): number {
+    return this.dayNightCycle.getTimeOfDay();
+  }
+
+  isUsingRealTime(): boolean {
+    return this.dayNightCycle.isUsingRealTime();
   }
 }

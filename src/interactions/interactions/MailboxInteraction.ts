@@ -7,11 +7,15 @@ export class MailboxInteraction implements Interactable {
 
   readonly position = new THREE.Vector3();
 
+  readonly highlightTarget: THREE.Object3D;
+
   constructor(
     mailbox: THREE.Object3D,
     private readonly paperPanel: PaperPanel,
     private readonly content: DocumentFragment,
   ) {
+    this.highlightTarget = mailbox;
+
     mailbox.getWorldPosition(this.position);
   }
 
