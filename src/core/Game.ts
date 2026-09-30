@@ -68,6 +68,7 @@ export class Game {
   private timer = new THREE.Timer();
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
+  private clickedWorldPoint: THREE.Vector3 | null = null;
 
   private readonly interactionSystem: InteractionSystem;
   private readonly dialogueBox: DialogueBox;
@@ -366,7 +367,12 @@ export class Game {
   };
 
   private onCanvasClick = (event: MouseEvent): void => {
-    if (this.phase !== "playing" || this.paperPanel.isOpen) {
+    if (
+      event.button !== 0 ||
+      this.phase !== "playing" ||
+      this.paperPanel.isOpen ||
+      this.dialogueBox.isOpen
+    ) {
       return;
     }
 
@@ -378,17 +384,30 @@ export class Game {
 
     this.raycaster.setFromCamera(this.mouse, this.getActiveCamera());
 
-    const intersects = this.raycaster.intersectObjects(
-      this.scene.children,
+    const intersects = this.raycaster.intersectObject(
+      this.world.model,
       true,
     );
 
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
+    const hit = intersects.find(({ object }) => {
+      for (
+        let current: THREE.Object3D | null = object;
+        current;
+        current = current.parent
+      ) {
+        if (!current.visible) return false;
+      }
+      return true;
+    });
 
-      // Future interaction logic.
-      // console.log(point);
+    this.clickedWorldPoint = hit ? hit.point.clone() : null;
+
+    if (this.clickedWorldPoint) {
+      const { x, y, z } = this.clickedWorldPoint;
+      console.log("Clicked world coordinates:", { x, y, z });
     }
+
+    this.updateOverlay();
   };
 
   private getActiveCamera(): THREE.PerspectiveCamera {
@@ -582,7 +601,12 @@ export class Game {
       `Period: ${period}\n` +
       `Sun: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}\n` +
       `Sun intensity: ${this.world.sun.intensity.toFixed(2)}\n` +
-      `Ambient: ${this.world.ambientLight.intensity.toFixed(2)}`;
+      `Ambient: ${this.world.ambientLight.intensity.toFixed(2)}\n` +
+      (this.clickedWorldPoint
+        ? `Clicked world: X ${this.clickedWorldPoint.x.toFixed(3)}, ` +
+          `Y ${this.clickedWorldPoint.y.toFixed(3)}, ` +
+          `Z ${this.clickedWorldPoint.z.toFixed(3)}`
+        : "Click a world surface to get X, Y, Z");
 
     for (const controller of this.gui.controllersRecursive()) {
       controller.updateDisplay();

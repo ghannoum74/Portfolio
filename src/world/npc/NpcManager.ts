@@ -20,35 +20,35 @@ export class NpcManager {
   }
 
   async load(): Promise<void> {
-    const spawnPoints = this.shuffle(
-      NPC_SPAWN_POINTS.map((position) => position.clone()),
-    );
-
     const assets = await Promise.all(
       NPC_DEFINITIONS.map((definition) =>
         this.loader.loadGLB(definition.asset),
       ),
     );
 
-    assets.forEach((asset, index: number) => {
+    assets.forEach((asset, index) => {
       const definition = NPC_DEFINITIONS[index];
 
-      const model: THREE.Group = asset.scene;
+      const spawnPoint = NPC_SPAWN_POINTS[index];
 
-      const spawnPoint = spawnPoints[index % spawnPoints.length];
+      if (!spawnPoint) {
+        throw new Error(`Missing spawn point for NPC: ${definition.id}`);
+      }
+
+      const model = asset.scene;
 
       model.name = `NPC_${definition.id}`;
 
       model.position.copy(spawnPoint);
 
-      model.rotation.y = Math.random() * Math.PI * 2;
+      model.rotation.y = definition.rotationY ?? 0;
 
       model.scale.setScalar(definition.scale ?? 1);
 
       model.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return;
-
-        console.log(child);
+        if (!(child instanceof THREE.Mesh)) {
+          return;
+        }
 
         child.castShadow = true;
         child.receiveShadow = true;
@@ -66,17 +66,5 @@ export class NpcManager {
         dialogues: definition.dialogues,
       });
     });
-  }
-
-  private shuffle<T>(values: readonly T[]): T[] {
-    const result = [...values];
-
-    for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-
-      [result[i], result[j]] = [result[j], result[i]];
-    }
-
-    return result;
   }
 }

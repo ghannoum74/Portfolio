@@ -26,7 +26,6 @@ export class StartupLoading {
   }
 
   assetReady = (url: string): void => {
-    console.log("-----------", url);
     if (!this.expected.has(url)) {
       throw new Error(`Unregistered startup asset: ${url}`);
     }
