@@ -11,6 +11,10 @@ export interface NpcDefinition {
 
   asset: string;
 
+  position: THREE.Vector3;
+
+  rotationY?: number;
+
   scale?: number;
 
   dialogues: readonly (readonly string[])[];
@@ -22,6 +26,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Interphase Teammate",
     company: "Interphase",
     asset: ASSETS.characters.interphase,
+
+    position: new THREE.Vector3(13, 7.8, -4.8),
+
+    rotationY: 0,
 
     dialogues: [
       [
@@ -44,6 +52,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     company: "Prodigy Infotech",
     asset: ASSETS.characters.prodigy,
 
+    position: new THREE.Vector3(7, 3, 6),
+
+    rotationY: 0,
+
     dialogues: [
       [
         "Hey there.",
@@ -58,6 +70,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "SE Factory Mentor",
     company: "SE Factory",
     asset: ASSETS.characters.seFactory,
+
+    position: new THREE.Vector3(-12, 3, -4),
+
+    rotationY: 0,
 
     dialogues: [
       [
@@ -74,6 +90,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     company: "42",
     asset: ASSETS.characters.fortyTwo,
 
+    position: new THREE.Vector3(10, 3, -8),
+
+    rotationY: 0,
+
     dialogues: [
       [
         "No teachers. No lectures.",
@@ -88,6 +108,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Frequenc Teammate",
     company: "Frequenc",
     asset: ASSETS.characters.frequenc,
+
+    position: new THREE.Vector3(-3, 3, -13),
+
+    rotationY: 0,
 
     dialogues: [
       [
@@ -104,6 +128,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     company: "bePro",
     asset: ASSETS.characters.bePro,
 
+    position: new THREE.Vector3(13, 3, 1),
+
+    rotationY: 0,
+
     dialogues: [
       [
         "Hello traveler.",
@@ -119,6 +147,10 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     company: "MTC",
     asset: ASSETS.characters.mtc,
 
+    position: new THREE.Vector3(3, 3, 12),
+
+    rotationY: 0,
+
     dialogues: [
       [
         "Ah. A visitor.",
@@ -127,14 +159,4 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
       ],
     ],
   },
-];
-
-export const NPC_SPAWN_POINTS: readonly THREE.Vector3[] = [
-  new THREE.Vector3(13, 7.8, -4.8),
-  new THREE.Vector3(7, 3, 6),
-  new THREE.Vector3(-12, 3, -4),
-  new THREE.Vector3(10, 3, -8),
-  new THREE.Vector3(-3, 3, -13),
-  new THREE.Vector3(13, 3, 1),
-  new THREE.Vector3(3, 3, 12),
 ];
