@@ -141,6 +141,8 @@ export class DialogueBox {
 
     this.stopTyping();
 
+    const activeContent = this.activeContent;
+
     this.root.classList.remove("dialogue-box_visible");
 
     this.root.setAttribute("aria-hidden", "true");
@@ -150,6 +152,8 @@ export class DialogueBox {
     this.lines = [];
 
     this.activeContent = null;
+
+    activeContent?.onClose?.();
 
     this.options.onClose?.();
   }

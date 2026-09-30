@@ -15,6 +15,7 @@ export const ASSETS = {
 
   animations: {
     idle: "/assets/models/player/animations/idle.glb",
+    breathing_idle: "/assets/models/player/animations/breathing_idle.glb",
     walking: "/assets/models/player/animations/walking.glb",
     walkingBackward: "/assets/models/player/animations/walking-backwords.glb",
     running: "/assets/models/player/animations/running.glb",
@@ -25,9 +26,7 @@ export const ASSETS = {
 
   npcAnimations: {
     talking1: "/assets/models/player/animations/talking_1.glb",
-
     talking2: "/assets/models/player/animations/talking_2.glb",
-
     talking3: "/assets/models/player/animations/talking_3.glb",
   },
 } as const;

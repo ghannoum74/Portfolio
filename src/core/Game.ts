@@ -229,7 +229,7 @@ export class Game {
 
       for (const npc of this.world.npcs) {
         this.interactionSystem.register(
-          new NpcInteraction(npc, this.dialogueBox),
+          new NpcInteraction(npc, this.world.player.model, this.dialogueBox),
         );
       }
 
@@ -384,10 +384,7 @@ export class Game {
 
     this.raycaster.setFromCamera(this.mouse, this.getActiveCamera());
 
-    const intersects = this.raycaster.intersectObject(
-      this.world.model,
-      true,
-    );
+    const intersects = this.raycaster.intersectObject(this.world.model, true);
 
     const hit = intersects.find(({ object }) => {
       for (
