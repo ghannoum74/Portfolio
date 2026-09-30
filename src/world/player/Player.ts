@@ -52,7 +52,7 @@ export class Player {
 
     this.modelBottomY = boundingBox.min.y - this.model.position.y;
 
-    this.body = new PlayerBody(this.physics, new THREE.Vector3(0, 20, 0));
+    this.body = new PlayerBody(this.physics, new THREE.Vector3(0, 15, 0));
 
     this.mixer = new THREE.AnimationMixer(this.model);
 

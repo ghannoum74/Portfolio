@@ -107,11 +107,13 @@ export class World {
       return;
     }
 
-    this.dayNightCycle.update(delta);
+    const safeDelta = Math.min(delta, 1 / 30);
 
-    this.physics.beginFrame(delta);
+    this.dayNightCycle.update(safeDelta);
 
-    this.player?.update(delta);
+    this.physics.beginFrame(safeDelta);
+
+    this.player?.update(safeDelta);
 
     this.physics.step();
 

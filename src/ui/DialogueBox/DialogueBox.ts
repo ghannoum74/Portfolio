@@ -91,7 +91,7 @@ export class DialogueBox {
     this.lines = content.lines;
     this.lineIndex = 0;
 
-    this.root.classList.add("dialogue-box-visible");
+    this.root.classList.add("dialogue-box_visible");
     this.root.setAttribute("aria-hidden", "false");
 
     this.options.onOpen?.();
