@@ -7,10 +7,16 @@ interface DialogueBoxOptions {
   onClose?: () => void;
 }
 
+export interface DialogueLine {
+  text: string;
+}
+
 interface DialogueContent {
   speaker: string;
   company: string;
-  lines: readonly string[];
+  lines: readonly DialogueLine[];
+  onLineChange?: (index: number) => void;
+  onClose?: () => void;
 }
 
 export class DialogueBox {
@@ -20,7 +26,7 @@ export class DialogueBox {
   private readonly text: HTMLElement;
   private readonly nextButton: HTMLButtonElement;
   private readonly action: HTMLElement;
-  private lines: readonly string[] = [];
+  private lines: readonly DialogueLine[] = [];
 
   private lineIndex = 0;
   private typingTimer: number | null = null;
@@ -30,6 +36,8 @@ export class DialogueBox {
   private readonly reduceMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
+
+  private activeContent: DialogueContent | null = null;
 
   constructor(private readonly options: DialogueBoxOptions = {}) {
     const uiRoot = document.getElementById("ui-root");
@@ -83,6 +91,8 @@ export class DialogueBox {
     if (this.isOpen || content.lines.length === 0) {
       return;
     }
+
+    this.activeContent = content;
 
     this.speaker.textContent = content.speaker;
 
@@ -139,13 +149,17 @@ export class DialogueBox {
 
     this.lines = [];
 
+    this.activeContent = null;
+
     this.options.onClose?.();
   }
 
   private showCurrentLine(): void {
     this.stopTyping();
 
-    this.fullText = this.lines[this.lineIndex];
+    this.fullText = this.lines[this.lineIndex].text;
+
+    this.activeContent?.onLineChange?.(this.lineIndex);
 
     this.visibleCharacters = 0;
 

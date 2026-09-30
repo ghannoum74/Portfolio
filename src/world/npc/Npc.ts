@@ -1,5 +1,8 @@
 import * as THREE from "three";
 
+import type { NpcDialogue } from "./NpcData";
+import { NpcAnimator } from "./NpcAnimator";
+
 export interface Npc {
   id: string;
 
@@ -9,5 +12,7 @@ export interface Npc {
 
   model: THREE.Group;
 
-  dialogues: readonly (readonly string[])[];
+  dialogues: readonly NpcDialogue[];
+
+  animator: NpcAnimator;
 }

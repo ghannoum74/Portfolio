@@ -22,6 +22,14 @@ export const ASSETS = {
     jump: "/assets/models/player/animations/jump.glb",
     ascendingStairs: "/assets/models/player/animations/ascending-stairs.glb",
   },
+
+  npcAnimations: {
+    talking1: "/assets/models/player/animations/talking_1.glb",
+
+    talking2: "/assets/models/player/animations/talking_2.glb",
+
+    talking3: "/assets/models/player/animations/talking_3.glb",
+  },
 } as const;
 
 export const STARTUP_ASSETS: readonly string[] = [
@@ -29,4 +37,5 @@ export const STARTUP_ASSETS: readonly string[] = [
   ASSETS.player,
   ...Object.values(ASSETS.animations),
   ...Object.values(ASSETS.characters),
+  ...Object.values(ASSETS.npcAnimations),
 ];

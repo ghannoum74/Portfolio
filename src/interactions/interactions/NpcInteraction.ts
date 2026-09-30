@@ -36,6 +36,15 @@ export class NpcInteraction implements Interactable {
       speaker: this.npc.name,
       company: this.npc.company,
       lines: conversation,
+      onLineChange: (index) => {
+        const layer = conversation[index];
+
+        this.npc.animator.play(layer.animation);
+      },
+
+      onClose: () => {
+        this.npc.animator.stop();
+      },
     });
   }
 }

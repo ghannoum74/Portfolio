@@ -2,6 +2,15 @@ import * as THREE from "three";
 
 import { ASSETS } from "../../loaders/AssetManifest";
 
+export type NpcTalkAnimation = "talking_1" | "talking_2" | "talking_3";
+
+export interface NpcDialogueLayer {
+  text: string;
+
+  animation: NpcTalkAnimation;
+}
+
+export type NpcDialogue = readonly NpcDialogueLayer[];
 export interface NpcDefinition {
   id: string;
 
@@ -17,7 +26,7 @@ export interface NpcDefinition {
 
   scale?: number;
 
-  dialogues: readonly (readonly string[])[];
+  dialogues: readonly NpcDialogue[];
 }
 
 export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
@@ -26,22 +35,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Interphase Teammate",
     company: "Interphase",
     asset: ASSETS.characters.interphase,
-
     position: new THREE.Vector3(13, 7.8, -4.8),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "Oh, you found me.",
-        "This part of the world represents Abdelrahman's time at Interphase.",
-        "There's a lot more to this story, but we'll save that for the real testimonial.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
       ],
 
       [
-        "Welcome to the Interphase corner.",
-        "You should probably keep exploring.",
-        "Some of the interesting work is hiding around here.",
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -51,16 +79,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Prodigy Teammate",
     company: "Prodigy Infotech",
     asset: ASSETS.characters.prodigy,
-
     position: new THREE.Vector3(7, 3, 6),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "Hey there.",
-        "You've reached the Prodigy part of the journey.",
-        "This dialogue is temporary, but later I'll tell you about the work done here.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -70,16 +123,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "SE Factory Mentor",
     company: "SE Factory",
     asset: ASSETS.characters.seFactory,
-
     position: new THREE.Vector3(-12, 3, -4),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "So you made it this far.",
-        "This character represents another chapter of the developer journey.",
-        "Eventually this conversation will tell the actual story.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -89,16 +167,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "42 Student",
     company: "42",
     asset: ASSETS.characters.fortyTwo,
-
     position: new THREE.Vector3(10, 3, -8),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "No teachers. No lectures.",
-        "Just problems waiting to be solved.",
-        "Sounds suspiciously like a developer's natural habitat.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -108,16 +211,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Frequenc Teammate",
     company: "Frequenc",
     asset: ASSETS.characters.frequenc,
-
     position: new THREE.Vector3(-3, 3, -13),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "You've discovered the Frequenc character.",
-        "For now I'm mostly here to test the dialogue system.",
-        "Later, I'll have something much more interesting to say.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -127,16 +255,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "bePro Teammate",
     company: "bePro",
     asset: ASSETS.characters.bePro,
-
     position: new THREE.Vector3(13, 3, 1),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "Hello traveler.",
-        "You're currently talking to placeholder dialogue.",
-        "Don't worry. I have been promised a better script later.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
@@ -146,16 +299,41 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "MTC Teammate",
     company: "MTC",
     asset: ASSETS.characters.mtc,
-
     position: new THREE.Vector3(3, 3, 12),
-
     rotationY: 0,
-
     dialogues: [
       [
-        "Ah. A visitor.",
-        "This is another stop in the portfolio world.",
-        "The final story for this character is still being written.",
+        {
+          text: "Oh, you found me.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "This part of the world represents Abdelrahman's time at Interphase.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "There's a lot more to this story, but we'll save that for the real testimonial.",
+          animation: "talking_3",
+        },
+      ],
+
+      [
+        {
+          text: "Welcome to the Interphase corner.",
+          animation: "talking_1",
+        },
+
+        {
+          text: "You should probably keep exploring.",
+          animation: "talking_2",
+        },
+
+        {
+          text: "Some of the interesting work is hiding around here.",
+          animation: "talking_3",
+        },
       ],
     ],
   },
