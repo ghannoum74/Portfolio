@@ -21,6 +21,8 @@ import rulesHtml from "../ui/PaperPanelContent/rules.html?raw";
 import "../ui/PaperPanelContent/rules.css";
 import { MailboxInteraction } from "../interactions/interactions/MailboxInteraction";
 import { DoorInteraction } from "../interactions/interactions/DoorInteraction";
+import { DialogueBox } from "../ui/DialogueBox/DialogueBox";
+import { NpcInteraction } from "../interactions/interactions/NpcInteraction";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -68,6 +70,7 @@ export class Game {
   private mouse = new THREE.Vector2();
 
   private readonly interactionSystem: InteractionSystem;
+  private readonly dialogueBox: DialogueBox;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -135,6 +138,20 @@ export class Game {
         // Also supports future mailbox dialogs
         // opened during normal gameplay.
         if (this.phase === "playing") {
+          this.keyboard.setEnabled(true);
+        }
+      },
+    });
+
+    this.dialogueBox = new DialogueBox({
+      onOpen: () => {
+        this.keyboard.setEnabled(false);
+
+        this.controls.enabled = false;
+      },
+
+      onClose: () => {
+        if (this.phase === "playing" && !this.paperPanel.isOpen) {
           this.keyboard.setEnabled(true);
         }
       },
@@ -208,6 +225,12 @@ export class Game {
       await this.world.init();
 
       this.setupInteractions();
+
+      for (const npc of this.world.npcs) {
+        this.interactionSystem.register(
+          new NpcInteraction(npc, this.dialogueBox),
+        );
+      }
 
       const mailbox = this.world.model.getObjectByName("INTERACT_MAILBOX_01");
 
@@ -298,7 +321,10 @@ export class Game {
       this.thirdPersonCamera?.update(delta);
     }
 
-    const gameplayActive = this.phase === "playing" && !this.paperPanel.isOpen;
+    const gameplayActive =
+      this.phase === "playing" &&
+      !this.paperPanel.isOpen &&
+      !this.dialogueBox.isOpen;
 
     if (gameplayActive) {
       this.interactionSystem.update(this.world.player.model.position);
@@ -580,12 +606,38 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    /*
+     * Dialogue gets first priority.
+     */
+    if (this.dialogueBox.isOpen) {
+      if (event.repeat) {
+        return;
+      }
+
+      if (
+        event.code === "KeyE" ||
+        event.code === "Enter" ||
+        event.code === "Space"
+      ) {
+        event.preventDefault();
+
+        this.dialogueBox.next();
+      }
+
+      if (event.code === "Escape") {
+        this.dialogueBox.close();
+      }
+
+      return;
+    }
+
     if (this.phase !== "playing" || this.paperPanel.isOpen || event.repeat) {
       return;
     }
 
     if (event.code === "KeyE") {
       this.interactionSystem.interact();
+
       return;
     }
 
@@ -597,7 +649,6 @@ export class Game {
       return;
     }
   };
-
   private createRulesContent(): DocumentFragment {
     const template = document.createElement("template");
 

@@ -3,6 +3,16 @@ export const ASSETS = {
 
   player: "/assets/models/player/player.glb",
 
+  characters: {
+    fortyTwo: "/assets/models/player/42.glb",
+    mtc: "/assets/models/player/MTC.glb",
+    bePro: "/assets/models/player/bePro.glb",
+    frequenc: "/assets/models/player/frequenc.glb",
+    interphase: "/assets/models/player/interphase.glb",
+    prodigy: "/assets/models/player/prodigy.glb",
+    seFactory: "/assets/models/player/se-factory.glb",
+  },
+
   animations: {
     idle: "/assets/models/player/animations/idle.glb",
     walking: "/assets/models/player/animations/walking.glb",
@@ -18,4 +28,5 @@ export const STARTUP_ASSETS: readonly string[] = [
   ASSETS.world,
   ASSETS.player,
   ...Object.values(ASSETS.animations),
+  ...Object.values(ASSETS.characters),
 ];

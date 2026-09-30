@@ -43,6 +43,7 @@ export class Player {
         child.castShadow = true;
         child.receiveShadow = true;
       }
+      console.log(child, "---00");
     });
 
     this.scene.add(this.model);

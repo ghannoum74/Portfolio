@@ -9,6 +9,8 @@ import { PhysicsDebugRenderer } from "../physics/PhysicsDebugRenderer";
 import { StairDetector } from "./StairDetector";
 import { ASSETS } from "../loaders/AssetManifest";
 import { DayNightCycle } from "./environment/DayNightCycle";
+import { NpcManager } from "./npc/NpcManager";
+import type { Npc } from "./npc/Npc";
 
 export class World {
   model!: THREE.Group;
@@ -26,6 +28,7 @@ export class World {
   private physicsDebugRenderer!: PhysicsDebugRenderer;
   private stairDetector!: StairDetector;
   private dayNightCycle: DayNightCycle;
+  private readonly npcManager: NpcManager;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -40,6 +43,12 @@ export class World {
       this.sunPivot,
       this.sun,
       this.ambientLight,
+    );
+
+    this.npcManager = new NpcManager(
+      this.scene,
+      this.loadingManager,
+      this.onAssetReady,
     );
   }
   async init(): Promise<void> {
@@ -85,9 +94,12 @@ export class World {
       this.stairDetector,
       this.onAssetReady,
     );
-    await this.player.load();
-
+    await Promise.all([this.player.load(), this.npcManager.load()]);
     this.initialized = true;
+  }
+
+  get npcs(): readonly Npc[] {
+    return this.npcManager.npcs;
   }
 
   update(delta: number): void {
