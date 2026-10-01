@@ -1,54 +1,178 @@
 import * as THREE from "three";
 
-import { Ground } from "./Ground";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
+import { AssetLoader } from "../loaders/AssetLoader";
+import { WorldColliders } from "../physics/WorldColliders";
 import { PhysicsWorld } from "../physics/PhysicsWorld";
+import { PhysicsDebugRenderer } from "../physics/PhysicsDebugRenderer";
+import { StairDetector } from "./StairDetector";
+import { ASSETS } from "../loaders/AssetManifest";
+import { DayNightCycle } from "./environment/DayNightCycle";
+import { NpcManager } from "./npc/NpcManager";
+import type { Npc } from "./npc/Npc";
 
 export class World {
-  ground: Ground;
+  model!: THREE.Group;
+  private meshes: THREE.Mesh[] = [];
+  private bounds = new THREE.Box3();
   player!: Player;
+  sun!: THREE.DirectionalLight;
+  sunPivot!: THREE.Group;
+  sunVisual!: THREE.Mesh;
+  sunHelper!: THREE.DirectionalLightHelper;
+  ambientLight!: THREE.AmbientLight;
+  physics = new PhysicsWorld();
+  private worldColliders!: WorldColliders;
+  private initialized = false;
+  private physicsDebugRenderer!: PhysicsDebugRenderer;
+  private stairDetector!: StairDetector;
+  private dayNightCycle: DayNightCycle;
+  private readonly npcManager: NpcManager;
 
   constructor(
-    private scene: THREE.Scene,
-    private physics: PhysicsWorld,
-    private keyboard: Keyboard,
-    private loadingManager: THREE.LoadingManager,
+    private readonly scene: THREE.Scene,
+    private readonly keyboard: Keyboard,
+    private readonly loadingManager: THREE.LoadingManager,
+    private readonly onAssetReady?: (url: string) => void,
   ) {
-    this.ground = new Ground(this.scene);
-    this.physics.add(this.ground.physics);
-
     this.addLights();
+
+    this.dayNightCycle = new DayNightCycle(
+      this.scene,
+      this.sunPivot,
+      this.sun,
+      this.ambientLight,
+    );
+
+    this.npcManager = new NpcManager(
+      this.scene,
+      this.loadingManager,
+      this.onAssetReady,
+    );
+  }
+  async init(): Promise<void> {
+    await this.physics.init();
+
+    // Rapier exists now, so debug renderer can safely use it.
+    this.physicsDebugRenderer = new PhysicsDebugRenderer(
+      this.scene,
+      this.physics,
+    );
+
+    /*
+     *load the world and create colliders for it.
+     */
+    const asset = await new AssetLoader(
+      this.loadingManager,
+      this.onAssetReady,
+    ).loadGLB(ASSETS.world);
+    this.model = asset.scene;
+    // Match the export's roughly 12-unit storeys to the 1.85-unit player.
+    this.model.scale.setScalar(0.25);
+    this.model.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      child.castShadow = true;
+      child.receiveShadow = true;
+      child.geometry.computeBoundingBox();
+      this.meshes.push(child);
+    });
+    this.scene.add(this.model);
+    this.model.updateMatrixWorld(true);
+    this.bounds.setFromObject(this.model);
+
+    this.worldColliders = new WorldColliders(this.physics);
+    this.worldColliders.createFromEnvironment(this.model);
+
+    this.stairDetector = new StairDetector(this.model);
+
+    this.player = new Player(
+      this.scene,
+      this.keyboard,
+      this.loadingManager,
+      this.physics,
+      this.stairDetector,
+      this.onAssetReady,
+    );
+    await Promise.all([this.player.load(), this.npcManager.load()]);
+    this.initialized = true;
   }
 
-  async init() {
-    const player = new Player(this.scene, this.keyboard, this.loadingManager);
-
-    await player.load();
-
-    this.player = player;
-    this.physics.add(this.player.physics);
+  get npcs(): readonly Npc[] {
+    return this.npcManager.npcs;
   }
 
-  updateInput(delta: number) {
-    this.player?.updateInput(delta);
+  update(delta: number): void {
+    if (!this.initialized) {
+      return;
+    }
+
+    const safeDelta = Math.min(delta, 1 / 30);
+
+    this.dayNightCycle.update(safeDelta);
+
+    this.physics.beginFrame(safeDelta);
+
+    this.player?.update(safeDelta);
+
+    this.npcManager.update(safeDelta);
+
+    this.physics.step();
+
+    this.player?.syncFromPhysics();
+
+    this.physicsDebugRenderer.update();
+
+    this.sunHelper?.update();
   }
 
-  update(delta: number) {
-    this.player?.update(delta);
+  setSunDebugVisible(visible: boolean): void {
+    this.sunVisual.visible = visible;
+    this.sunHelper.visible = visible;
   }
 
-  private addLights() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+  setPhysicsDebugVisible(visible: boolean): void {
+    this.physicsDebugRenderer?.setVisible(visible);
+  }
 
-    this.scene.add(ambientLight);
+  private addLights(): void {
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    this.scene.add(this.ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+    this.sunPivot = new THREE.Group();
+    this.sunPivot.position.set(10, 20, 10);
+    this.scene.add(this.sunPivot);
 
-    directionalLight.position.set(10, 20, 10);
+    this.sun = new THREE.DirectionalLight(0xfff1bf, 3);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.position.set(0, 0, 0);
+    this.sun.target.position.set(0, 0, 0);
 
-    directionalLight.castShadow = true;
+    this.sunPivot.add(this.sun);
+    this.scene.add(this.sun.target);
 
-    this.scene.add(directionalLight);
+    const sunGeometry = new THREE.SphereGeometry(0.8, 24, 24);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffcc55,
+    });
+
+    this.sunVisual = new THREE.Mesh(sunGeometry, sunMaterial);
+    this.sunPivot.add(this.sunVisual);
+
+    this.sunHelper = new THREE.DirectionalLightHelper(this.sun, 2, 0xffcc55);
+    this.scene.add(this.sunHelper);
+  }
+
+  setTimeOfDay(hour: number | null): void {
+    this.dayNightCycle.setTimeOverride(hour);
+  }
+
+  getTimeOfDay(): number {
+    return this.dayNightCycle.getTimeOfDay();
+  }
+
+  isUsingRealTime(): boolean {
+    return this.dayNightCycle.isUsingRealTime();
   }
 }

@@ -1,13 +1,36 @@
 * {
   box-sizing: border-box;
+  --paper-background: #f3e7c2;
+  --paper-ink: #5c4534;
+  --font-root: "Coiny", system-ui;
 }
 
-html,
-body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
+/* Hide the scrollbar without disabling scrolling. */
+html {
+  scrollbar-width: none;
+  font-family: var(--font-root);
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Lock scrolling during loading and gameplay.
+ * Scrolling is enabled during the introduction.
+ */
+html.is-loading,
+html.is-world {
   overflow: hidden;
+}
+
+html.is-world body {
+  overflow: hidden;
+}
+
+body {
+  background: var(--paper-background);
 }
 
 #game {

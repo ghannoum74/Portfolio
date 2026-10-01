@@ -1,14 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="is-loading">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D | Ghannoum Portolio</title>
-    <link rel="stylesheet" href="index.css" />
+
+    <title>3D | Ghannoum Portfolio</title>
+
+    <link rel="stylesheet" href="/index.css" />
+    <link rel="stylesheet" href="/src/ui/LoadingScreen/LoadingScreen.css" />
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap"
+      rel="stylesheet"
+    /> -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Coiny&display=swap"
+      rel="stylesheet"
+    />
   </head>
+
   <body>
-    <noscript>You need JavaScript enabled to view this page.</noscript>
-    <canvas id="game"></canvas>
-    <script src="src/main.ts" type="module"></script>
+    <noscript> JavaScript is required to explore this portfolio. </noscript>
+
+    <main id="world-root"></main>
+
+    <div id="loading-screen" class="loading-screen">
+      <div class="loader">
+        <div
+          id="loading-progress"
+          class="bar"
+          role="progressbar"
+          aria-label="Loading"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loading-progress-fill" class="fill"></div>
+        </div>
+      </div>
+
+      <p class="loading-text" role="status" aria-live="polite">Loading...</p>
+
+      <svg aria-hidden="true" style="display: none">
+        <filter id="wobble">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="1"
+            numOctaves="1"
+            result="turbulence"
+          />
+
+          <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="2" />
+        </filter>
+      </svg>
+    </div>
+
+    <div id="ui-root"></div>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

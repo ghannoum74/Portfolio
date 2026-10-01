@@ -4,7 +4,10 @@ import { PlayerController } from "./PlayerController";
 import { PlayerMotor } from "./PlayerMotor";
 import { AssetLoader } from "../../loaders/AssetLoader";
 import { Keyboard } from "../../input/Keyboard";
-import { PhysicsPlayer } from "../../physics/PhysicsPlayer";
+import { PhysicsWorld } from "../../physics/PhysicsWorld";
+import { PlayerBody } from "./PlayerBody";
+import { StairDetector } from "../StairDetector";
+import { ASSETS } from "../../loaders/AssetManifest";
 
 export class Player {
   model!: THREE.Group;
@@ -17,19 +20,23 @@ export class Player {
   private controller!: PlayerController;
   private loader: AssetLoader;
 
+  private body!: PlayerBody;
+
+  private modelBottomY = 0;
+
   constructor(
     private scene: THREE.Scene,
     private keyboard: Keyboard,
     private loadingManager: THREE.LoadingManager,
+    private physics: PhysicsWorld,
+    private stairDetector: StairDetector,
+    private readonly onAssetReady?: (url: string) => void,
   ) {
-    this.physics = new PhysicsPlayer();
-    this.loader = new AssetLoader(loadingManager);
+    this.loader = new AssetLoader(loadingManager, onAssetReady);
   }
 
   async load() {
-    const playerAsset = await this.loader.loadGLB(
-      "/assets/models/player/player.glb",
-    );
+    const playerAsset = await this.loader.loadGLB(ASSETS.player);
 
     this.model = new THREE.Group();
     this.renderModel = playerAsset.scene;
@@ -45,7 +52,13 @@ export class Player {
 
     this.model.add(this.renderModel);
     this.scene.add(this.model);
-    this.syncPhysics();
+
+    this.model.updateMatrixWorld(true);
+    const boundingBox = new THREE.Box3().setFromObject(this.model);
+
+    this.modelBottomY = boundingBox.min.y - this.model.position.y;
+
+    this.body = new PlayerBody(this.physics, new THREE.Vector3(0, 15, 0));
 
     this.mixer = new THREE.AnimationMixer(this.renderModel);
 
@@ -53,8 +66,13 @@ export class Player {
 
     await this.loadAnimations();
 
-    this.motor = new PlayerMotor(this.physics);
-    this.controller = new PlayerController(this.keyboard, this.motor);
+    this.controller = new PlayerController(
+      this.model,
+      this.keyboard,
+      this.animations,
+      this.body,
+      this.stairDetector,
+    );
 
     this.animations.play("idle");
   }
@@ -67,24 +85,23 @@ export class Player {
       running,
       runningBackword,
       jump,
+      ascendingStairs,
       // leftTurn,
       // rightTurn,
     ] = await Promise.all([
-      this.loader.loadGLB("/assets/models/player/animations/idle.glb"),
+      this.loader.loadGLB(ASSETS.animations.idle),
 
-      this.loader.loadGLB("/assets/models/player/animations/walking.glb"),
+      this.loader.loadGLB(ASSETS.animations.walking),
 
-      this.loader.loadGLB(
-        "/assets/models/player/animations/walking-backwords.glb",
-      ),
+      this.loader.loadGLB(ASSETS.animations.walkingBackward),
 
-      this.loader.loadGLB("/assets/models/player/animations/running.glb"),
+      this.loader.loadGLB(ASSETS.animations.running),
 
-      this.loader.loadGLB(
-        "/assets/models/player/animations/running-backwords.glb",
-      ),
+      this.loader.loadGLB(ASSETS.animations.runningBackward),
 
-      this.loader.loadGLB("/assets/models/player/animations/jump-fast.glb"),
+      this.loader.loadGLB(ASSETS.animations.jump),
+
+      this.loader.loadGLB(ASSETS.animations.ascendingStairs),
 
       // this.loader.loadGLB("/assets/models/player/animations/left-turn.glb"),
 
@@ -102,6 +119,11 @@ export class Player {
     this.animations.add("running_backword", runningBackword.animations[0]);
 
     this.animations.add("jump", jump.animations[0]);
+
+    this.animations.add(
+      "ascending_stairs",
+      this.stripRootTranslation(ascendingStairs.animations[0]),
+    );
 
     // this.animations.add(
     //   "left_turn",
@@ -122,54 +144,40 @@ export class Player {
   }
 
   update(delta: number) {
-    this.syncPhysics();
-    this.updateAnimation();
-
+    this.controller?.update(delta);
     this.mixer?.update(delta);
   }
 
-  syncPhysics() {
-    if (!this.model) return;
-
-    const { position, quaternion } = this.physics.body;
-
-    this.model.position.set(
-      position.x,
-      position.y - this.physics.height / 2,
-      position.z,
-    );
-
-    this.model.quaternion.set(
-      quaternion.x,
-      quaternion.y,
-      quaternion.z,
-      quaternion.w,
-    );
+  syncFromPhysics(): void {
+    this.body.syncModel(this.model, this.modelBottomY);
   }
 
-  private updateAnimation() {
-    if (!this.animations || this.animations.isLocked()) return;
+  private stripRootTranslation(
+    clip: THREE.AnimationClip,
+    rootBoneName = "mixamorigHips",
+  ): THREE.AnimationClip {
+    const track = clip.tracks.find(
+      (t) => t.name.startsWith(rootBoneName) && t.name.endsWith(".position"),
+    ) as THREE.VectorKeyframeTrack | undefined;
 
-    const input = this.controller.getInput();
-
-    if (input.jump) {
-      this.animations.playOnce("jump");
-      return;
+    if (!track) {
+      console.warn(
+        `No root position track found for "${rootBoneName}" on clip "${clip.name}"`,
+      );
+      return clip;
     }
 
-    if (input.forward === 0) {
-      if (input.turn > 0) return this.animations.play("left_turn");
-      if (input.turn < 0) return this.animations.play("right_turn");
-      return this.animations.play("idle");
+    const values = track.values; // [x0,y0,z0, x1,y1,z1, ...]
+    const baseX = values[0];
+    const baseY = values[1];
+    const baseZ = values[2];
+
+    for (let i = 0; i < values.length; i += 3) {
+      values[i] = baseX; // lock X to frame-0 value
+      values[i + 1] = baseY; // lock Y to frame-0 value
+      values[i + 2] = baseZ; // lock Z to frame-0 value
     }
 
-    if (input.forward < 0) {
-      if (input.run) return this.animations.play("running_backword");
-      return this.animations.play("walking_backword");
-    }
-
-    if (input.run) return this.animations.play("running");
-
-    this.animations.play("walking");
+    return clip;
   }
 }

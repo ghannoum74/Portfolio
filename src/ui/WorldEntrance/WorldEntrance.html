@@ -1,0 +1,51 @@
+<section id="world-entrance" class="world-entrance">
+  <div class="world-entrance_sticky">
+    <!-- The SVG definition is part of this feature. -->
+    <svg
+      class="world-entrance_mask-defs"
+      width="0"
+      height="0"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <clipPath id="world-portal-clip" clipPathUnits="objectBoundingBox">
+          <path
+            id="world-portal-shape"
+            d="
+              M 0.608 0.485
+              C 0.625 0.470, 0.680 0.470, 0.699 0.507
+              C 0.715 0.550, 0.620 0.580, 0.596 0.541
+              C 0.580 0.510, 0.590 0.490, 0.608 0.485
+              Z
+            "
+          />
+        </clipPath>
+      </defs>
+    </svg>
+
+    <!-- Existing Three.js world -->
+    <div id="world-portal" class="world-entrance_portal">
+      <canvas id="game"></canvas>
+    </div>
+  </div>
+
+  <!-- Introduction -->
+  <div class="world-entrance_intro">
+    <div class="world-entrance_content">
+      <p class="world-entrance_description">
+        "You thought you were just visiting a portfolio? You've entered MY
+        domain. Here, I write the code, I make the rules, and even gravity needs
+        my permission. Now... let's see how long you survive." <br />
+        [ SCROLL AND ACCEPT YOUR FATE ]
+      </p>
+    </div>
+    <img
+      class="world-entrance_scroll-hint"
+      src="/assets/icons/chevron-icon.webp"
+      alt="Scroll down to explore"
+    />
+  </div>
+
+  <div class="world-entrance_scroll-space" aria-hidden="true"></div>
+</section>

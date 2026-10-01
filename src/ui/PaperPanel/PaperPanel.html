@@ -1,0 +1,36 @@
+<dialog class="paper-panel">
+  <svg class="paper-panel_filters">
+    <defs>
+      <filter id="crumple-effect">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.003"
+          numOctaves="10"
+          result="turbulence"
+        ></feTurbulence>
+        <feDisplacementMap
+          in2="turbulence"
+          in="SourceGraphic"
+          scale="50"
+        ></feDisplacementMap>
+        <feDropShadow
+          dx="0"
+          dy="0"
+          stdDeviation="2"
+          flood-color="#5c4534"
+        ></feDropShadow>
+      </filter>
+    </defs>
+  </svg>
+
+  <button
+    type="button"
+    class="paper-panel_close"
+    data-paper-close
+    aria-label="Close paper"
+  >
+    <img src="/assets/icons/close-icon.webp" alt="close icon" />
+  </button>
+
+  <div class="paper-panel_content" data-paper-content></div>
+</dialog>

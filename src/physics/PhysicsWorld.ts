@@ -1,26 +1,43 @@
-import * as CANNON from "cannon-es";
-import { PhysicsObject } from "./PhysicsObject";
+import RAPIER from "@dimforge/rapier3d-compat";
 
 export class PhysicsWorld {
-  private readonly world: CANNON.World;
-  private readonly fixedTimeStep = 1 / 60;
-  private readonly maxSubSteps = 3;
+  public world!: RAPIER.World;
+  public rapier = RAPIER;
+  public colliderNames = new Map<number, string>();
 
-  constructor() {
-    this.world = new CANNON.World({
-      gravity: new CANNON.Vec3(0, -9.81, 0),
+  private initialized = false;
+
+  async init(): Promise<void> {
+    await RAPIER.init();
+
+    this.world = new RAPIER.World({
+      x: 0,
+      y: -9.81,
+      z: 0,
     });
+
+    this.initialized = true;
+
+    console.log("Rapier physics initialized");
   }
 
-  add(object: PhysicsObject) {
-    this.world.addBody(object.body);
+  beginFrame(delta: number): void {
+    if (!this.initialized) {
+      return;
+    }
+
+    this.world.timestep = Math.min(delta, 1 / 30);
   }
 
-  remove(object: PhysicsObject) {
-    this.world.removeBody(object.body);
+  step(): void {
+    if (!this.initialized) {
+      return;
+    }
+
+    this.world.step();
   }
 
-  step(delta: number) {
-    this.world.step(this.fixedTimeStep, delta, this.maxSubSteps);
+  get isInitialized(): boolean {
+    return this.initialized;
   }
 }
