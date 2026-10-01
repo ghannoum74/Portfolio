@@ -268,6 +268,8 @@ export class Game {
       // Wait for the loading fade-out.
       await this.loading.complete();
 
+      this.loadNpcsInBackground();
+
       // Now the visitor may scroll.
       this.entrance.activate();
     } catch (error) {
@@ -704,5 +706,19 @@ export class Game {
         console.log("Door entered");
       }),
     );
+  }
+
+  private async loadNpcsInBackground(): Promise<void> {
+    try {
+      await this.world.loadNpcs();
+
+      for (const npc of this.world.npcs) {
+        this.interactionSystem.register(
+          new NpcInteraction(npc, this.world.player.model, this.dialogueBox),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to load NPCs:", error);
+    }
   }
 }

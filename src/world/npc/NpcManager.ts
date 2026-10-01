@@ -14,10 +14,10 @@ export class NpcManager {
 
   constructor(
     private readonly scene: THREE.Scene,
+
     loadingManager: THREE.LoadingManager,
-    onAssetReady?: (url: string) => void,
   ) {
-    this.loader = new AssetLoader(loadingManager, onAssetReady);
+    this.loader = new AssetLoader(loadingManager);
   }
 
   async load(): Promise<void> {

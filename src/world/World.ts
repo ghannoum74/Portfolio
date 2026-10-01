@@ -45,11 +45,7 @@ export class World {
       this.ambientLight,
     );
 
-    this.npcManager = new NpcManager(
-      this.scene,
-      this.loadingManager,
-      this.onAssetReady,
-    );
+    this.npcManager = new NpcManager(this.scene, this.loadingManager);
   }
   async init(): Promise<void> {
     await this.physics.init();
@@ -94,7 +90,7 @@ export class World {
       this.stairDetector,
       this.onAssetReady,
     );
-    await Promise.all([this.player.load(), this.npcManager.load()]);
+    await this.player.load();
     this.initialized = true;
   }
 
@@ -174,5 +170,9 @@ export class World {
 
   isUsingRealTime(): boolean {
     return this.dayNightCycle.isUsingRealTime();
+  }
+
+  async loadNpcs(): Promise<void> {
+    await this.npcManager.load();
   }
 }
