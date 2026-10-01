@@ -68,8 +68,9 @@ export class World {
     this.model.scale.setScalar(0.25);
     this.model.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
-      child.castShadow = true;
       child.receiveShadow = true;
+      child.castShadow = child.name.startsWith("SHADOW_");
+
       child.geometry.computeBoundingBox();
       this.meshes.push(child);
     });
@@ -111,7 +112,7 @@ export class World {
 
     this.player?.update(safeDelta);
 
-    this.npcManager.update(safeDelta);
+    this.npcManager.update(safeDelta, this.player.model.position);
 
     this.physics.step();
 
@@ -141,7 +142,7 @@ export class World {
 
     this.sun = new THREE.DirectionalLight(0xfff1bf, 3);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.mapSize.set(1024, 1024);
     this.sun.position.set(0, 0, 0);
     this.sun.target.position.set(0, 0, 0);
 

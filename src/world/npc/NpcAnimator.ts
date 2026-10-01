@@ -45,6 +45,13 @@ export class NpcAnimator {
     this.idleAction.reset().setLoop(THREE.LoopRepeat, Infinity).play();
 
     this.currentAction = this.idleAction;
+
+    /*
+     * Apply the first idle frame immediately.
+     * This keeps far NPCs in a proper idle pose
+     * even while their mixer is paused.
+     */
+    this.mixer.update(0);
   }
 
   play(animation: NpcTalkAnimation): void {

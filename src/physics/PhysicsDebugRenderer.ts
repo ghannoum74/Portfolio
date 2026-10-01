@@ -10,16 +10,24 @@ export class PhysicsDebugRenderer {
 
   private lines = new THREE.LineSegments(this.geometry, this.material);
 
+  private enabled = false;
+
   constructor(
     private scene: THREE.Scene,
     private physics: PhysicsWorld,
   ) {
     this.lines.frustumCulled = false;
 
+    this.lines.visible = false;
+
     this.scene.add(this.lines);
   }
 
   update(): void {
+    if (!this.enabled) {
+      return;
+    }
+
     const debugRender = this.physics.world.debugRender();
 
     this.geometry.setAttribute(
@@ -34,6 +42,8 @@ export class PhysicsDebugRenderer {
   }
 
   setVisible(visible: boolean): void {
+    this.enabled = visible;
+
     this.lines.visible = visible;
   }
 }

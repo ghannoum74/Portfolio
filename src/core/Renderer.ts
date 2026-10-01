@@ -13,6 +13,7 @@ export class Renderer {
   private composer?: EffectComposer;
   private renderPass?: RenderPass;
   private outlinePass?: OutlinePass;
+  private hasInteractionOutline = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
@@ -70,12 +71,19 @@ export class Renderer {
     }
 
     this.outlinePass.selectedObjects = object ? [object] : [];
+
+    this.hasInteractionOutline = object !== null;
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     this.stats.begin();
 
-    if (this.composer && this.renderPass && this.outlinePass) {
+    if (
+      this.hasInteractionOutline &&
+      this.composer &&
+      this.renderPass &&
+      this.outlinePass
+    ) {
       this.renderPass.scene = scene;
       this.renderPass.camera = camera;
 

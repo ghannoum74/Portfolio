@@ -561,65 +561,13 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    const modeLabel = this.debugMode ? "ON" : "OFF";
-
-    const hour = this.world.getTimeOfDay();
-
-    const hours = Math.floor(hour);
-
-    const minutes = Math.floor((hour - hours) * 60);
-
-    const formattedTime =
-      `${String(hours).padStart(2, "0")}:` +
-      `${String(minutes).padStart(2, "0")}`;
-
-    const timeMode = this.world.isUsingRealTime() ? "REAL TIME" : "PREVIEW";
-
     this.environmentDebugState.debugView = this.debugMode;
 
     this.environmentDebugState.realTime = this.world.isUsingRealTime();
 
-    if (this.environmentDebugState.realTime) {
-      this.environmentDebugState.hour = hour;
-    }
-
-    const period = this.getTimePeriod(hour);
-
-    const { x, y, z } = this.world.sunPivot.position;
-
-    this.overlay.textContent =
-      `Debug view: ${modeLabel} (press C)\n` +
-      `Time mode: ${timeMode}\n` +
-      `World time: ${formattedTime}\n` +
-      `Period: ${period}\n` +
-      `Sun: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}\n` +
-      `Sun intensity: ${this.world.sun.intensity.toFixed(2)}\n` +
-      `Ambient: ${this.world.ambientLight.intensity.toFixed(2)}\n` +
-      (this.clickedWorldPoint
-        ? `Clicked world: X ${this.clickedWorldPoint.x.toFixed(3)}, ` +
-          `Y ${this.clickedWorldPoint.y.toFixed(3)}, ` +
-          `Z ${this.clickedWorldPoint.z.toFixed(3)}`
-        : "Click a world surface to get X, Y, Z");
-
     for (const controller of this.gui.controllersRecursive()) {
       controller.updateDisplay();
     }
-  }
-
-  private getTimePeriod(hour: number): string {
-    if (hour >= 5 && hour < 8) {
-      return "Morning";
-    }
-
-    if (hour >= 8 && hour < 17) {
-      return "Day";
-    }
-
-    if (hour >= 17 && hour < 20) {
-      return "Sunset";
-    }
-
-    return "Night";
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {

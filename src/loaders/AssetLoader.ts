@@ -1,4 +1,5 @@
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import * as THREE from "three";
 export class AssetLoader {
   private gltfLoader = new GLTFLoader();
@@ -8,6 +9,8 @@ export class AssetLoader {
     private readonly onAssetReady?: (url: string) => void,
   ) {
     this.gltfLoader = new GLTFLoader(loadingManager);
+
+    this.gltfLoader.setMeshoptDecoder(MeshoptDecoder);
   }
 
   async loadGLB(url: string) {

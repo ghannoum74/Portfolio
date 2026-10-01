@@ -15,4 +15,8 @@ export interface Npc {
   dialogues: readonly NpcDialogue[];
 
   animator: NpcAnimator;
+
+  shadowMeshes: THREE.Mesh[];
+
+  shadowsEnabled: boolean;
 }

@@ -11,6 +11,12 @@ import { NpcAnimationClips, NpcAnimator } from "./NpcAnimator";
 export class NpcManager {
   readonly npcs: Npc[] = [];
   private readonly loader: AssetLoader;
+  private readonly animationDistance = 15;
+  private readonly animationDistanceSq =
+    this.animationDistance * this.animationDistance;
+
+  private readonly shadowDistance = 12;
+  private readonly shadowDistanceSq = this.shadowDistance * this.shadowDistance;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -43,6 +49,8 @@ export class NpcManager {
 
     model.scale.setScalar(definition.scale ?? 1);
 
+    const shadowMeshes: THREE.Mesh[] = [];
+
     model.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) {
         return;
@@ -50,6 +58,8 @@ export class NpcManager {
 
       child.castShadow = true;
       child.receiveShadow = true;
+
+      shadowMeshes.push(child);
     });
 
     this.scene.add(model);
@@ -69,6 +79,8 @@ export class NpcManager {
       model,
       dialogues: definition.dialogues,
       animator,
+      shadowMeshes,
+      shadowsEnabled: true,
     });
   }
 
@@ -94,9 +106,25 @@ export class NpcManager {
     };
   }
 
-  update(delta: number): void {
+  update(delta: number, playerPosition: THREE.Vector3): void {
     for (const npc of this.npcs) {
-      npc.animator.update(delta);
+      const distanceSq = npc.model.position.distanceToSquared(playerPosition);
+
+      // Animation
+      if (distanceSq <= this.animationDistanceSq) {
+        npc.animator.update(delta);
+      }
+
+      //Shadows
+      const shouldCastShadow = distanceSq <= this.shadowDistanceSq;
+
+      if (shouldCastShadow !== npc.shadowsEnabled) {
+        for (const mesh of npc.shadowMeshes) {
+          mesh.castShadow = shouldCastShadow;
+        }
+
+        npc.shadowsEnabled = shouldCastShadow;
+      }
     }
   }
 
