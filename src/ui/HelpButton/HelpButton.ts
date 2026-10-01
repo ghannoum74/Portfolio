@@ -1,3 +1,5 @@
+import "./HelpButton.css";
+
 export class HelpButton {
   private readonly button: HTMLButtonElement;
 

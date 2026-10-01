@@ -1,42 +1,145 @@
-.rules-controls {
-  margin-top: 0;
+.world-guide {
+  width: 100%;
+  padding-bottom: 24px;
 }
 
-.rules-controls h3 {
-  margin-top: 0;
-  margin-bottom: 24px;
-  font-size: 24px;
-  font-weight: 400;
+.world-guide_header {
+  position: relative;
+  margin-bottom: 34px;
+}
+
+.world-guide_eyebrow {
+  margin: 0 0 7px;
+  color: rgb(92 69 52 / 60%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.world-guide_header h2 {
+  margin: 0;
+  max-width: 520px;
+  color: var(--paper-ink);
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.05;
+  transform: rotate(-1deg);
+}
+
+.world-guide_intro {
+  max-width: 520px;
+  margin: 17px 0 0;
+  color: rgb(92 69 52 / 78%);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.world-guide_stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 5px 9px;
+  border: 3px solid rgb(92 69 52 / 48%);
+  color: rgb(92 69 52 / 52%);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  transform: rotate(7deg);
+}
+
+.quest-log {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 35px;
+}
+
+.quest-log_title,
+.world-controls_title {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: rgb(92 69 52 / 58%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.quest {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 15px;
+  padding: 16px;
+  border: 2px solid rgb(92 69 52 / 58%);
+  background: rgb(255 255 255 / 8%);
+  box-shadow: 2px 3px 0 rgb(92 69 52 / 10%);
+  transform: rotate(-0.2deg);
+}
+
+.quest:nth-of-type(even) {
+  transform: rotate(0.3deg);
+}
+
+.quest_marker {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--paper-ink);
+  border-radius: 50% 46% 52% 45%;
+  color: var(--paper-ink);
+  font-size: 20px;
+  font-weight: 900;
+  transform: rotate(-5deg);
+}
+
+.quest h3 {
+  margin: 0 0 6px;
+  color: var(--paper-ink);
+  font-size: 16px;
+}
+
+.quest p {
+  margin: 0;
+  color: rgb(92 69 52 / 74%);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.quest_hint {
+  margin-top: 9px !important;
+  color: var(--paper-ink) !important;
+  font-size: 12px !important;
+}
+
+.world-controls {
+  margin-top: 24px;
 }
 
 .control-row {
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: 130px 1fr;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 18px;
+  gap: 20px;
+  margin-bottom: 13px;
 }
 
 .control-keys {
   display: flex;
-  gap: 8px;
-  justify-content: flex-start;
+  gap: 7px;
 }
 
-.control-keys kbd {
-  min-width: 42px;
-  height: 42px;
+.control-keys kbd,
+.quest kbd {
+  min-width: 37px;
+  height: 37px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 3px solid #6f573b;
   border-radius: 5px;
-  font-weight: 900;
   background: transparent;
   color: var(--paper-ink);
-  font-size: 15px;
-  box-shadow: 2px 3px 0 rgb(92 69 52 / 18%);
+  font-family: var(--font-root);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 2px 3px 0 rgb(92 69 52 / 17%);
   transform: rotate(-1deg);
 }
 
@@ -46,7 +149,48 @@
 
 .control-row p {
   margin: 0;
+  color: rgb(92 69 52 / 78%);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.world-guide_footer {
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 2px dashed rgb(92 69 52 / 35%);
+  transform: rotate(-0.3deg);
+}
+
+.world-guide_footer span {
+  color: rgb(92 69 52 / 60%);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+}
+
+.world-guide_footer p {
+  margin: 7px 0 0;
   color: var(--paper-ink);
-  font-size: 17px;
-  line-height: 1.45;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .world-guide_stamp {
+    display: none;
+  }
+
+  .quest {
+    grid-template-columns: 34px 1fr;
+    padding: 13px;
+  }
+
+  .quest_marker {
+    width: 31px;
+    height: 31px;
+    font-size: 16px;
+  }
+
+  .control-row {
+    grid-template-columns: 105px 1fr;
+    gap: 12px;
+  }
 }

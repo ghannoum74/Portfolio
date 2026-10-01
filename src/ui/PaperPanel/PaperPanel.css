@@ -85,7 +85,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: 4px 63px 70px;
+  padding: 4px 63px 30px;
   font-size: 17px;
   line-height: 1.6;
   color: var(--paper-ink);

@@ -55,8 +55,6 @@ export class Game {
   private cameraDebugMesh: THREE.Group;
   private cameraHelper: THREE.CameraHelper;
 
-  private overlay: HTMLDivElement;
-
   private gui: GUI;
 
   private environmentDebugState: {
@@ -132,7 +130,7 @@ export class Game {
         if (this.phase === "rules") {
           this.phase = "playing";
           this.showDebugUI();
-          // this.helpButton.setVisible(true);
+          this.helpButton.setVisible(true);
         }
 
         // Also supports future mailbox dialogs
@@ -166,9 +164,10 @@ export class Game {
         return;
       }
 
-      this.paperPanel.open(this.createRulesContent(), "World controls");
-      this.helpButton.setVisible(false);
+      this.paperPanel.open(this.createRulesContent(), "World guide");
     });
+
+    this.helpButton.setVisible(false);
 
     this.interactionSystem = new InteractionSystem((interactable) => {
       this.renderer.setInteractionOutline(
@@ -190,8 +189,6 @@ export class Game {
     this.cameraHelper = new THREE.CameraHelper(this.playerCamera);
 
     this.scene.add(this.cameraHelper);
-
-    this.overlay = this.createOverlay();
 
     this.environmentDebugState = {
       debugView: this.debugMode,
@@ -420,16 +417,12 @@ export class Game {
   }
 
   private hideDebugUI(): void {
-    this.overlay.style.display = "none";
-
     this.gui.domElement.style.display = "none";
 
     this.renderer.stats.dom.style.display = "none";
   }
 
   private showDebugUI(): void {
-    this.overlay.style.display = "";
-
     this.gui.domElement.style.display = "";
 
     this.renderer.stats.dom.style.display = "";
@@ -473,37 +466,6 @@ export class Game {
     this.cameraDebugMesh.position.copy(this.playerCamera.position);
 
     this.cameraDebugMesh.quaternion.copy(this.playerCamera.quaternion);
-  }
-
-  private createOverlay(): HTMLDivElement {
-    const overlay = document.createElement("div");
-
-    overlay.style.position = "fixed";
-    overlay.style.left = "16px";
-    overlay.style.top = "16px";
-    overlay.style.padding = "12px 14px";
-
-    overlay.style.background = "rgba(0, 0, 0, 0.55)";
-
-    overlay.style.color = "#f7f4ea";
-
-    overlay.style.fontFamily = "monospace";
-
-    overlay.style.fontSize = "12px";
-
-    overlay.style.lineHeight = "1.5";
-
-    overlay.style.border = "1px solid rgba(255, 255, 255, 0.2)";
-
-    overlay.style.borderRadius = "10px";
-
-    overlay.style.pointerEvents = "none";
-
-    overlay.style.whiteSpace = "pre-line";
-
-    document.body.appendChild(overlay);
-
-    return overlay;
   }
 
   private createGui(): GUI {
