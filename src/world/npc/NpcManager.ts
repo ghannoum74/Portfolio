@@ -73,17 +73,23 @@ export class NpcManager {
   }
 
   private async loadAnimations(): Promise<NpcAnimationClips> {
-    const [breathing_idle, talking1, talking2, talking3] = await Promise.all([
-      this.loader.loadGLB(ASSETS.animations.breathing_idle),
+    const [idle, talking1, talking2, talking3] = await Promise.all([
+      this.loader.loadGLB(ASSETS.npcAnimations.idle),
+
       this.loader.loadGLB(ASSETS.npcAnimations.talking1),
+
       this.loader.loadGLB(ASSETS.npcAnimations.talking2),
+
       this.loader.loadGLB(ASSETS.npcAnimations.talking3),
     ]);
 
     return {
-      idle: this.prepareNpcClip(breathing_idle.animations[0]),
+      idle: this.prepareNpcClip(idle.animations[0]),
+
       talking_1: this.prepareNpcClip(talking1.animations[0]),
+
       talking_2: this.prepareNpcClip(talking2.animations[0]),
+
       talking_3: this.prepareNpcClip(talking3.animations[0]),
     };
   }

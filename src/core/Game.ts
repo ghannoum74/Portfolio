@@ -227,12 +227,6 @@ export class Game {
 
       this.setupInteractions();
 
-      for (const npc of this.world.npcs) {
-        this.interactionSystem.register(
-          new NpcInteraction(npc, this.world.player.model, this.dialogueBox),
-        );
-      }
-
       const mailbox = this.world.model.getObjectByName("INTERACT_MAILBOX_01");
 
       if (!mailbox) {
