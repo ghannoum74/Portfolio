@@ -12,7 +12,7 @@
   background: transparent;
   box-shadow: none;
   color: var(--paper-ink);
-  overflow: visible;
+  overflow: hidden;
   isolation: isolate;
 }
 
@@ -81,9 +81,11 @@
   z-index: 1;
   flex: 1;
   min-height: 0;
+  margin: 76px 32px 40px;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: 100px 95px 78px;
+  padding: 4px 63px 70px;
   font-size: 17px;
   line-height: 1.6;
   color: var(--paper-ink);
@@ -126,7 +128,8 @@
   }
 
   .paper-panel_content {
-    padding: 85px 35px 55px;
+    margin: 76px 30px 36px;
+    padding: 9px 5px 19px;
     font-size: 15px;
   }
 }

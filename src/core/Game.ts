@@ -17,12 +17,14 @@ import { WorldEntrance } from "../ui/WorldEntrance/WorldEntrance";
 
 import { InteractionSystem } from "../interactions/InteractionSystem";
 
-import rulesHtml from "../ui/PaperPanelContent/rules.html?raw";
-import "../ui/PaperPanelContent/rules.css";
+import rulesHtml from "../ui/PaperPanelContent/rules/rules.html?raw";
+import "../ui/PaperPanelContent/rules/rules.css";
 import { MailboxInteraction } from "../interactions/interactions/MailboxInteraction";
 import { DoorInteraction } from "../interactions/interactions/DoorInteraction";
 import { DialogueBox } from "../ui/DialogueBox/DialogueBox";
 import { NpcInteraction } from "../interactions/interactions/NpcInteraction";
+import { HelpButton } from "../ui/HelpButton/HelpButton";
+import { createContactContent } from "../ui/PaperPanelContent/contact/contact";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -73,6 +75,8 @@ export class Game {
   private readonly interactionSystem: InteractionSystem;
   private readonly dialogueBox: DialogueBox;
 
+  private readonly helpButton: HelpButton;
+
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
 
@@ -118,12 +122,6 @@ export class Game {
     this.controls.enabled = false;
     this.controls.update();
 
-    /*
-     * Reusable dialog:
-     * It doesn't own the application's phase.
-     * It simply notifies Game when it opens
-     * or closes.
-     */
     this.paperPanel = new PaperPanel({
       onOpen: () => {
         this.keyboard.setEnabled(false);
@@ -134,6 +132,7 @@ export class Game {
         if (this.phase === "rules") {
           this.phase = "playing";
           this.showDebugUI();
+          // this.helpButton.setVisible(true);
         }
 
         // Also supports future mailbox dialogs
@@ -156,6 +155,19 @@ export class Game {
           this.keyboard.setEnabled(true);
         }
       },
+    });
+
+    this.helpButton = new HelpButton(() => {
+      if (
+        this.phase !== "playing" ||
+        this.paperPanel.isOpen ||
+        this.dialogueBox.isOpen
+      ) {
+        return;
+      }
+
+      this.paperPanel.open(this.createRulesContent(), "World controls");
+      this.helpButton.setVisible(false);
     });
 
     this.interactionSystem = new InteractionSystem((interactable) => {
@@ -630,11 +642,7 @@ export class Game {
     }
 
     this.interactionSystem.register(
-      new MailboxInteraction(
-        mailbox,
-        this.paperPanel,
-        this.createRulesContent(),
-      ),
+      new MailboxInteraction(mailbox, this.paperPanel, createContactContent),
     );
 
     const door = this.world.model.getObjectByName("INTERACT_DOOR_01");

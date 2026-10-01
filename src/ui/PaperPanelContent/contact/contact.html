@@ -1,0 +1,147 @@
+<section class="contact-paper">
+  <header class="contact-paper_header">
+    <span class="contact-paper_stamp"> MAILBOX </span>
+
+    <h2>You found me.</h2>
+
+    <p>
+      Looking for a developer, building something interesting, or just want to
+      say hello? Leave a message here.
+    </p>
+  </header>
+
+  <div class="contact-socials">
+    <a
+      class="contact-social"
+      data-contact-github
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span class="contact-social_label"> GitHub </span>
+
+      <strong> @ghannoum74 </strong>
+
+      <span aria-hidden="true"> ↗ </span>
+    </a>
+
+    <a
+      class="contact-social"
+      data-contact-linkedin
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span class="contact-social_label"> LinkedIn </span>
+
+      <strong> Connect with me </strong>
+
+      <span aria-hidden="true"> ↗ </span>
+    </a>
+
+    <a class="contact-social" data-contact-email>
+      <span class="contact-social_label"> Email </span>
+
+      <strong> Send directly </strong>
+
+      <span aria-hidden="true"> ↗ </span>
+    </a>
+  </div>
+
+  <div class="contact-paper_divider">
+    <span>or leave a letter</span>
+  </div>
+
+  <form class="contact-form" data-contact-form>
+    <!-- Spam honeypot -->
+    <input
+      class="contact-form_trap"
+      type="text"
+      name="_gotcha"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+    />
+
+    <div class="contact-form_grid">
+      <label class="contact-field">
+        <span>Your name</span>
+
+        <input
+          type="text"
+          name="name"
+          autocomplete="name"
+          maxlength="80"
+          placeholder="Who are you?"
+          required
+        />
+      </label>
+
+      <label class="contact-field">
+        <span>Your email</span>
+
+        <input
+          type="email"
+          name="email"
+          autocomplete="email"
+          maxlength="160"
+          placeholder="Where do I reply?"
+          required
+        />
+      </label>
+    </div>
+
+    <div class="contact-form_grid">
+      <label class="contact-field">
+        <span>Why are you here?</span>
+
+        <select name="reason" required>
+          <option value="" selected disabled>Choose one...</option>
+
+          <option value="job">Job opportunity</option>
+
+          <option value="project">Freelance / project</option>
+
+          <option value="collaboration">Collaboration</option>
+
+          <option value="hello">Just saying hello</option>
+        </select>
+      </label>
+
+      <label class="contact-field">
+        <span>
+          Company
+          <small>optional</small>
+        </span>
+
+        <input
+          type="text"
+          name="company"
+          autocomplete="organization"
+          maxlength="100"
+          placeholder="Company / team"
+        />
+      </label>
+    </div>
+
+    <label class="contact-field">
+      <span>Your message</span>
+
+      <textarea
+        name="message"
+        rows="6"
+        minlength="10"
+        maxlength="2000"
+        placeholder="Tell me what you're building..."
+        required
+      ></textarea>
+    </label>
+
+    <div class="contact-form_footer">
+      <p class="contact-form_status" data-contact-status aria-live="polite"></p>
+
+      <button class="contact-form_submit" type="submit" data-contact-submit>
+        SEND LETTER
+        <span aria-hidden="true"> → </span>
+      </button>
+    </div>
+  </form>
+</section>

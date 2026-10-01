@@ -1,0 +1,53 @@
+.help-button {
+  position: fixed;
+  top: 76px;
+  left: 14px;
+  z-index: 30;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 3px solid var(--paper-ink);
+  border-radius: 50% 46% 52% 45%;
+  background: var(--paper-background);
+  color: var(--paper-ink);
+  font-family: var(--font-root);
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 3px 4px 0 rgb(92 69 52 / 25%);
+  transform: rotate(-3deg);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.help-button:hover {
+  transform: rotate(3deg) translateY(-2px);
+  box-shadow: 4px 6px 0 rgb(92 69 52 / 22%);
+}
+
+.help-button:active {
+  transform: rotate(0deg) translateY(2px);
+  box-shadow: 1px 2px 0 rgb(92 69 52 / 20%);
+}
+
+.help-button:focus-visible {
+  outline: 3px solid #806747;
+  outline-offset: 4px;
+}
+
+.help-button[hidden] {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .help-button {
+    top: 70px;
+    left: 10px;
+    width: 44px;
+    height: 44px;
+    font-size: 25px;
+  }
+}
