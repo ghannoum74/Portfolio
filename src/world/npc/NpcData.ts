@@ -31,6 +31,43 @@ export interface NpcDefinition {
 
 export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
   {
+    id: "frequenc",
+    name: "Frequenc Teammate",
+    company: "Frequenc",
+    asset: ASSETS.characters.frequenc,
+    position: new THREE.Vector3(2.5, 12.5, 5),
+    rotationY: Math.PI,
+    scale: 1.3,
+    dialogues: [
+      [
+        {
+          text: "There you are! You've reached the big one. Frequenc. Grab a seat, this is where he levels up from developer to engineer.",
+          animation: "talking_1",
+        },
+        {
+          text: "We run a SaaS event management platform, and he owns it end to end: frontend, backend, deployment. He designs the backend in NestJS with modular architecture and dependency injection, so features stay isolated and testable.",
+          animation: "talking_2",
+        },
+        {
+          text: "He thinks in system design. Scalability, security, performance and how each change affects the whole system, not just the ticket in front of him.",
+          animation: "talking_3",
+        },
+        {
+          text: "Infrastructure too. He deploys and runs our Node and NestJS services handling security groups, environment configuration and automated deployments. No throwing code over the wall.",
+          animation: "talking_1",
+        },
+        {
+          text: "And here's the part I respect most: he runs our pull request flow. Every PR goes through his review for code quality, patterns and risk before it merges.",
+          animation: "talking_2",
+        },
+        {
+          text: "He also breaks down the work and assigns tasks across the team, so everyone knows what to build and why. He keeps the team moving and the codebase clean at the same time.",
+          animation: "talking_3",
+        },
+      ],
+    ],
+  },
+  {
     id: "mtc",
     name: "Medical Platform Teammate",
     company: "Medicals at the Center",
@@ -143,44 +180,6 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
         {
           text: "That mindset never left him. It's why he's calm when production acts up. Good luck out there!",
           animation: "talking_1",
-        },
-      ],
-    ],
-  },
-
-  {
-    id: "frequenc",
-    name: "Frequenc Teammate",
-    company: "Frequenc",
-    asset: ASSETS.characters.frequenc,
-    position: new THREE.Vector3(2.5, 12.5, 5),
-    rotationY: Math.PI,
-    scale: 1.3,
-    dialogues: [
-      [
-        {
-          text: "There you are! You've reached the big one. Frequenc. Grab a seat, this is where he levels up from developer to engineer.",
-          animation: "talking_1",
-        },
-        {
-          text: "We run a SaaS event management platform, and he owns it end to end: frontend, backend, deployment. He designs the backend in NestJS with modular architecture and dependency injection, so features stay isolated and testable.",
-          animation: "talking_2",
-        },
-        {
-          text: "He thinks in system design. Scalability, security, performance and how each change affects the whole system, not just the ticket in front of him.",
-          animation: "talking_3",
-        },
-        {
-          text: "Infrastructure too. He deploys and runs our Node and NestJS services handling security groups, environment configuration and automated deployments. No throwing code over the wall.",
-          animation: "talking_1",
-        },
-        {
-          text: "And here's the part I respect most: he runs our pull request flow. Every PR goes through his review for code quality, patterns and risk before it merges.",
-          animation: "talking_2",
-        },
-        {
-          text: "He also breaks down the work and assigns tasks across the team, so everyone knows what to build and why. He keeps the team moving and the codebase clean at the same time.",
-          animation: "talking_3",
         },
       ],
     ],
