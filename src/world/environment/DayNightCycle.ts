@@ -23,7 +23,7 @@ export class DayNightCycle {
 
   private readonly nightAmbientColor = new THREE.Color(0x617096);
 
-  private readonly daySkyColor = new THREE.Color(0x9cddd8);
+  private readonly daySkyColor = new THREE.Color(0x6dd4f3);
 
   private readonly horizonSkyColor = new THREE.Color(0xd69b76);
 
