@@ -25,6 +25,8 @@ import { DialogueBox } from "../ui/DialogueBox/DialogueBox";
 import { NpcInteraction } from "../interactions/interactions/NpcInteraction";
 import { HelpButton } from "../ui/HelpButton/HelpButton";
 import { createContactContent } from "../ui/PaperPanelContent/contact/contact";
+import { WorldAudio } from "../audio/WorldAudio";
+import { SoundButton } from "../ui/SoundButton/SoundButton";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -75,6 +77,10 @@ export class Game {
 
   private readonly helpButton: HelpButton;
 
+  private readonly worldAudio: WorldAudio;
+
+  private readonly soundButton: SoundButton;
+
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
 
@@ -120,6 +126,14 @@ export class Game {
     this.controls.enabled = false;
     this.controls.update();
 
+    this.worldAudio = new WorldAudio();
+
+    this.soundButton = new SoundButton(() => {
+      return this.worldAudio.toggleMuted();
+    });
+
+    this.soundButton.setVisible(false);
+
     this.paperPanel = new PaperPanel({
       onOpen: () => {
         this.keyboard.setEnabled(false);
@@ -138,6 +152,10 @@ export class Game {
         if (this.phase === "playing") {
           this.keyboard.setEnabled(true);
         }
+
+        this.soundButton.setVisible(true);
+
+        this.worldAudio.start();
       },
     });
 
@@ -321,6 +339,10 @@ export class Game {
      */
     this.world.update(delta);
 
+    this.worldAudio.update(
+      this.world.player.model.position,
+      this.world.getTimeOfDay(),
+    );
     if (this.phase === "introduction") {
       this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
     } else {

@@ -173,6 +173,30 @@
   font-size: 13px;
 }
 
+.quest_type {
+  display: inline-block;
+
+  margin-bottom: 5px;
+
+  color: rgb(92 69 52 / 55%);
+
+  font-size: 9px;
+
+  letter-spacing: 0.15em;
+}
+
+.quest--side {
+  border-style: dashed;
+
+  background: rgb(92 69 52 / 4%);
+}
+
+.quest--side .quest_marker {
+  font-size: 25px;
+
+  transform: rotate(4deg);
+}
+
 @media (max-width: 600px) {
   .world-guide_stamp {
     display: none;

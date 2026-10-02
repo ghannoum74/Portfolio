@@ -56,6 +56,14 @@ export class DayNightCycle {
       this.scene.background = new THREE.Color();
     }
 
+    /*
+     * Hide the end of the horizon water.
+     *
+     * The color gets synchronized with
+     * the sky inside applyTime().
+     */
+    this.scene.fog = new THREE.Fog(this.daySkyColor, 40, 65);
+
     this.applyTime(this.getCurrentHour());
   }
 
@@ -172,6 +180,10 @@ export class DayNightCycle {
 
     if (this.scene.background instanceof THREE.Color) {
       this.scene.background.copy(this.calculatedSkyColor);
+    }
+
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.copy(this.calculatedSkyColor);
     }
   }
 

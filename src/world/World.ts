@@ -11,6 +11,7 @@ import { ASSETS } from "../loaders/AssetManifest";
 import { DayNightCycle } from "./environment/DayNightCycle";
 import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
+import { Water } from "./environment/Water";
 
 export class World {
   model!: THREE.Group;
@@ -29,6 +30,7 @@ export class World {
   private stairDetector!: StairDetector;
   private dayNightCycle: DayNightCycle;
   private readonly npcManager: NpcManager;
+  private water!: Water;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -64,16 +66,21 @@ export class World {
       this.onAssetReady,
     ).loadGLB(ASSETS.world);
     this.model = asset.scene;
-    // Match the export's roughly 12-unit storeys to the 1.85-unit player.
+
     this.model.scale.setScalar(0.25);
+
     this.model.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
+      if (!(child instanceof THREE.Mesh)) {
+        return;
+      }
+
       child.receiveShadow = true;
-      child.castShadow = child.name.startsWith("SHADOW_");
 
       child.geometry.computeBoundingBox();
+
       this.meshes.push(child);
     });
+    this.water = new Water(this.model);
     this.scene.add(this.model);
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
@@ -107,6 +114,8 @@ export class World {
     const safeDelta = Math.min(delta, 1 / 30);
 
     this.dayNightCycle.update(safeDelta);
+
+    this.water.update(safeDelta);
 
     this.physics.beginFrame(safeDelta);
 

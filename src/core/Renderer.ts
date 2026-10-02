@@ -54,7 +54,7 @@ export class Renderer {
 
     this.outlinePass.pulsePeriod = 0;
 
-    this.outlinePass.visibleEdgeColor.set(0xd);
+    this.outlinePass.visibleEdgeColor.set(0xf3e7c2);
 
     this.outlinePass.hiddenEdgeColor.set(0x5c4534);
 

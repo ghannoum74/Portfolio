@@ -1,0 +1,51 @@
+.sound-button {
+  position: fixed;
+  top: 50px;
+  left: 72px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 9px;
+  border: 3px solid var(--paper-ink);
+  border-radius: 52% 45% 50% 47%;
+  background: var(--paper-background);
+  color: var(--paper-ink);
+  cursor: pointer;
+  box-shadow: 3px 4px 0 rgb(92 69 52 / 25%);
+  transform: rotate(3deg);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sound-button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: var(--paper-ink);
+  stroke: var(--paper-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sound-button:hover {
+  transform: rotate(-3deg) translateY(-2px);
+  box-shadow: 4px 6px 0 rgb(92 69 52 / 22%);
+}
+
+.sound-button:active {
+  transform: rotate(0deg) translateY(2px);
+  box-shadow: 1px 2px 0 rgb(92 69 52 / 18%);
+}
+
+.sound-button:focus-visible {
+  outline: 3px solid #806747;
+  outline-offset: 4px;
+}
+
+.sound-button[hidden] {
+  display: none;
+}
