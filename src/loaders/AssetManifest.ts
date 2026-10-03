@@ -1,6 +1,8 @@
 export const ASSETS = {
   world: "/assets/models/environment/world.glb",
 
+  house: "/assets/models/environment/house.glb",
+
   player: "/assets/models/player/player.glb",
 
   characters: {

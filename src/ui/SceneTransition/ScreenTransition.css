@@ -1,0 +1,17 @@
+.scene-transition {
+  position: fixed;
+  inset: 0;
+
+  background: #fffdf0;
+
+  opacity: 0;
+  pointer-events: none;
+
+  z-index: 10000;
+
+  transition: opacity 450ms ease;
+}
+
+.scene-transition.is-visible {
+  opacity: 1;
+}

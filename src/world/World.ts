@@ -12,6 +12,7 @@ import { DayNightCycle } from "./environment/DayNightCycle";
 import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
+import { HouseInterior } from "./house/HouseInterior";
 
 export class World {
   model!: THREE.Group;
@@ -31,6 +32,7 @@ export class World {
   private dayNightCycle: DayNightCycle;
   private readonly npcManager: NpcManager;
   private water!: Water;
+  private houseInterior!: HouseInterior;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -99,6 +101,14 @@ export class World {
       this.onAssetReady,
     );
     await this.player.load();
+
+    this.houseInterior = new HouseInterior(this.scene, this.loadingManager);
+
+    await this.houseInterior.load();
+
+    this.model.visible = false;
+
+    this.houseInterior.show();
     this.initialized = true;
   }
 
