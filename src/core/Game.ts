@@ -27,6 +27,8 @@ import { HelpButton } from "../ui/HelpButton/HelpButton";
 import { createContactContent } from "../ui/PaperPanelContent/contact/contact";
 import { WorldAudio } from "../audio/WorldAudio";
 import { SoundButton } from "../ui/SoundButton/SoundButton";
+import { SceneTransition } from "../ui/SceneTransition/SceneTransition";
+import { HouseInterior } from "../world/house/HouseInterior";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -81,6 +83,18 @@ export class Game {
 
   private readonly soundButton: SoundButton;
 
+  private readonly sceneTransition: SceneTransition;
+
+  private transitioning = false;
+
+  private insideHouse = false;
+
+  private houseExitRegistered = false;
+
+  private readonly houseReturnPosition = new THREE.Vector3();
+
+  private houseReturnRotationY = 0;
+
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
 
@@ -133,6 +147,14 @@ export class Game {
     });
 
     this.soundButton.setVisible(false);
+
+    const uiRoot = document.getElementById("ui-root");
+
+    if (!uiRoot) {
+      throw new Error("Missing #ui-root");
+    }
+
+    this.sceneTransition = new SceneTransition(uiRoot);
 
     this.paperPanel = new PaperPanel({
       onOpen: () => {
@@ -351,6 +373,7 @@ export class Game {
 
     const gameplayActive =
       this.phase === "playing" &&
+      !this.transitioning &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -395,10 +418,9 @@ export class Game {
 
   private onCanvasClick = (event: MouseEvent): void => {
     if (
-      event.button !== 0 ||
       this.phase !== "playing" ||
-      this.paperPanel.isOpen ||
-      this.dialogueBox.isOpen
+      this.transitioning ||
+      this.paperPanel.isOpen
     ) {
       return;
     }
@@ -636,9 +658,13 @@ export class Game {
     }
 
     this.interactionSystem.register(
-      new DoorInteraction(door, () => {
-        console.log("Door entered");
-      }),
+      new DoorInteraction(
+        door,
+        () => {
+          void this.enterHouse();
+        },
+        "Enter",
+      ),
     );
   }
 
@@ -653,6 +679,203 @@ export class Game {
       }
     } catch (error) {
       console.error("Failed to load NPCs:", error);
+    }
+  }
+
+  private async enterHouse(): Promise<void> {
+    if (this.transitioning || this.insideHouse) {
+      return;
+    }
+
+    this.transitioning = true;
+
+    /*
+     * Store the exact exterior position
+     * so exiting returns us to where we
+     * entered from.
+     */
+    this.world.player.getFeetPosition(this.houseReturnPosition);
+
+    this.houseReturnRotationY = this.world.player.model.rotation.y;
+
+    this.keyboard.setEnabled(false);
+
+    let house: HouseInterior | undefined;
+
+    try {
+      /*
+       * Completely cover the scene first.
+       */
+      await this.sceneTransition.fadeIn();
+
+      /*
+       * First entry downloads the GLB.
+       * Future entries immediately return
+       * the already loaded house.
+       */
+      house = await this.world.loadHouseInterior();
+
+      const spawn = house.getSpawn();
+
+      if (!spawn) {
+        throw new Error("Missing SPAWN_HOUSE in house.glb");
+      }
+
+      this.registerHouseExit(house);
+
+      const spawnPosition = new THREE.Vector3();
+
+      spawn.getWorldPosition(spawnPosition);
+
+      const spawnQuaternion = new THREE.Quaternion();
+
+      spawn.getWorldQuaternion(spawnQuaternion);
+
+      const spawnRotation = new THREE.Euler().setFromQuaternion(
+        spawnQuaternion,
+        "YXZ",
+      );
+
+      /*
+       * Swap environments while the
+       * cream overlay completely covers
+       * the screen.
+       */
+      this.world.setExteriorVisible(false);
+
+      house.show();
+
+      /*
+       * Move the REAL Rapier player.
+       */
+      this.world.player.teleport(spawnPosition, spawnRotation.y);
+
+      /*
+       * Switch to a camera that actually
+       * fits inside the room.
+       */
+      this.thirdPersonCamera?.setInteriorMode(true);
+
+      this.thirdPersonCamera?.snap();
+
+      /*
+       * First entry may require shader
+       * compilation.
+       *
+       * Do it while the screen is covered
+       * so there is no visible hitch.
+       */
+      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+
+      this.insideHouse = true;
+
+      await this.sceneTransition.fadeOut();
+    } catch (error) {
+      console.error("Failed to enter house:", error);
+
+      house?.hide();
+
+      this.world.setExteriorVisible(true);
+
+      /*
+       * Restore the player if something
+       * failed after teleporting.
+       */
+      this.world.player.teleport(
+        this.houseReturnPosition,
+        this.houseReturnRotationY,
+      );
+
+      this.thirdPersonCamera?.setInteriorMode(false);
+
+      this.thirdPersonCamera?.snap();
+
+      await this.sceneTransition.fadeOut();
+    } finally {
+      this.transitioning = false;
+
+      if (
+        this.phase === "playing" &&
+        !this.paperPanel.isOpen &&
+        !this.dialogueBox.isOpen
+      ) {
+        this.keyboard.setEnabled(true);
+      }
+    }
+  }
+
+  private registerHouseExit(house: HouseInterior): void {
+    if (this.houseExitRegistered) {
+      return;
+    }
+
+    const exitDoor = house.getExitDoor();
+
+    // if (!exitDoor) {
+    //   throw new Error("Missing INTERACT_EXIT_DOOR_01 in house.glb");
+    // }
+
+    // this.interactionSystem.register(
+    //   new DoorInteraction(
+    //     exitDoor,
+    //     () => {
+    //       void this.exitHouse();
+    //     },
+    //     "Exit",
+    //   ),
+    // );
+
+    this.houseExitRegistered = true;
+  }
+
+  private async exitHouse(): Promise<void> {
+    if (this.transitioning || !this.insideHouse) {
+      return;
+    }
+
+    this.transitioning = true;
+
+    this.keyboard.setEnabled(false);
+
+    try {
+      await this.sceneTransition.fadeIn();
+
+      const house = await this.world.loadHouseInterior();
+
+      house.hide();
+
+      this.world.setExteriorVisible(true);
+
+      /*
+       * Return exactly outside where
+       * the visitor entered.
+       */
+      this.world.player.teleport(
+        this.houseReturnPosition,
+        this.houseReturnRotationY,
+      );
+
+      this.thirdPersonCamera?.setInteriorMode(false);
+
+      this.thirdPersonCamera?.snap();
+
+      this.insideHouse = false;
+
+      await this.sceneTransition.fadeOut();
+    } catch (error) {
+      console.error("Failed to exit house:", error);
+
+      await this.sceneTransition.fadeOut();
+    } finally {
+      this.transitioning = false;
+
+      if (
+        this.phase === "playing" &&
+        !this.paperPanel.isOpen &&
+        !this.dialogueBox.isOpen
+      ) {
+        this.keyboard.setEnabled(true);
+      }
     }
   }
 }

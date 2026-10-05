@@ -11,6 +11,7 @@ export class DoorInteraction implements Interactable {
   constructor(
     door: THREE.Object3D,
     private readonly onInteract: () => void,
+    private readonly hint = "Enter",
   ) {
     this.highlightTarget = door;
 
@@ -18,7 +19,7 @@ export class DoorInteraction implements Interactable {
   }
 
   getHint(): string {
-    return "Enter";
+    return this.hint;
   }
 
   interact(): void {

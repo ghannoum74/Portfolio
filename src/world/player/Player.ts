@@ -169,4 +169,18 @@ export class Player {
 
     return clip;
   }
+
+  teleport(feetPosition: THREE.Vector3, rotationY?: number): void {
+    if (rotationY !== undefined) {
+      this.model.rotation.y = rotationY;
+    }
+
+    this.body.teleport(feetPosition);
+
+    this.syncFromPhysics();
+  }
+
+  getFeetPosition(target: THREE.Vector3): THREE.Vector3 {
+    return this.body.getFeetPosition(target);
+  }
 }

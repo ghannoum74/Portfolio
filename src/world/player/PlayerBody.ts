@@ -223,4 +223,46 @@ export class PlayerBody {
   get isJumping(): boolean {
     return this.jumping && !this.grounded;
   }
+
+  teleport(feetPosition: THREE.Vector3): void {
+    /*
+     * The supplied position represents
+     * where the player's feet should be.
+     *
+     * Rapier stores the capsule center.
+     */
+    const centerY =
+      feetPosition.y + this.CAPSULE_HALF_HEIGHT + this.CAPSULE_RADIUS;
+
+    const translation = {
+      x: feetPosition.x,
+      y: centerY,
+      z: feetPosition.z,
+    };
+
+    /*
+     * Move immediately.
+     */
+    this.body.setTranslation(translation, true);
+
+    /*
+     * Keep the kinematic target synchronized.
+     */
+    this.body.setNextKinematicTranslation(translation);
+
+    /*
+     * Clear movement from the previous area.
+     */
+    this.verticalVelocity = 0;
+
+    this.horizontalVelocity.set(0, 0, 0);
+
+    this.movement.set(0, 0, 0);
+
+    this.jumping = false;
+
+    this.grounded = false;
+
+    this.fallingTime = 0;
+  }
 }

@@ -1,8 +1,15 @@
 import * as THREE from "three";
 
 export class ThirdPersonCamera {
-  private readonly offset = new THREE.Vector3(0, 7, -7);
-  private readonly lookAtOffset = new THREE.Vector3(0, 2, 0);
+  private readonly exteriorOffset = new THREE.Vector3(0, 5, -7);
+
+  private readonly exteriorLookAtOffset = new THREE.Vector3(0, 2, 0);
+
+  private readonly interiorOffset = new THREE.Vector3(0, 2.6, -3.6);
+
+  private readonly interiorLookAtOffset = new THREE.Vector3(0, 1.25, 0);
+
+  private interiorMode = false;
 
   private readonly entranceOffset = new THREE.Vector3(16, 8, 8);
 
@@ -106,7 +113,11 @@ export class ThirdPersonCamera {
   }
 
   private getIdealPosition(): THREE.Vector3 {
-    const cameraOffset = this.offset.clone();
+    const offset = this.interiorMode
+      ? this.interiorOffset
+      : this.exteriorOffset;
+
+    const cameraOffset = offset.clone();
 
     cameraOffset.applyQuaternion(this.player.quaternion);
 
@@ -114,7 +125,11 @@ export class ThirdPersonCamera {
   }
 
   private getIdealLookAt(): THREE.Vector3 {
-    return this.player.position.clone().add(this.lookAtOffset);
+    const offset = this.interiorMode
+      ? this.interiorLookAtOffset
+      : this.exteriorLookAtOffset;
+
+    return this.player.position.clone().add(offset);
   }
 
   private quadraticBezier(
@@ -133,5 +148,15 @@ export class ThirdPersonCamera {
 
       inverse * inverse * start.z + 2 * inverse * t * control.z + t * t * end.z,
     );
+  }
+
+  setInteriorMode(enabled: boolean): void {
+    this.interiorMode = enabled;
+  }
+
+  snap(): void {
+    this.camera.position.copy(this.getIdealPosition());
+
+    this.camera.lookAt(this.getIdealLookAt());
   }
 }

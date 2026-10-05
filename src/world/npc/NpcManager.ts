@@ -17,6 +17,7 @@ export class NpcManager {
 
   private readonly shadowDistance = 12;
   private readonly shadowDistanceSq = this.shadowDistance * this.shadowDistance;
+  private visible = true;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -63,6 +64,8 @@ export class NpcManager {
     });
 
     this.scene.add(model);
+
+    model.visible = this.visible;
 
     model.updateMatrixWorld(true);
 
@@ -145,5 +148,13 @@ export class NpcManager {
     cleanClip.resetDuration();
 
     return cleanClip;
+  }
+
+  setVisible(visible: boolean): void {
+    this.visible = visible;
+
+    for (const npc of this.npcs) {
+      npc.model.visible = visible;
+    }
   }
 }

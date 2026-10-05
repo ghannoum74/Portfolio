@@ -1,6 +1,9 @@
 import * as THREE from "three";
+
 import { AssetLoader } from "../../loaders/AssetLoader";
 import { ASSETS } from "../../loaders/AssetManifest";
+import { WorldColliders } from "../../physics/WorldColliders";
+import { PhysicsWorld } from "../../physics/PhysicsWorld";
 
 export class HouseInterior {
   public model = new THREE.Group();
@@ -9,9 +12,19 @@ export class HouseInterior {
 
   private loaded = false;
 
+  /*
+   * Keep the interior physically separated
+   * from the exterior Rapier world.
+   *
+   * The visitor never notices this because
+   * the transition completely covers the jump.
+   */
+  private readonly worldOffset = new THREE.Vector3(0, -30, 0);
+
   constructor(
     private readonly scene: THREE.Scene,
     loadingManager: THREE.LoadingManager,
+    private readonly physics: PhysicsWorld,
   ) {
     this.loader = new AssetLoader(loadingManager);
   }
@@ -27,6 +40,9 @@ export class HouseInterior {
 
     this.model.name = "HOUSE_INTERIOR";
 
+    this.model.position.copy(this.worldOffset);
+
+    // hidden until the entrance is triggered
     this.model.visible = false;
 
     this.model.traverse((child) => {
@@ -40,9 +56,15 @@ export class HouseInterior {
 
     this.scene.add(this.model);
 
+    this.model.updateMatrixWorld(true);
+
+    const colliders = new WorldColliders(this.physics);
+
+    colliders.createFromEnvironment(this.model);
+
     this.loaded = true;
 
-    console.log("🏠 House interior loaded", this.model);
+    console.log("🏠 House interior loaded");
   }
 
   show(): void {
@@ -55,6 +77,10 @@ export class HouseInterior {
 
   getSpawn(): THREE.Object3D | undefined {
     return this.model.getObjectByName("SPAWN_HOUSE");
+  }
+
+  getExitDoor(): THREE.Object3D | undefined {
+    return this.model.getObjectByName("INTERACT_EXIT_DOOR_01");
   }
 
   get isLoaded(): boolean {

@@ -32,7 +32,7 @@ export class World {
   private dayNightCycle: DayNightCycle;
   private readonly npcManager: NpcManager;
   private water!: Water;
-  private houseInterior!: HouseInterior;
+  private houseInterior?: HouseInterior;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -102,13 +102,6 @@ export class World {
     );
     await this.player.load();
 
-    this.houseInterior = new HouseInterior(this.scene, this.loadingManager);
-
-    await this.houseInterior.load();
-
-    this.model.visible = false;
-
-    this.houseInterior.show();
     this.initialized = true;
   }
 
@@ -194,5 +187,25 @@ export class World {
 
   async loadNpcs(): Promise<void> {
     await this.npcManager.load();
+  }
+
+  async loadHouseInterior(): Promise<HouseInterior> {
+    if (!this.houseInterior) {
+      this.houseInterior = new HouseInterior(
+        this.scene,
+        this.loadingManager,
+        this.physics,
+      );
+    }
+
+    await this.houseInterior.load();
+
+    return this.houseInterior;
+  }
+
+  setExteriorVisible(visible: boolean): void {
+    this.model.visible = visible;
+
+    this.npcManager.setVisible(visible);
   }
 }
