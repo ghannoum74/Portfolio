@@ -128,8 +128,6 @@ export class World {
 
     this.player?.update(safeDelta);
 
-    this.npcManager.update(safeDelta, this.player.model.position);
-
     this.physics.step();
 
     this.player?.syncFromPhysics();

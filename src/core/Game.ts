@@ -744,6 +744,8 @@ export class Game {
        * cream overlay completely covers
        * the screen.
        */
+      this.worldAudio.setActive(false);
+
       this.world.setExteriorVisible(false);
 
       this.world.setExteriorLightingEnabled(false);
@@ -782,6 +784,9 @@ export class Game {
 
       this.world.setExteriorVisible(true);
 
+      this.world.setExteriorLightingEnabled(true);
+
+      this.worldAudio.setActive(true);
       /*
        * Restore the player if something
        * failed after teleporting.
