@@ -109,16 +109,20 @@ export class World {
     return this.npcManager.npcs;
   }
 
-  update(delta: number): void {
+  update(delta: number, exteriorActive: boolean): void {
     if (!this.initialized) {
       return;
     }
 
     const safeDelta = Math.min(delta, 1 / 30);
 
-    this.dayNightCycle.update(safeDelta);
+    if (exteriorActive) {
+      this.dayNightCycle.update(safeDelta);
 
-    this.water.update(safeDelta);
+      this.water.update(safeDelta);
+
+      this.npcManager.update(safeDelta, this.player.model.position);
+    }
 
     this.physics.beginFrame(safeDelta);
 
@@ -132,7 +136,9 @@ export class World {
 
     this.physicsDebugRenderer.update();
 
-    this.sunHelper?.update();
+    if (exteriorActive) {
+      this.sunHelper?.update();
+    }
   }
 
   setSunDebugVisible(visible: boolean): void {
@@ -207,5 +213,11 @@ export class World {
     this.model.visible = visible;
 
     this.npcManager.setVisible(visible);
+  }
+
+  setExteriorLightingEnabled(enabled: boolean): void {
+    this.sunPivot.visible = enabled;
+
+    this.ambientLight.visible = enabled;
   }
 }

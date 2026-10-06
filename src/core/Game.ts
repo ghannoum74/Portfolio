@@ -359,12 +359,15 @@ export class Game {
      * Keyboard input remains disabled
      * until gameplay begins.
      */
-    this.world.update(delta);
+    this.world.update(delta, !this.insideHouse);
 
-    this.worldAudio.update(
-      this.world.player.model.position,
-      this.world.getTimeOfDay(),
-    );
+    if (!this.insideHouse) {
+      this.worldAudio.update(
+        this.world.player.model.position,
+        this.world.getTimeOfDay(),
+      );
+    }
+
     if (this.phase === "introduction") {
       this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
     } else {
@@ -743,6 +746,8 @@ export class Game {
        */
       this.world.setExteriorVisible(false);
 
+      this.world.setExteriorLightingEnabled(false);
+
       house.show();
 
       /*
@@ -846,6 +851,7 @@ export class Game {
 
       this.world.setExteriorVisible(true);
 
+      this.world.setExteriorLightingEnabled(true);
       /*
        * Return exactly outside where
        * the visitor entered.

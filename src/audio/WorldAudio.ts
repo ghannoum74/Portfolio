@@ -29,6 +29,8 @@ export class WorldAudio {
 
   private readonly waterMaxVolume = 0.35;
 
+  private active = true;
+
   constructor() {
     this.dayAmbience.loop = true;
 
@@ -70,13 +72,22 @@ export class WorldAudio {
   }
 
   update(playerPosition: THREE.Vector3, hour: number): void {
-    if (!this.started) {
+    if (!this.started || !this.active) {
       return;
     }
 
     this.updateDayNightAmbience(hour);
-
     this.updateWater(playerPosition);
+  }
+
+  setActive(active: boolean): void {
+    this.active = active;
+
+    if (!active) {
+      this.dayAmbience.volume = 0;
+      this.nightAmbience.volume = 0;
+      this.water.volume = 0;
+    }
   }
 
   private updateDayNightAmbience(hour: number): void {
