@@ -819,21 +819,28 @@ export class Game {
       return;
     }
 
+    const exitZone = house.getExitZone();
+
     const exitDoor = house.getExitDoor();
 
-    // if (!exitDoor) {
-    //   throw new Error("Missing INTERACT_EXIT_DOOR_01 in house.glb");
-    // }
+    if (!exitZone) {
+      throw new Error("Missing ZONE_EXIT_DOOR in house.glb");
+    }
 
-    // this.interactionSystem.register(
-    //   new DoorInteraction(
-    //     exitDoor,
-    //     () => {
-    //       void this.exitHouse();
-    //     },
-    //     "Exit",
-    //   ),
-    // );
+    if (!exitDoor) {
+      throw new Error("Missing INTERACT_EXIT_DOOR_01 in house.glb");
+    }
+
+    this.interactionSystem.register(
+      new DoorInteraction(
+        exitZone,
+        () => {
+          void this.exitHouse();
+        },
+        "Exit",
+        exitDoor,
+      ),
+    );
 
     this.houseExitRegistered = true;
   }
@@ -857,6 +864,8 @@ export class Game {
       this.world.setExteriorVisible(true);
 
       this.world.setExteriorLightingEnabled(true);
+
+      this.worldAudio.setActive(true);
       /*
        * Return exactly outside where
        * the visitor entered.

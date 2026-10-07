@@ -51,6 +51,11 @@ export class HouseInterior {
     this.model.visible = false;
 
     this.model.traverse((child) => {
+      if (child.name.startsWith("ZONE_")) {
+        child.visible = false;
+        return;
+      }
+
       if (!(child instanceof THREE.Mesh)) {
         return;
       }
@@ -200,6 +205,10 @@ export class HouseInterior {
 
   getSpawn(): THREE.Object3D | undefined {
     return this.model.getObjectByName("SPAWN_HOUSE");
+  }
+
+  getExitZone(): THREE.Object3D | undefined {
+    return this.model.getObjectByName("ZONE_EXIT_DOOR");
   }
 
   getExitDoor(): THREE.Object3D | undefined {

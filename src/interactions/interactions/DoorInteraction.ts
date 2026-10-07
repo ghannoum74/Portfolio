@@ -3,19 +3,18 @@ import type { Interactable } from "../Interactable";
 
 export class DoorInteraction implements Interactable {
   readonly interactionDistance = 2;
-
   readonly position = new THREE.Vector3();
-
   readonly highlightTarget: THREE.Object3D;
 
   constructor(
-    door: THREE.Object3D,
+    interactionTarget: THREE.Object3D,
     private readonly onInteract: () => void,
     private readonly hint = "Enter",
+    highlightTarget: THREE.Object3D = interactionTarget,
   ) {
-    this.highlightTarget = door;
+    this.highlightTarget = highlightTarget;
 
-    door.getWorldPosition(this.position);
+    interactionTarget.getWorldPosition(this.position);
   }
 
   getHint(): string {
