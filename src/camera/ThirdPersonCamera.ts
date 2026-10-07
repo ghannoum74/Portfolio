@@ -11,6 +11,63 @@ export class ThirdPersonCamera {
 
   private interiorMode = false;
 
+  /*
+   * Temporary orbit produced by dragging.
+   *
+   * These always return to zero when
+   * the mouse is released.
+   */
+  private orbitYaw = 0;
+  private orbitPitch = 0;
+
+  private dragging = false;
+  private inputEnabled = false;
+
+  private lastPointerX = 0;
+  private lastPointerY = 0;
+
+  /*
+   * Camera drag tuning.
+   */
+  private readonly dragSensitivity = 0.005;
+
+  /*
+   * Maximum temporary rotation.
+   *
+   * Horizontal:
+   * about 80 degrees left/right.
+   *
+   * Vertical:
+   * about 20 degrees up/down.
+   */
+
+  private readonly maxOrbitPitch = THREE.MathUtils.degToRad(30);
+
+  /*
+   * How quickly camera returns behind
+   * the player after mouse release.
+   */
+  private readonly returnSpeed = 5;
+
+  /*
+   * Exterior zoom.
+   *
+   * 1 = original camera distance.
+   * 1.22 = maximum allowed zoom out.
+   */
+  private exteriorZoom = 1;
+
+  private targetExteriorZoom = 1;
+
+  private readonly minExteriorZoom = 0.8;
+
+  private readonly maxExteriorZoom = 2;
+
+  private readonly zoomStep = 0.08;
+
+  /*
+   * Entrance camera.
+   */
   private readonly entranceOffset = new THREE.Vector3(16, 8, 8);
 
   private readonly entranceControlOffset = new THREE.Vector3(9, 10, 2);
@@ -29,34 +86,45 @@ export class ThirdPersonCamera {
 
   private readonly gameplayLookAt = new THREE.Vector3();
 
+  /*
+   * Reused objects so we're not allocating
+   * Spherical/Vector objects every frame.
+   */
+  private readonly baseSpherical = new THREE.Spherical();
+
+  private readonly cameraSpherical = new THREE.Spherical();
+
+  private readonly cameraOffset = new THREE.Vector3();
+
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly player: THREE.Object3D,
-  ) {}
+    private readonly domElement: HTMLElement,
+  ) {
+    this.domElement.addEventListener("pointerdown", this.onPointerDown);
+
+    this.domElement.addEventListener("pointermove", this.onPointerMove);
+
+    this.domElement.addEventListener("pointerup", this.onPointerUp);
+
+    this.domElement.addEventListener("pointercancel", this.onPointerUp);
+
+    this.domElement.addEventListener("wheel", this.onWheel, {
+      passive: false,
+    });
+
+    window.addEventListener("blur", this.onWindowBlur);
+  }
 
   updateEntrance(progress: number): void {
     const p = THREE.MathUtils.clamp(progress, 0, 1);
 
-    /*
-     * Smooth the camera movement.
-     */
     const movementProgress = THREE.MathUtils.smoothstep(p, 0, 1);
 
-    /*
-     * Final gameplay camera.
-     */
     this.gameplayPosition.copy(this.getIdealPosition());
 
-    /*
-     * Entrance begins on the right side
-     * of the player/world.
-     */
     this.startPosition.copy(this.player.position).add(this.entranceOffset);
 
-    /*
-     * Middle control point creates the
-     * curved sideways sweep.
-     */
     this.controlPosition
       .copy(this.player.position)
       .add(this.entranceControlOffset);
@@ -71,11 +139,6 @@ export class ThirdPersonCamera {
 
     this.camera.position.copy(this.tempPosition);
 
-    /*
-     * Initial camera looks more toward
-     * the world rather than directly
-     * locking onto the player.
-     */
     this.entranceLookAt.set(
       this.player.position.x,
       this.player.position.y + 1,
@@ -84,10 +147,6 @@ export class ThirdPersonCamera {
 
     this.gameplayLookAt.copy(this.getIdealLookAt());
 
-    /*
-     * Start focusing on the player only
-     * during the last ~40% of the reveal.
-     */
     const focusProgress = THREE.MathUtils.smoothstep(p, 0.6, 1);
 
     this.tempLookAt.lerpVectors(
@@ -99,13 +158,56 @@ export class ThirdPersonCamera {
     this.camera.lookAt(this.tempLookAt);
   }
 
-  /**
-   * Normal gameplay camera.
-   */
   update(delta: number): void {
+    /*
+     * Once dragging stops, return the
+     * temporary camera rotation to zero.
+     */
+    if (!this.dragging) {
+      const returnSmoothness = 1 - Math.exp(-this.returnSpeed * delta);
+
+      this.orbitYaw = THREE.MathUtils.lerp(this.orbitYaw, 0, returnSmoothness);
+
+      this.orbitPitch = THREE.MathUtils.lerp(
+        this.orbitPitch,
+        0,
+        returnSmoothness,
+      );
+
+      /*
+       * Avoid tiny floating point values
+       * continuing forever.
+       */
+      if (Math.abs(this.orbitYaw) < 0.0001) {
+        this.orbitYaw = 0;
+      }
+
+      if (Math.abs(this.orbitPitch) < 0.0001) {
+        this.orbitPitch = 0;
+      }
+    }
+
+    /*
+     * Smooth exterior zoom rather than
+     * jumping instantly on wheel input.
+     */
+    const zoomSmoothness = 1 - Math.exp(-7 * delta);
+
+    this.exteriorZoom = THREE.MathUtils.lerp(
+      this.exteriorZoom,
+      this.targetExteriorZoom,
+      zoomSmoothness,
+    );
+
     const idealPosition = this.getIdealPosition();
 
-    const smoothness = 1 - Math.exp(-5 * delta);
+    /*
+     * Higher response while dragging,
+     * softer normal follow otherwise.
+     */
+    const followSpeed = this.dragging ? 14 : 5;
+
+    const smoothness = 1 - Math.exp(-followSpeed * delta);
 
     this.camera.position.lerp(idealPosition, smoothness);
 
@@ -117,11 +219,46 @@ export class ThirdPersonCamera {
       ? this.interiorOffset
       : this.exteriorOffset;
 
-    const cameraOffset = offset.clone();
+    /*
+     * Convert our default camera offset
+     * into spherical coordinates.
+     *
+     * This makes temporary orbiting much
+     * cleaner than manually rotating X/Y.
+     */
+    this.baseSpherical.setFromVector3(offset);
 
-    cameraOffset.applyQuaternion(this.player.quaternion);
+    this.cameraSpherical.copy(this.baseSpherical);
 
-    return this.player.position.clone().add(cameraOffset);
+    /*
+     * Zoom only exists outside.
+     */
+    if (!this.interiorMode) {
+      this.cameraSpherical.radius *= this.exteriorZoom;
+    }
+
+    /*
+     * Temporary mouse orbit.
+     */
+    this.cameraSpherical.theta += this.orbitYaw;
+
+    this.cameraSpherical.phi += this.orbitPitch;
+
+    /*
+     * Prevent the camera from reaching
+     * the vertical poles.
+     */
+    this.cameraSpherical.makeSafe();
+
+    this.cameraOffset.setFromSpherical(this.cameraSpherical);
+
+    /*
+     * Camera remains relative to whatever
+     * direction the player is facing.
+     */
+    this.cameraOffset.applyQuaternion(this.player.quaternion);
+
+    return this.tempPosition.copy(this.player.position).add(this.cameraOffset);
   }
 
   private getIdealLookAt(): THREE.Vector3 {
@@ -129,8 +266,96 @@ export class ThirdPersonCamera {
       ? this.interiorLookAtOffset
       : this.exteriorLookAtOffset;
 
-    return this.player.position.clone().add(offset);
+    return this.tempLookAt.copy(this.player.position).add(offset);
   }
+
+  private onPointerDown = (event: PointerEvent): void => {
+    if (!this.inputEnabled || event.button !== 0) {
+      return;
+    }
+
+    this.dragging = true;
+
+    this.lastPointerX = event.clientX;
+
+    this.lastPointerY = event.clientY;
+
+    this.domElement.setPointerCapture(event.pointerId);
+  };
+
+  private onPointerMove = (event: PointerEvent): void => {
+    if (!this.inputEnabled || !this.dragging) {
+      return;
+    }
+
+    const deltaX = event.clientX - this.lastPointerX;
+
+    const deltaY = event.clientY - this.lastPointerY;
+
+    this.lastPointerX = event.clientX;
+
+    this.lastPointerY = event.clientY;
+
+    /*
+     * Horizontal camera rotation.
+     */
+    this.orbitYaw -= deltaX * this.dragSensitivity;
+
+    /*
+     * Vertical camera rotation.
+     */
+    this.orbitPitch += deltaY * this.dragSensitivity;
+
+    this.orbitPitch = THREE.MathUtils.clamp(
+      this.orbitPitch,
+      -this.maxOrbitPitch,
+      this.maxOrbitPitch,
+    );
+  };
+
+  private onPointerUp = (event: PointerEvent): void => {
+    if (!this.dragging) {
+      return;
+    }
+
+    this.dragging = false;
+
+    /*
+     * Make the return use the shortest
+     * direction back to the default camera.
+     */
+    this.orbitYaw = this.normalizeAngle(this.orbitYaw);
+
+    if (this.domElement.hasPointerCapture(event.pointerId)) {
+      this.domElement.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  private onWheel = (event: WheelEvent): void => {
+    /*
+     * Wheel zoom is intentionally
+     * unavailable inside the house.
+     */
+    if (!this.inputEnabled || this.interiorMode) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const direction = Math.sign(event.deltaY);
+
+    this.targetExteriorZoom += direction * this.zoomStep;
+
+    this.targetExteriorZoom = THREE.MathUtils.clamp(
+      this.targetExteriorZoom,
+      this.minExteriorZoom,
+      this.maxExteriorZoom,
+    );
+  };
+
+  private onWindowBlur = (): void => {
+    this.dragging = false;
+  };
 
   private quadraticBezier(
     start: THREE.Vector3,
@@ -152,11 +377,36 @@ export class ThirdPersonCamera {
 
   setInteriorMode(enabled: boolean): void {
     this.interiorMode = enabled;
+
+    /*
+     * Never carry a temporary camera
+     * rotation through a scene transition.
+     */
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
+    this.dragging = false;
+  }
+
+  setInputEnabled(enabled: boolean): void {
+    this.inputEnabled = enabled;
+
+    if (!enabled) {
+      this.dragging = false;
+    }
   }
 
   snap(): void {
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
+
     this.camera.position.copy(this.getIdealPosition());
 
     this.camera.lookAt(this.getIdealLookAt());
+  }
+
+  private normalizeAngle(angle: number): number {
+    return (
+      THREE.MathUtils.euclideanModulo(angle + Math.PI, Math.PI * 2) - Math.PI
+    );
   }
 }

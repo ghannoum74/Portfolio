@@ -287,6 +287,7 @@ export class Game {
       this.thirdPersonCamera = new ThirdPersonCamera(
         this.playerCamera,
         this.world.player.model,
+        this.renderer.instance.domElement,
       );
 
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
@@ -379,6 +380,8 @@ export class Game {
       !this.transitioning &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
+
+    this.thirdPersonCamera?.setInputEnabled(gameplayActive && !this.debugMode);
 
     if (gameplayActive) {
       this.interactionSystem.update(this.world.player.model.position);
