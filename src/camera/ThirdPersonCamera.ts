@@ -1,36 +1,25 @@
 import * as THREE from "three";
+import { CameraCollision } from "./CameraCollision";
+import { PhysicsWorld } from "../physics/PhysicsWorld";
 
 export class ThirdPersonCamera {
   private readonly exteriorOffset = new THREE.Vector3(0, 5, -7);
-
   private readonly exteriorLookAtOffset = new THREE.Vector3(0, 2, 0);
-
   private readonly interiorOffset = new THREE.Vector3(0, 2.6, -3.6);
-
   private readonly interiorLookAtOffset = new THREE.Vector3(0, 1.25, 0);
-
   private interiorMode = false;
 
-  /*
-   * Temporary orbit produced by dragging.
-   *
-   * These always return to zero when
-   * the mouse is released.
-   */
+  // Temporary orbit produced by dragging. These always return to zero when the mouse is released.
+
   private orbitYaw = 0;
   private orbitPitch = 0;
-
   private dragging = false;
   private inputEnabled = false;
-
   private lastPointerX = 0;
   private lastPointerY = 0;
 
-  /*
-   * Camera drag tuning.
-   */
+  // Camera drag tuning.
   private readonly dragSensitivity = 0.005;
-
   /*
    * Maximum temporary rotation.
    *
@@ -43,64 +32,38 @@ export class ThirdPersonCamera {
 
   private readonly maxOrbitPitch = THREE.MathUtils.degToRad(30);
 
-  /*
-   * How quickly camera returns behind
-   * the player after mouse release.
-   */
+  // How quickly camera returns behind the player after mouse release.
   private readonly returnSpeed = 5;
-
-  /*
-   * Exterior zoom.
-   *
-   * 1 = original camera distance.
-   * 1.22 = maximum allowed zoom out.
-   */
   private exteriorZoom = 1;
-
   private targetExteriorZoom = 1;
-
   private readonly minExteriorZoom = 0.8;
-
   private readonly maxExteriorZoom = 2;
-
   private readonly zoomStep = 0.08;
 
-  /*
-   * Entrance camera.
-   */
+  // Entrance camera.
   private readonly entranceOffset = new THREE.Vector3(16, 8, 8);
-
   private readonly entranceControlOffset = new THREE.Vector3(9, 10, 2);
-
   private readonly tempPosition = new THREE.Vector3();
-
   private readonly tempLookAt = new THREE.Vector3();
-
   private readonly startPosition = new THREE.Vector3();
-
   private readonly controlPosition = new THREE.Vector3();
-
   private readonly gameplayPosition = new THREE.Vector3();
-
   private readonly entranceLookAt = new THREE.Vector3();
-
   private readonly gameplayLookAt = new THREE.Vector3();
 
-  /*
-   * Reused objects so we're not allocating
-   * Spherical/Vector objects every frame.
-   */
+  // Reused objects so we're not allocating Spherical/Vector objects every frame.
   private readonly baseSpherical = new THREE.Spherical();
-
   private readonly cameraSpherical = new THREE.Spherical();
-
   private readonly cameraOffset = new THREE.Vector3();
+  private readonly cameraCollision: CameraCollision;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly player: THREE.Object3D,
     private readonly domElement: HTMLElement,
+    physics: PhysicsWorld,
   ) {
+    this.cameraCollision = new CameraCollision(physics);
     this.domElement.addEventListener("pointerdown", this.onPointerDown);
 
     this.domElement.addEventListener("pointermove", this.onPointerMove);
@@ -199,19 +162,29 @@ export class ThirdPersonCamera {
       zoomSmoothness,
     );
 
+    // Higher response while dragging, softer normal follow otherwise.
+
+    const followSpeed = this.dragging ? 14 : 5;
+    const smoothness = 1 - Math.exp(-followSpeed * delta);
+    const lookAt = this.getIdealLookAt();
     const idealPosition = this.getIdealPosition();
+    const collision = this.cameraCollision.resolve(lookAt, idealPosition);
 
     /*
-     * Higher response while dragging,
-     * softer normal follow otherwise.
+     * If a wall suddenly appears between
+     * player and camera, pull the camera in
+     * immediately.
+     *
+     * Don't slowly lerp through the wall.
      */
-    const followSpeed = this.dragging ? 14 : 5;
+    if (collision.blocked) {
+      this.camera.position.copy(collision.position);
+    } else {
+      // When space becomes available again, smoothly move back to normal distance.
+      this.camera.position.lerp(collision.position, smoothness);
+    }
 
-    const smoothness = 1 - Math.exp(-followSpeed * delta);
-
-    this.camera.position.lerp(idealPosition, smoothness);
-
-    this.camera.lookAt(this.getIdealLookAt());
+    this.camera.lookAt(lookAt);
   }
 
   private getIdealPosition(): THREE.Vector3 {
@@ -227,7 +200,6 @@ export class ThirdPersonCamera {
      * cleaner than manually rotating X/Y.
      */
     this.baseSpherical.setFromVector3(offset);
-
     this.cameraSpherical.copy(this.baseSpherical);
 
     /*
@@ -237,11 +209,9 @@ export class ThirdPersonCamera {
       this.cameraSpherical.radius *= this.exteriorZoom;
     }
 
-    /*
-     * Temporary mouse orbit.
-     */
-    this.cameraSpherical.theta += this.orbitYaw;
+    // Temporary mouse orbit.
 
+    this.cameraSpherical.theta += this.orbitYaw;
     this.cameraSpherical.phi += this.orbitPitch;
 
     /*
@@ -275,11 +245,8 @@ export class ThirdPersonCamera {
     }
 
     this.dragging = true;
-
     this.lastPointerX = event.clientX;
-
     this.lastPointerY = event.clientY;
-
     this.domElement.setPointerCapture(event.pointerId);
   };
 
@@ -289,22 +256,15 @@ export class ThirdPersonCamera {
     }
 
     const deltaX = event.clientX - this.lastPointerX;
-
     const deltaY = event.clientY - this.lastPointerY;
-
     this.lastPointerX = event.clientX;
-
     this.lastPointerY = event.clientY;
 
-    /*
-     * Horizontal camera rotation.
-     */
+    // Horizontal camera rotation.
     this.orbitYaw -= deltaX * this.dragSensitivity;
 
-    /*
-     * Vertical camera rotation.
-     */
-    this.orbitPitch += deltaY * this.dragSensitivity;
+    // Vertical camera rotation.
+    this.orbitPitch -= deltaY * this.dragSensitivity;
 
     this.orbitPitch = THREE.MathUtils.clamp(
       this.orbitPitch,

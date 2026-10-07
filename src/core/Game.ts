@@ -288,6 +288,7 @@ export class Game {
         this.playerCamera,
         this.world.player.model,
         this.renderer.instance.domElement,
+        this.world.physics,
       );
 
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
@@ -755,15 +756,15 @@ export class Game {
 
       house.show();
 
-      /*
-       * Move the REAL Rapier player.
-       */
-      this.world.player.teleport(spawnPosition, spawnRotation.y);
+      // Move the REAL Rapier player.
+      const spawnForward = new THREE.Vector3(0, 0, 1)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), spawnRotation.y + Math.PI)
+        .multiplyScalar(2);
 
-      /*
-       * Switch to a camera that actually
-       * fits inside the room.
-       */
+      spawnPosition.add(spawnForward);
+
+      this.world.player.teleport(spawnPosition, spawnRotation.y + Math.PI);
+
       this.thirdPersonCamera?.setInteriorMode(true);
 
       this.thirdPersonCamera?.snap();
