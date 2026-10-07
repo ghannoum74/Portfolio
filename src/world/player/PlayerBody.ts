@@ -32,9 +32,11 @@ export class PlayerBody {
 
   private horizontalVelocity = new THREE.Vector3();
   private airForward = new THREE.Vector3();
+  private readonly targetAirVelocity = new THREE.Vector3();
 
-  private readonly AIR_ACCELERATION = 4;
+  private readonly AIR_ACCELERATION = 12;
   private readonly MIN_AIR_SPEED = 2.5;
+  private readonly IDLE_JUMP_AIR_SPEED = 3;
 
   private airSpeedLimit = this.MIN_AIR_SPEED;
   private jumping = false;
@@ -131,12 +133,28 @@ export class PlayerBody {
     // Limited forward/backward control during a jump.
     if (this.jumping && !jumpStarted) {
       if (moveDirection !== 0) {
-        this.horizontalVelocity.addScaledVector(
-          this.airForward,
-          moveDirection * this.AIR_ACCELERATION * delta,
+        const targetSpeed = Math.max(
+          this.airSpeedLimit,
+          this.IDLE_JUMP_AIR_SPEED,
         );
 
-        this.horizontalVelocity.clampLength(0, this.airSpeedLimit);
+        this.targetAirVelocity
+          .copy(this.airForward)
+          .multiplyScalar(moveDirection * targetSpeed);
+
+        const maxChange = this.AIR_ACCELERATION * delta;
+
+        this.horizontalVelocity.x = THREE.MathUtils.clamp(
+          this.targetAirVelocity.x,
+          this.horizontalVelocity.x - maxChange,
+          this.horizontalVelocity.x + maxChange,
+        );
+
+        this.horizontalVelocity.z = THREE.MathUtils.clamp(
+          this.targetAirVelocity.z,
+          this.horizontalVelocity.z - maxChange,
+          this.horizontalVelocity.z + maxChange,
+        );
       }
     } else if (!wasGrounded && !this.jumping) {
       // Preserve your existing lock for accidental falls.

@@ -6,7 +6,7 @@ import { StairDetector } from "../StairDetector";
 
 export class PlayerController {
   private walkSpeed = 2;
-  private runSpeed = 10;
+  private runSpeed = 8;
   private stairsSpeed = 2;
   private rotationSpeed = 4;
 
