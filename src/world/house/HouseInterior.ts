@@ -93,7 +93,7 @@ export class HouseInterior {
       bounds.max.y + 2,
       center.z + size.z * 0.15,
     );
-    mainLight.castShadow = true;
+    mainLight.castShadow = false;
     mainLight.shadow.mapSize.set(1024, 1024);
     mainLight.shadow.bias = -0.0005;
 
@@ -187,11 +187,15 @@ export class HouseInterior {
   }
 
   show(): void {
+    this.activateEnvironment();
     this.model.visible = true;
+    this.lightGroup.visible = true;
   }
 
   hide(): void {
     this.model.visible = false;
+    this.lightGroup.visible = false;
+    this.restoreEnvironment();
   }
 
   getSpawn(): THREE.Object3D | undefined {
