@@ -46,6 +46,8 @@ export const ASSETS = {
 
     talking3: "/assets/models/player/animations/talking_3.glb",
   },
+
+  bookAnimated: "/assets/models/environment/book.glb",
 } as const;
 
 export const STARTUP_ASSETS: readonly string[] = [

@@ -67,12 +67,30 @@ export class Renderer {
 
   setInteractionOutline(object: THREE.Object3D | null): void {
     if (!this.outlinePass) {
+      console.error("OutlinePass not initialized");
       return;
     }
 
-    this.outlinePass.selectedObjects = object ? [object] : [];
+    const meshes: THREE.Object3D[] = [];
 
-    this.hasInteractionOutline = object !== null;
+    object?.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        meshes.push(child);
+      }
+    });
+
+    this.outlinePass.selectedObjects = meshes;
+    this.hasInteractionOutline = meshes.length > 0;
+
+    console.log("Outline debug:", {
+      object: object?.name,
+      type: object?.type,
+      meshesFound: meshes.length,
+      selectedObjects: this.outlinePass.selectedObjects.map(
+        (mesh) => mesh.name,
+      ),
+      composerReady: !!this.composer,
+    });
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera): void {

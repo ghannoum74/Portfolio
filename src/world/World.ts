@@ -116,6 +116,10 @@ export class World {
 
     const safeDelta = Math.min(delta, 1 / 30);
 
+    if (!exteriorActive) {
+      this.houseInterior?.update(safeDelta);
+    }
+
     if (exteriorActive) {
       this.dayNightCycle.update(safeDelta);
 

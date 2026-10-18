@@ -4,6 +4,7 @@ import { AssetLoader } from "../../loaders/AssetLoader";
 import { ASSETS } from "../../loaders/AssetManifest";
 import { WorldColliders } from "../../physics/WorldColliders";
 import { PhysicsWorld } from "../../physics/PhysicsWorld";
+import { AnimatedBook3D } from "./AnimatedBook3D";
 
 export class HouseInterior {
   public model = new THREE.Group();
@@ -19,6 +20,7 @@ export class HouseInterior {
   private previousFog: THREE.Fog | THREE.FogExp2 | null = null;
   private environmentStored = false;
   private readonly interiorBackground = new THREE.Color("#d8d0c1");
+  private animatedBook?: AnimatedBook3D;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -46,6 +48,27 @@ export class HouseInterior {
     this.model.name = "HOUSE_INTERIOR";
 
     this.model.position.copy(this.worldOffset);
+
+    // Hide the old, non-animated Projects Book.
+    const oldBook = this.model.getObjectByName("SEC_PROJECTS_ProjectBook");
+
+    if (oldBook) {
+      oldBook.visible = false;
+    }
+
+    // Load the real animated book.
+    const bookAsset = await this.loader.loadGLB(ASSETS.bookAnimated);
+
+    this.animatedBook = new AnimatedBook3D(bookAsset);
+
+    this.model.add(this.animatedBook.model);
+
+    this.animatedBook.model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
 
     // hidden until the entrance is triggered
     this.model.visible = false;
@@ -88,10 +111,10 @@ export class HouseInterior {
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
     const maxHorizontalSize = Math.max(size.x, size.z);
-    const fill = new THREE.HemisphereLight(0xffead6, 0x5a4030, 0.9);
+    const fill = new THREE.HemisphereLight(0xffead6, 0x5a4030, 0.6);
     fill.name = "HOUSE_LIGHT_FILL";
 
-    const mainLight = new THREE.DirectionalLight(0xffd3a0, 1.5);
+    const mainLight = new THREE.DirectionalLight(0xffd3a0, 1.0);
     mainLight.name = "HOUSE_LIGHT_MAIN";
     mainLight.position.set(
       center.x - size.x * 0.2,
@@ -109,7 +132,7 @@ export class HouseInterior {
 
     const warmLight = new THREE.PointLight(
       0xffb86c,
-      30,
+      20,
       maxHorizontalSize * 1.25,
       2,
     );
@@ -217,5 +240,15 @@ export class HouseInterior {
 
   get isLoaded(): boolean {
     return this.loaded;
+  }
+
+  get projectBook(): AnimatedBook3D | undefined {
+    return this.animatedBook;
+  }
+
+  update(delta: number): void {
+    if (this.model.visible) {
+      this.animatedBook?.update(delta);
+    }
   }
 }

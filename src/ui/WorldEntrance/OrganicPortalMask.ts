@@ -5,19 +5,6 @@ interface ShapeKeyframe {
   points: readonly Point[];
 }
 
-/**
- * Reference-guided SVG outlines.
- *
- * Coordinates are normalized relative to
- * the viewport:
- *
- * x: 0 = left, 1 = right
- * y: 0 = top,  1 = bottom
- *
- * Every shape has 18 corresponding points,
- * starting on the upper-left boundary
- * and continuing clockwise.
- */
 const SHAPES: readonly ShapeKeyframe[] = [
   // 0%: Tiny opening.
   {
@@ -174,6 +161,11 @@ const SHAPES: readonly ShapeKeyframe[] = [
   },
 ];
 
+function THREE_EASE(t: number): number {
+  const p = Math.min(1, Math.max(0, t));
+  return p * p * (3 - 2 * p);
+}
+
 export class OrganicPortalMask {
   private readonly path: SVGPathElement;
 
@@ -203,7 +195,7 @@ export class OrganicPortalMask {
     this.setProgress(0);
   }
 
-  setProgress(progress: number): void {
+  setProgress(progress: number, sourceRect?: DOMRect): void {
     const p = this.clamp(progress);
 
     // Find the two surrounding keyframes.
@@ -259,8 +251,11 @@ export class OrganicPortalMask {
     // different viewport aspect ratios.
     const fittedPoints = this.fitViewport(points, p);
 
-    // Update one SVG attribute.
-    this.path.setAttribute("d", this.createPath(fittedPoints));
+    const finalPoints = sourceRect
+      ? this.fitSourceRect(fittedPoints, p, sourceRect)
+      : fittedPoints;
+
+    this.path.setAttribute("d", this.createPath(finalPoints));
   }
 
   /**
@@ -396,5 +391,47 @@ export class OrganicPortalMask {
 
   private clamp(value: number): number {
     return Math.min(1, Math.max(0, value));
+  }
+
+  private fitSourceRect(
+    points: readonly Point[],
+    progress: number,
+    rect: DOMRect,
+  ): Point[] {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Starting shape bounds, in normalized viewport space.
+    const startPoints = this.fitViewport(SHAPES[0].points, 0);
+
+    const minX = Math.min(...startPoints.map((p) => p[0]));
+    const maxX = Math.max(...startPoints.map((p) => p[0]));
+    const minY = Math.min(...startPoints.map((p) => p[1]));
+    const maxY = Math.max(...startPoints.map((p) => p[1]));
+
+    const shapeWidth = maxX - minX;
+    const shapeHeight = maxY - minY;
+
+    const targetLeft = rect.left / width;
+    const targetTop = rect.top / height;
+    const targetWidth = rect.width / width;
+    const targetHeight = rect.height / height;
+
+    // At progress zero, transform the existing organic shape
+    // so its bounds fit the screenshot rectangle.
+    const scaleX = targetWidth / shapeWidth;
+    const scaleY = targetHeight / shapeHeight;
+
+    const blend = THREE_EASE(progress);
+
+    return points.map(([x, y]) => {
+      const mappedX = targetLeft + (x - minX) * scaleX;
+      const mappedY = targetTop + (y - minY) * scaleY;
+
+      return [
+        mappedX * (1 - blend) + x * blend,
+        mappedY * (1 - blend) + y * blend,
+      ];
+    });
   }
 }
