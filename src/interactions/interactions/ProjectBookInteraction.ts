@@ -10,15 +10,17 @@ export class ProjectBookInteraction implements Interactable {
     anchor: THREE.Object3D,
     highlightTarget: THREE.Object3D,
     private readonly onInteract: () => void,
+    private readonly hint: () => string = () => "Read Projects",
   ) {
     this.highlightTarget = highlightTarget;
 
-    // House model has a world offset; use world coordinates.
+    // Use world coordinates because the house is offset.
+    anchor.updateWorldMatrix(true, false);
     anchor.getWorldPosition(this.position);
   }
 
   getHint(): string {
-    return "Read projects";
+    return this.hint();
   }
 
   interact(): void {

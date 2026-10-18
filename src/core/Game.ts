@@ -29,9 +29,6 @@ import { WorldAudio } from "../audio/WorldAudio";
 import { SoundButton } from "../ui/SoundButton/SoundButton";
 import { SceneTransition } from "../ui/SceneTransition/SceneTransition";
 import { HouseInterior } from "../world/house/HouseInterior";
-
-import { ProjectBook } from "../ui/ProjectBook/ProjectBook";
-import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
 import { ProjectBookInteraction } from "../interactions/interactions/ProjectBookInteraction";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
@@ -93,17 +90,11 @@ export class Game {
 
   private insideHouse = false;
 
-  private houseExitRegistered = false;
+  private houseInteractionsRegistered = false;
 
   private readonly houseReturnPosition = new THREE.Vector3();
 
   private houseReturnRotationY = 0;
-
-  private readonly projectBook: ProjectBook;
-  private readonly projectBookCamera: ProjectBookCamera;
-
-  private projectBookActive = false;
-  private projectBookRegistered = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -139,21 +130,6 @@ export class Game {
 
     this.renderer.setupInteractionOutline(this.scene, this.playerCamera);
 
-    this.projectBookCamera = new ProjectBookCamera(this.playerCamera);
-
-    this.projectBook = new ProjectBook({
-      onClose: () => {
-        this.projectBookActive = false;
-        this.projectBookCamera.cancel();
-
-        // Restore the gameplay camera after leaving the book.
-        this.thirdPersonCamera?.snap();
-
-        if (this.phase === "playing" && !this.transitioning) {
-          this.keyboard.setEnabled(true);
-        }
-      },
-    });
     this.controls = new OrbitControls(
       this.debugCamera,
       this.renderer.instance.domElement,
@@ -235,10 +211,6 @@ export class Game {
     this.helpButton.setVisible(false);
 
     this.interactionSystem = new InteractionSystem((interactable) => {
-      console.log("Active interaction:", interactable?.getHint());
-
-      console.log("Highlight target:", interactable?.highlightTarget?.name);
-
       this.renderer.setInteractionOutline(
         interactable?.highlightTarget ?? null,
       );
@@ -401,18 +373,13 @@ export class Game {
 
     if (this.phase === "introduction") {
       this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
-    } else if (this.projectBookActive) {
-      this.projectBookCamera.update(delta);
     } else {
       this.thirdPersonCamera?.update(delta);
     }
 
-    this.projectBook.update(delta);
-
     const gameplayActive =
       this.phase === "playing" &&
       !this.transitioning &&
-      !this.projectBookActive &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -630,19 +597,6 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
-    if (this.projectBookActive) {
-      // ProjectBook manages Escape and arrow keys
-      // after its dialog is open.
-      if (!this.projectBook.isOpen && event.code === "Escape") {
-        this.projectBookCamera.cancel();
-        this.projectBookActive = false;
-
-        this.thirdPersonCamera?.snap();
-        this.keyboard.setEnabled(true);
-      }
-
-      return;
-    }
     /*
      * Dialogue gets first priority.
      */
@@ -775,7 +729,7 @@ export class Game {
         throw new Error("Missing SPAWN_HOUSE in house.glb");
       }
 
-      this.registerHouseExit(house);
+      this.registerHouseInteractions(house);
 
       const spawnPosition = new THREE.Vector3();
 
@@ -865,13 +819,12 @@ export class Game {
     }
   }
 
-  private registerHouseExit(house: HouseInterior): void {
-    if (this.houseExitRegistered) {
+  private registerHouseInteractions(house: HouseInterior): void {
+    if (this.houseInteractionsRegistered) {
       return;
     }
 
     const exitZone = house.getExitZone();
-
     const exitDoor = house.getExitDoor();
 
     if (!exitZone) {
@@ -895,30 +848,50 @@ export class Game {
 
     const anchor = house.model.getObjectByName("INTERACT_BOOK_PROJECTS");
 
-    const animatedBook = house.projectBook;
+    const book = house.projectBook;
 
-    if (anchor && animatedBook) {
-      // Highlight the actual animated book,
-      // not the invisible Blender Empty.
-      const highlight =
-        animatedBook.model.getObjectByName("BOOK_Front_Cover") ??
-        animatedBook.model;
-
+    if (anchor && book) {
       this.interactionSystem.register(
-        new DoorInteraction(
+        new ProjectBookInteraction(
           anchor,
+          book.model,
+
           () => {
-            animatedBook.interact();
+            if (!this.insideHouse || this.transitioning) {
+              return;
+            }
+
+            book.interact();
           },
-          "Read Projects",
-          highlight,
+
+          () => {
+            switch (book.currentState) {
+              case "closed":
+                return "Open Projects Book";
+
+              case "opening":
+                return "Opening book...";
+
+              case "open":
+                return "Turn Page";
+
+              case "turning":
+                return "Turning page...";
+
+              case "turned":
+                return "Page turned";
+
+              default:
+                return "Read Projects";
+            }
+          },
         ),
       );
     } else {
-      console.warn("Projects Book interaction anchor or GLB missing");
+      console.warn("Animated Projects Book or interaction anchor missing");
     }
 
-    this.houseExitRegistered = true;
+    this.houseInteractionsRegistered = true;
   }
 
   private async exitHouse(): Promise<void> {
@@ -973,32 +946,5 @@ export class Game {
         this.keyboard.setEnabled(true);
       }
     }
-  }
-
-  private openProjectBook(house: HouseInterior): void {
-    if (!this.insideHouse || this.transitioning || this.projectBookActive) {
-      return;
-    }
-
-    const book = house.model.getObjectByName("SEC_PROJECTS_ProjectBook");
-
-    const marker = house.model.getObjectByName("CAMERA_PROJECT_BOOK");
-
-    if (!book || !marker) {
-      console.warn("Book or camera marker missing");
-      return;
-    }
-
-    this.projectBookActive = true;
-
-    this.keyboard.setEnabled(false);
-    this.thirdPersonCamera?.setInputEnabled(false);
-
-    this.renderer.setInteractionOutline(null);
-
-    // Uses the updated ProjectBookCamera.focus(book, marker, callback)
-    this.projectBookCamera.focus(book, marker, () => {
-      this.projectBook.open();
-    });
   }
 }
