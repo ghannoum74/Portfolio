@@ -61,6 +61,8 @@ export class HouseInterior {
 
     this.animatedBook = new AnimatedBook3D(bookAsset);
 
+    await this.animatedBook.initializePages();
+
     this.model.add(this.animatedBook.model);
 
     this.animatedBook.model.traverse((child) => {

@@ -30,6 +30,8 @@ import { SoundButton } from "../ui/SoundButton/SoundButton";
 import { SceneTransition } from "../ui/SceneTransition/SceneTransition";
 import { HouseInterior } from "../world/house/HouseInterior";
 import { ProjectBookInteraction } from "../interactions/interactions/ProjectBookInteraction";
+import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
+import type { AnimatedBook3D } from "../world/house/AnimatedBook3D";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -96,6 +98,19 @@ export class Game {
 
   private houseReturnRotationY = 0;
 
+  private readonly projectBookCamera: ProjectBookCamera;
+
+  private projectBookMode:
+    | "idle"
+    | "opening"
+    | "focusing"
+    | "reading"
+    | "returning" = "idle";
+
+  private activeProjectBook: AnimatedBook3D | null = null;
+
+  private projectBookMarker: THREE.Object3D | null = null;
+
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
 
@@ -129,6 +144,8 @@ export class Game {
     this.renderer = new Renderer(canvas);
 
     this.renderer.setupInteractionOutline(this.scene, this.playerCamera);
+
+    this.projectBookCamera = new ProjectBookCamera(this.playerCamera);
 
     this.controls = new OrbitControls(
       this.debugCamera,
@@ -371,8 +388,23 @@ export class Game {
       );
     }
 
+    if (
+      this.projectBookMode === "opening" &&
+      (this.activeProjectBook?.currentState === "open" ||
+        this.activeProjectBook?.currentState === "turned")
+    ) {
+      this.focusOnProjectBook();
+    }
+
+    // Only one controller may write the player camera.
     if (this.phase === "introduction") {
       this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
+    } else if (
+      this.projectBookMode === "focusing" ||
+      this.projectBookMode === "reading" ||
+      this.projectBookMode === "returning"
+    ) {
+      this.projectBookCamera.update(delta);
     } else {
       this.thirdPersonCamera?.update(delta);
     }
@@ -380,6 +412,7 @@ export class Game {
     const gameplayActive =
       this.phase === "playing" &&
       !this.transitioning &&
+      this.projectBookMode === "idle" &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -427,6 +460,7 @@ export class Game {
   private onCanvasClick = (event: MouseEvent): void => {
     if (
       this.phase !== "playing" ||
+      this.projectBookMode !== "idle" ||
       this.transitioning ||
       this.paperPanel.isOpen
     ) {
@@ -600,6 +634,32 @@ export class Game {
     /*
      * Dialogue gets first priority.
      */
+    if (this.projectBookMode !== "idle") {
+      if (event.code === "Escape") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          this.leaveProjectBookReading();
+        }
+
+        return;
+      }
+
+      if (
+        this.projectBookMode === "reading" &&
+        (event.code === "ArrowRight" || event.code === "KeyE")
+      ) {
+        event.preventDefault();
+
+        if (!event.repeat) {
+          this.activeProjectBook?.interact();
+        }
+
+        return;
+      }
+
+      return;
+    }
     if (this.dialogueBox.isOpen) {
       if (event.repeat) {
         return;
@@ -835,17 +895,6 @@ export class Game {
       throw new Error("Missing INTERACT_EXIT_DOOR_01 in house.glb");
     }
 
-    this.interactionSystem.register(
-      new DoorInteraction(
-        exitZone,
-        () => {
-          void this.exitHouse();
-        },
-        "Exit",
-        exitDoor,
-      ),
-    );
-
     const anchor = house.model.getObjectByName("INTERACT_BOOK_PROJECTS");
 
     const book = house.projectBook;
@@ -946,5 +995,141 @@ export class Game {
         this.keyboard.setEnabled(true);
       }
     }
+  }
+
+  private startProjectBookReading(house: HouseInterior): void {
+    if (
+      this.phase !== "playing" ||
+      !this.insideHouse ||
+      this.transitioning ||
+      this.projectBookMode !== "idle"
+    ) {
+      return;
+    }
+
+    const book = house.projectBook;
+
+    const marker = house.model.getObjectByName("CAMERA_PROJECT_BOOK");
+
+    if (!book || !marker) {
+      console.warn("Animated book or CAMERA_PROJECT_BOOK missing");
+      return;
+    }
+
+    // Don't interrupt a running paper animation.
+    if (
+      book.currentState === "opening" ||
+      book.currentState === "turning" ||
+      book.currentState === "preparing"
+    ) {
+      return;
+    }
+
+    this.activeProjectBook = book;
+    this.projectBookMarker = marker;
+    this.projectBookMode = "opening";
+
+    // Always render through the gameplay camera
+    // during this cinematic interaction.
+    if (this.debugMode) {
+      this.debugMode = false;
+      this.updateOverlay();
+    }
+
+    // Freeze player and mouse-camera input.
+    this.keyboard.setEnabled(false);
+    this.thirdPersonCamera?.setInputEnabled(false);
+
+    // Clear the book's proximity outline.
+    this.renderer.setInteractionOutline(null);
+
+    if (book.currentState === "closed") {
+      book.open();
+
+      // If the GLB animation couldn't start,
+      // don't leave the player controls locked.
+      if (book.currentState === "closed") {
+        this.finishProjectBookReading();
+      }
+
+      return;
+    }
+
+    // The player may return to a previously opened book.
+    this.focusOnProjectBook();
+  }
+
+  private focusOnProjectBook(): void {
+    if (
+      !this.activeProjectBook ||
+      !this.projectBookMarker ||
+      this.projectBookMode !== "opening"
+    ) {
+      return;
+    }
+
+    this.projectBookMode = "focusing";
+
+    // Keep the character from blocking the close-up.
+    this.world.player.model.visible = false;
+
+    try {
+      this.projectBookCamera.focus(
+        this.activeProjectBook.model,
+        this.projectBookMarker,
+        () => {
+          if (this.projectBookMode === "focusing") {
+            this.projectBookMode = "reading";
+          }
+        },
+      );
+    } catch (error) {
+      console.error("Could not focus Projects Book:", error);
+      this.finishProjectBookReading();
+    }
+  }
+
+  private leaveProjectBookReading(): void {
+    if (
+      this.projectBookMode === "idle" ||
+      this.projectBookMode === "returning"
+    ) {
+      return;
+    }
+
+    // If the cover is still opening, we haven't
+    // started the cinematic camera movement.
+    if (this.projectBookMode === "opening") {
+      this.finishProjectBookReading();
+      return;
+    }
+
+    this.projectBookMode = "returning";
+
+    this.projectBookCamera.returnToPlayer(() => {
+      this.finishProjectBookReading();
+    });
+  }
+
+  private finishProjectBookReading(): void {
+    this.projectBookCamera.cancel();
+
+    this.projectBookMode = "idle";
+    this.activeProjectBook = null;
+    this.projectBookMarker = null;
+
+    // Reveal the player again.
+    this.world.player.model.visible = true;
+
+    // Resume normal camera-follow behavior.
+    this.thirdPersonCamera?.snap();
+
+    this.keyboard.setEnabled(
+      this.phase === "playing" &&
+        this.insideHouse &&
+        !this.transitioning &&
+        !this.paperPanel.isOpen &&
+        !this.dialogueBox.isOpen,
+    );
   }
 }
