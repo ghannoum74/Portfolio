@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { PortfolioProject } from "../../../data/projects";
+import { PROJECT_SCREENSHOT_SHAPE } from "./ProjectScreenshotShape";
 
 export const PROJECT_SCREENSHOT_FRAME = {
   textureWidth: 1024,
@@ -272,11 +273,22 @@ export class ProjectPageTextures {
       height: frameH,
     } = PROJECT_SCREENSHOT_FRAME;
 
-    ctx.fillStyle = "#b69768";
-    ctx.fillRect(frameX - 12, frameY - 12, frameW + 24, frameH + 24);
+    const opening = new Path2D(PROJECT_SCREENSHOT_SHAPE);
+    const frameTransform = new DOMMatrix()
+      .translate(frameX, frameY)
+      .scale(frameW, frameH);
+    const frame = new Path2D();
+    frame.addPath(opening, frameTransform);
 
     ctx.fillStyle = "#769e9c";
-    ctx.fillRect(frameX, frameY, frameW, frameH);
+    ctx.fill(frame);
+    ctx.strokeStyle = "#b69768";
+    ctx.lineWidth = 12;
+    ctx.stroke(frame);
+
+    ctx.fillStyle = "#6e5039";
+    ctx.font = "italic 30px Georgia";
+    ctx.fillText("Scroll up to enter this creation", MARGIN, 1150);
 
     const texture = this.createTexture(canvas);
 
@@ -294,6 +306,8 @@ export class ProjectPageTextures {
         const sourceX = (image.width - sourceW) / 2;
         const sourceY = (image.height - sourceH) / 2;
 
+        ctx.save();
+        ctx.clip(frame);
         ctx.drawImage(
           image,
           sourceX,
@@ -305,10 +319,7 @@ export class ProjectPageTextures {
           frameW,
           frameH,
         );
-
-        ctx.fillStyle = "#6e5039";
-        ctx.font = "italic 30px Georgia";
-        ctx.fillText("Explore this creation", MARGIN, 1150);
+        ctx.restore();
 
         texture.needsUpdate = true;
         resolve(texture);

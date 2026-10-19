@@ -33,6 +33,7 @@ import { ProjectBookInteraction } from "../interactions/interactions/ProjectBook
 import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
 import type { AnimatedBook3D } from "../world/house/AnimatedBook3D";
 import { ProjectScreenshotPortal } from "../ui/ProjectScreenshotPortal/ProjectScreenshotPortal";
+import { screenshotWheelDelta } from "../world/house/book/ProjectScreenshotShape";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -842,11 +843,6 @@ export class Game {
        */
       await this.sceneTransition.fadeIn();
 
-      /*
-       * First entry downloads the GLB.
-       * Future entries immediately return
-       * the already loaded house.
-       */
       house = await this.world.loadHouseInterior();
 
       const spawn = house.getSpawn();
@@ -964,6 +960,8 @@ export class Game {
     const anchor = house.model.getObjectByName("INTERACT_BOOK_PROJECTS");
 
     const book = house.projectBook;
+
+    console.log(anchor, book);
 
     if (anchor && book) {
       this.interactionSystem.register(
@@ -1256,7 +1254,7 @@ export class Game {
   private onBookPortalWheel = (event: WheelEvent): void => {
     if (
       this.projectBookMode !== "reading" ||
-      event.deltaY <= 0 ||
+      event.deltaY >= 0 ||
       this.projectScreenshotPortal.isActive
     ) {
       return;
@@ -1265,7 +1263,7 @@ export class Game {
     const started = this.tryStartBookPortal(
       event.clientX,
       event.clientY,
-      event.deltaY * 0.0007,
+      screenshotWheelDelta(event),
     );
 
     if (started) {

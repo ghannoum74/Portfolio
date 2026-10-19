@@ -10,6 +10,7 @@ export class HouseInterior {
   public model = new THREE.Group();
   private readonly loader: AssetLoader;
   private loaded = false;
+  private loadPromise?: Promise<void>;
 
   // Keep the house physically separated from the exterior Rapier world.
   private readonly worldOffset = new THREE.Vector3(0, -30, 0);
@@ -36,12 +37,26 @@ export class HouseInterior {
     this.scene.add(this.lightGroup);
   }
 
-  async load(): Promise<void> {
+  load(): Promise<void> {
     if (this.loaded) {
-      return;
+      return Promise.resolve();
     }
 
-    const house = await this.loader.loadGLB(ASSETS.house);
+    // Preloading and entering share the same in-flight work. A failed preload
+    // can be retried through the normal entrance flow.
+    this.loadPromise ??= this.loadAssets().catch((error) => {
+      this.loadPromise = undefined;
+      throw error;
+    });
+
+    return this.loadPromise;
+  }
+
+  private async loadAssets(): Promise<void> {
+    const [house, bookAsset] = await Promise.all([
+      this.loader.loadGLB(ASSETS.house),
+      this.loader.loadGLB(ASSETS.bookAnimated),
+    ]);
 
     this.model = house.scene;
 
@@ -57,8 +72,6 @@ export class HouseInterior {
     }
 
     // Load the real animated book.
-    const bookAsset = await this.loader.loadGLB(ASSETS.bookAnimated);
-
     this.animatedBook = new AnimatedBook3D(bookAsset);
 
     await this.animatedBook.initializePages();
@@ -92,8 +105,6 @@ export class HouseInterior {
       child.castShadow = true;
       child.receiveShadow = true;
     });
-
-    this.scene.add(this.model);
 
     this.model.updateMatrixWorld(true);
 
@@ -217,6 +228,9 @@ export class HouseInterior {
   }
 
   show(): void {
+    // Attach only on entry so startup shader compilation also stays independent
+    // of the preloaded interior's materials.
+    this.scene.add(this.model);
     this.activateEnvironment();
     this.model.visible = true;
     this.lightGroup.visible = true;

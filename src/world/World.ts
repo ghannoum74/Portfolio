@@ -54,6 +54,14 @@ export class World {
   async init(): Promise<void> {
     await this.physics.init();
 
+    // Start optional interior assets alongside the exterior without delaying
+    void this.loadHouseInterior().catch((error) => {
+      console.warn(
+        "House preload failed; entering the house will retry:",
+        error,
+      );
+    });
+
     // Rapier exists now, so debug renderer can safely use it.
     this.physicsDebugRenderer = new PhysicsDebugRenderer(
       this.scene,
@@ -201,7 +209,7 @@ export class World {
     if (!this.houseInterior) {
       this.houseInterior = new HouseInterior(
         this.scene,
-        this.loadingManager,
+        new THREE.LoadingManager(),
         this.physics,
       );
     }

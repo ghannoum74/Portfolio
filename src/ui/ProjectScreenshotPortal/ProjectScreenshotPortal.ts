@@ -1,8 +1,11 @@
 import * as THREE from "three";
 
 import type { PortfolioProject } from "../../data/projects";
-import { OrganicPortalMask } from "../WorldEntrance/OrganicPortalMask";
 import { PROJECT_SCREENSHOT_FRAME } from "../../world/house/book/ProjectPageTexture";
+import {
+  PROJECT_SCREENSHOT_SHAPE,
+  screenshotWheelDelta,
+} from "../../world/house/book/ProjectScreenshotShape";
 
 import "./ProjectScreenshotPortal.css";
 
@@ -23,7 +26,9 @@ interface ScreenshotQuad {
 export class ProjectScreenshotPortal {
   private readonly element: HTMLDivElement;
   private readonly image: HTMLImageElement;
-  private readonly mask: OrganicPortalMask;
+  private readonly portalWindow: HTMLDivElement;
+  private readonly hitContext = document.createElement("canvas").getContext("2d")!;
+  private readonly outline = new Path2D(PROJECT_SCREENSHOT_SHAPE);
 
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -34,7 +39,8 @@ export class ProjectScreenshotPortal {
   private readonly endPosition = new THREE.Vector3();
   private readonly endQuaternion = new THREE.Quaternion();
 
-  private sourceRect: DOMRect | null = null;
+  private sourceQuad: ScreenshotQuad | null = null;
+  private startNear = 0;
   private currentProject: PortfolioProject | null = null;
 
   private active = false;
@@ -42,8 +48,6 @@ export class ProjectScreenshotPortal {
 
   private progress = 0;
   private target = 0;
-
-  private readonly scrollSensitivity = 0.0007;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -78,7 +82,7 @@ export class ProjectScreenshotPortal {
       </div>
 
       <div class="book-project-portal__hint">
-        Scroll to enter · Scroll up to return · Esc to cancel
+        Scroll up to enter · Scroll down to return · Esc to cancel
       </div>
 
       <div class="book-project-portal__progress">
@@ -95,13 +99,17 @@ export class ProjectScreenshotPortal {
     const image = this.element.querySelector<HTMLImageElement>(
       ".book-project-portal__image",
     );
+    const portalWindow = this.element.querySelector<HTMLDivElement>(
+      ".book-project-portal__window",
+    );
 
-    if (!path || !image) {
+    if (!path || !image || !portalWindow) {
       throw new Error("Project portal DOM elements missing");
     }
 
     this.image = image;
-    this.mask = new OrganicPortalMask(path);
+    this.portalWindow = portalWindow;
+    path.setAttribute("d", PROJECT_SCREENSHOT_SHAPE);
 
     // This listener captures wheel events even after the
     // fullscreen portal visually covers the 3D canvas.
@@ -110,8 +118,7 @@ export class ProjectScreenshotPortal {
       capture: true,
     });
 
-    // Cancel instead of stretching a previously measured
-    // screenshot rectangle across a new viewport size.
+    // Return to the reading pose when the viewport changes.
     window.addEventListener("resize", this.onResize);
   }
 
@@ -193,7 +200,12 @@ export class ProjectScreenshotPortal {
       hit.uv.x >= bounds.minU &&
       hit.uv.x <= bounds.maxU &&
       hit.uv.y >= bounds.minV &&
-      hit.uv.y <= bounds.maxV
+      hit.uv.y <= bounds.maxV &&
+      this.hitContext.isPointInPath(
+        this.outline,
+        (hit.uv.x - bounds.minU) / (bounds.maxU - bounds.minU),
+        (hit.uv.y - bounds.minV) / (bounds.maxV - bounds.minV),
+      )
     );
   }
 
@@ -255,7 +267,7 @@ export class ProjectScreenshotPortal {
     };
   }
 
-  private projectRect(quad: ScreenshotQuad): DOMRect {
+  private projectCorners(quad: ScreenshotQuad): THREE.Vector2[] {
     const canvasRect = this.canvas.getBoundingClientRect();
 
     const corners = [
@@ -268,20 +280,12 @@ export class ProjectScreenshotPortal {
     const points = corners.map((corner) => {
       const ndc = corner.clone().project(this.camera);
 
-      return {
-        x: canvasRect.left + (ndc.x * 0.5 + 0.5) * canvasRect.width,
-
-        y: canvasRect.top + (-ndc.y * 0.5 + 0.5) * canvasRect.height,
-      };
+      return new THREE.Vector2(
+        canvasRect.left + (ndc.x * 0.5 + 0.5) * canvasRect.width,
+        canvasRect.top + (-ndc.y * 0.5 + 0.5) * canvasRect.height,
+      );
     });
-
-    const left = Math.min(...points.map((p) => p.x));
-    const right = Math.max(...points.map((p) => p.x));
-
-    const top = Math.min(...points.map((p) => p.y));
-    const bottom = Math.max(...points.map((p) => p.y));
-
-    return new DOMRect(left, top, right - left, bottom - top);
+    return points;
   }
 
   private prepareCameraTarget(quad: ScreenshotQuad): void {
@@ -305,22 +309,15 @@ export class ProjectScreenshotPortal {
       normal.negate();
     }
 
-    const distance = Math.max(
-      right.length() * 0.55,
-      down.length() * 0.55,
-      this.camera.near + 0.12,
-    );
+    // Finish inside the opening: the page and its outline leave the viewport
+    // through perspective as the camera approaches the actual image plane.
+    const distance = Math.min(right.length(), down.length()) * 0.025;
+    this.camera.near = Math.min(this.startNear, distance * 0.1);
+    this.camera.updateProjectionMatrix();
 
     this.endPosition.copy(center).addScaledVector(normal, distance);
 
-    // Preserve the reading camera's screen-up direction.
-    const up = new THREE.Vector3(0, 1, 0)
-      .applyQuaternion(this.startQuaternion)
-      .normalize();
-
-    if (Math.abs(up.dot(normal)) > 0.98) {
-      up.set(0, 0, -1);
-    }
+    const up = down.clone().normalize().negate();
 
     const matrix = new THREE.Matrix4().lookAt(this.endPosition, center, up);
 
@@ -343,13 +340,17 @@ export class ProjectScreenshotPortal {
       return false;
     }
 
-    const rect = this.projectRect(quad);
+    const corners = this.projectCorners(quad);
+    const width =
+      Math.max(...corners.map(p => p.x)) - Math.min(...corners.map(p => p.x));
+    const height =
+      Math.max(...corners.map(p => p.y)) - Math.min(...corners.map(p => p.y));
 
     if (
-      rect.width < 3 ||
-      rect.height < 3 ||
-      !Number.isFinite(rect.width) ||
-      !Number.isFinite(rect.height)
+      width < 3 ||
+      height < 3 ||
+      !Number.isFinite(width) ||
+      !Number.isFinite(height)
     ) {
       console.warn("Screenshot not visible in the camera");
       return false;
@@ -357,10 +358,11 @@ export class ProjectScreenshotPortal {
 
     this.startPosition.copy(this.camera.position);
     this.startQuaternion.copy(this.camera.quaternion);
+    this.startNear = this.camera.near;
 
     this.prepareCameraTarget(quad);
 
-    this.sourceRect = rect;
+    this.sourceQuad = quad;
     this.currentProject = project;
 
     this.image.src = project.screenshot;
@@ -386,7 +388,7 @@ export class ProjectScreenshotPortal {
     event.stopPropagation();
 
     this.target = THREE.MathUtils.clamp(
-      this.target + event.deltaY * this.scrollSensitivity,
+      this.target + screenshotWheelDelta(event),
       0,
       1,
     );
@@ -417,7 +419,7 @@ export class ProjectScreenshotPortal {
   }
 
   private render(): void {
-    if (!this.sourceRect) return;
+    if (!this.sourceQuad) return;
 
     const p = THREE.MathUtils.clamp(this.progress, 0, 1);
 
@@ -436,32 +438,46 @@ export class ProjectScreenshotPortal {
       eased,
     );
 
-    // Simultaneously expand the image overlay.
-    const rect = this.sourceRect;
-
-    const left = THREE.MathUtils.lerp(rect.left, 0, eased);
-
-    const top = THREE.MathUtils.lerp(rect.top, 0, eased);
-
-    const width = THREE.MathUtils.lerp(rect.width, window.innerWidth, eased);
-
-    const height = THREE.MathUtils.lerp(rect.height, window.innerHeight, eased);
-
-    Object.assign(this.image.style, {
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-      height: `${height}px`,
-    });
-
-    // Use the SAME SVG morph as the world entrance.
-    this.mask.setProgress(p, rect);
+    this.camera.updateMatrixWorld(true);
+    this.alignImageToPage(this.projectCorners(this.sourceQuad));
 
     this.element.style.setProperty("--book-portal-progress", String(p));
 
     // Initially transparent so the rendered screenshot
     // doesn't abruptly replace the physical page.
-    this.element.style.opacity = String(Math.min(1, p * 35));
+    this.element.style.opacity = String(Math.min(1, p * 12));
+  }
+
+  private alignImageToPage(corners: THREE.Vector2[]): void {
+    const [a, b, c, d] = corners;
+    // Project the image rectangle onto the real page quad, including perspective.
+    // Both the SVG clip and image inherit this one transform.
+    const dx1 = b.x - d.x;
+    const dx2 = c.x - d.x;
+    const dy1 = b.y - d.y;
+    const dy2 = c.y - d.y;
+    const sx = a.x - b.x - c.x + d.x;
+    const sy = a.y - b.y - c.y + d.y;
+    const determinant = dx1 * dy2 - dx2 * dy1;
+    if (Math.abs(determinant) < 0.000001) {
+      this.portalWindow.style.visibility = "hidden";
+      return;
+    }
+    this.portalWindow.style.visibility = "";
+    const g = (sx * dy2 - dx2 * sy) / determinant;
+    const h = (dx1 * sy - sx * dy1) / determinant;
+    const { width, height } = PROJECT_SCREENSHOT_FRAME;
+    const matrix = [
+      (b.x - a.x + g * b.x) / width,
+      (b.y - a.y + g * b.y) / width, 0, g / width,
+      (c.x - a.x + h * c.x) / height,
+      (c.y - a.y + h * c.y) / height, 0, h / height,
+      0, 0, 1, 0,
+      a.x, a.y, 0, 1,
+    ];
+    this.portalWindow.style.width = `${width}px`;
+    this.portalWindow.style.height = `${height}px`;
+    this.portalWindow.style.transform = `matrix3d(${matrix.join(",")})`;
   }
 
   private finish(): void {
@@ -502,6 +518,9 @@ export class ProjectScreenshotPortal {
 
     this.camera.position.copy(this.startPosition);
     this.camera.quaternion.copy(this.startQuaternion);
+    this.camera.near = this.startNear;
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld(true);
 
     this.active = false;
     this.navigating = false;
@@ -509,13 +528,13 @@ export class ProjectScreenshotPortal {
     this.progress = 0;
     this.target = 0;
 
-    this.sourceRect = null;
+    this.sourceQuad = null;
     this.currentProject = null;
 
     this.element.classList.remove("is-active");
     this.element.style.opacity = "0";
 
-    this.image.removeAttribute("style");
+    this.portalWindow.removeAttribute("style");
   }
 
   private onResize = (): void => {
