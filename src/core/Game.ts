@@ -32,8 +32,7 @@ import { HouseInterior } from "../world/house/HouseInterior";
 import { ProjectBookInteraction } from "../interactions/interactions/ProjectBookInteraction";
 import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
 import type { AnimatedBook3D } from "../world/house/AnimatedBook3D";
-import { ProjectScreenshotPortal } from "../ui/ProjectScreenshotPortal/ProjectScreenshotPortal";
-import { screenshotWheelDelta } from "../world/house/book/ProjectScreenshotShape";
+import { ProjectWebsitePreview } from "../ui/ProjectWebsitePreview/ProjectWebsitePreview";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -113,7 +112,7 @@ export class Game {
 
   private projectBookMarker: THREE.Object3D | null = null;
 
-  private readonly projectScreenshotPortal: ProjectScreenshotPortal;
+  private readonly projectWebsitePreview: ProjectWebsitePreview;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -151,7 +150,7 @@ export class Game {
 
     this.projectBookCamera = new ProjectBookCamera(this.playerCamera);
 
-    this.projectScreenshotPortal = new ProjectScreenshotPortal(
+    this.projectWebsitePreview = new ProjectWebsitePreview(
       this.playerCamera,
       this.renderer.instance.domElement,
     );
@@ -290,12 +289,6 @@ export class Game {
       this.onCanvasClick,
     );
 
-    this.renderer.instance.domElement.addEventListener(
-      "wheel",
-      this.onBookPortalWheel,
-      { passive: false },
-    );
-
     window.addEventListener("resize", this.onResize);
 
     this.renderer.instance.setAnimationLoop(this.update);
@@ -422,13 +415,14 @@ export class Game {
       this.thirdPersonCamera?.update(delta);
     }
 
-    this.projectScreenshotPortal.update(delta);
+    this.projectWebsitePreview.update(
+      this.projectBookMode === "reading" ? this.activeProjectBook : null,
+    );
 
     const gameplayActive =
       this.phase === "playing" &&
       !this.transitioning &&
       this.projectBookMode === "idle" &&
-      !this.projectScreenshotPortal.isActive &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -475,7 +469,9 @@ export class Game {
 
   private onCanvasClick = (event: MouseEvent): void => {
     if (this.projectBookMode === "reading") {
-      this.tryStartBookPortal(event.clientX, event.clientY, 0.05);
+      this.projectWebsitePreview.openAt(
+        this.activeProjectBook, event.clientX, event.clientY,
+      );
 
       return;
     }
@@ -653,30 +649,13 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
-    if (this.projectScreenshotPortal.isActive) {
-      if (event.code === "Escape") {
+    if (this.projectBookMode !== "idle") {
+      if (this.projectBookMode === "reading" && event.code === "KeyO") {
         event.preventDefault();
-
-        if (!event.repeat) {
-          this.projectScreenshotPortal.cancel();
-        }
-
+        if (!event.repeat) this.projectWebsitePreview.openCurrent(this.activeProjectBook);
         return;
       }
 
-      if (
-        event.code === "KeyE" ||
-        event.code === "ArrowRight" ||
-        event.code === "ArrowLeft" ||
-        event.code === "Space"
-      ) {
-        event.preventDefault();
-      }
-
-      return;
-    }
-
-    if (this.projectBookMode !== "idle") {
       if (event.code === "Escape") {
         event.preventDefault();
 
@@ -1150,7 +1129,7 @@ export class Game {
   }
 
   private leaveProjectBookReading(): void {
-    this.projectScreenshotPortal.cancel();
+    this.projectWebsitePreview.hide();
 
     if (
       this.projectBookMode === "idle" ||
@@ -1194,80 +1173,4 @@ export class Game {
         !this.dialogueBox.isOpen,
     );
   }
-
-  private getProjectScreenshotMesh(): THREE.Mesh | null {
-    const object = this.activeProjectBook?.model.getObjectByName(
-      "BOOK_SCREENSHOT_PAGE",
-    );
-
-    if (object instanceof THREE.Mesh) {
-      return object;
-    }
-
-    let mesh: THREE.Mesh | null = null;
-
-    object?.traverse((child) => {
-      if (!mesh && child instanceof THREE.Mesh) {
-        mesh = child;
-      }
-    });
-
-    return mesh;
-  }
-
-  private tryStartBookPortal(
-    clientX: number,
-    clientY: number,
-    initialScroll: number,
-  ): boolean {
-    if (
-      this.projectBookMode !== "reading" ||
-      !this.activeProjectBook ||
-      this.activeProjectBook.currentState !== "open" ||
-      this.projectScreenshotPortal.isActive
-    ) {
-      return false;
-    }
-
-    const screenshotMesh = this.getProjectScreenshotMesh();
-
-    if (!screenshotMesh) {
-      console.warn("Missing BOOK_SCREENSHOT_PAGE mesh");
-      return false;
-    }
-
-    const hit = this.projectScreenshotPortal.isPointerOverScreenshot(
-      screenshotMesh,
-      clientX,
-      clientY,
-    );
-
-    if (!hit) return false;
-
-    return this.projectScreenshotPortal.start(
-      this.activeProjectBook.currentProject,
-      screenshotMesh,
-      initialScroll,
-    );
-  }
-
-  private onBookPortalWheel = (event: WheelEvent): void => {
-    if (
-      this.projectBookMode !== "reading" ||
-      event.deltaY >= 0 ||
-      this.projectScreenshotPortal.isActive
-    ) {
-      return;
-    }
-
-    const started = this.tryStartBookPortal(
-      event.clientX,
-      event.clientY,
-      screenshotWheelDelta(event),
-    );
-
-    if (started) {
-      event.preventDefault();
-    }
-  };
 }

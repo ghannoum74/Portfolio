@@ -147,6 +147,8 @@ export class AnimatedBook3D {
     // This also avoids z-fighting with the static page.
     this.turningPage.visible = false;
 
+    await this.textures.ready();
+
     const first = PROJECTS[0];
 
     const detailTexture = this.textures.details(first);
@@ -289,7 +291,7 @@ export class AnimatedBook3D {
         this.textures.screenshot(nextProject),
       ]);
 
-      const nextDetails = this.textures.details(nextProject);
+      const nextDetails = this.textures.details(nextProject, false);
 
       // The turning page carries the old screenshot
       // on its front, next details on its back.

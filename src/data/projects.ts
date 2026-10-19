@@ -21,7 +21,7 @@ export const PROJECTS: PortfolioProject[] = [
     highlights: ["Key feature one", "Key feature two", "Something you learned"],
     technologies: ["TypeScript", "Three.js"],
     screenshot: "/assets/projects/project-one.png",
-    projectUrl: "/projects/project-one",
+    projectUrl: "https://galaxymilkyway.netlify.app",
     // githubUrl: 'https://github.com/...',
     // demoUrl: 'https://...',
   },
@@ -34,7 +34,7 @@ export const PROJECTS: PortfolioProject[] = [
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
     screenshot: "/assets/projects/project-two.png",
-    projectUrl: "/projects/project-two",
+    projectUrl: "https://sudoku-mern.netlify.app",
   },
   {
     id: "project-three",
@@ -45,7 +45,7 @@ export const PROJECTS: PortfolioProject[] = [
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
     screenshot: "/assets/projects/project-two.png",
-    projectUrl: "/projects/project-two",
+    projectUrl: "https://universityprojectofficial.netlify.app",
   },
   {
     id: "project-four",
@@ -56,6 +56,6 @@ export const PROJECTS: PortfolioProject[] = [
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
     screenshot: "/assets/projects/project-two.png",
-    projectUrl: "/projects/project-two",
+    projectUrl: "https://universityprojectofficial.netlify.app",
   },
 ];

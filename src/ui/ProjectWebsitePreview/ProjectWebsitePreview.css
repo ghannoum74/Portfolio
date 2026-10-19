@@ -1,0 +1,50 @@
+.book-website-tooltip {
+  position: fixed;
+  z-index: 90;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 242px;
+  max-width: 270px;
+  padding: 12px 14px;
+  border: 1px solid #b69c74;
+  border-radius: 14px;
+  background: #f3e7c2;
+  box-shadow: 0 12px 35px #291c143b;
+  color: #5c4534;
+  font-family: var(--font-root, "Coiny", system-ui);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms ease, visibility 150ms ease;
+}
+.book-website-tooltip.is-visible { opacity: 1; visibility: visible; }
+.book-website-tooltip__icon {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
+  border-radius: 10px;
+  background: #426d68;
+  color: #fff8e5;
+  font-size: 22px;
+}
+.book-website-tooltip__copy { display: flex; flex-direction: column; min-width: 0; }
+.book-website-tooltip__title { font-size: 14px; line-height: 1.15; }
+.book-website-tooltip__host {
+  font: 11px system-ui, sans-serif;
+  color: #846b56;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-website-tooltip__action {
+  margin-left: auto;
+  flex: 0 0 52px;
+  font: 11px system-ui, sans-serif;
+  color: #426d68;
+  text-align: right;
+}
