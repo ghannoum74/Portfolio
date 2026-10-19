@@ -33,6 +33,7 @@ import { ProjectBookInteraction } from "../interactions/interactions/ProjectBook
 import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
 import type { AnimatedBook3D } from "../world/house/AnimatedBook3D";
 import { ProjectWebsitePreview } from "../ui/ProjectWebsitePreview/ProjectWebsitePreview";
+import { BookPageControls } from "../ui/BookPageControls/BookPageControls";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -113,6 +114,7 @@ export class Game {
   private projectBookMarker: THREE.Object3D | null = null;
 
   private readonly projectWebsitePreview: ProjectWebsitePreview;
+  private readonly bookPageControls: BookPageControls;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -153,6 +155,20 @@ export class Game {
     this.projectWebsitePreview = new ProjectWebsitePreview(
       this.playerCamera,
       this.renderer.instance.domElement,
+    );
+
+    this.bookPageControls = new BookPageControls(
+      this.playerCamera,
+      () => {
+        if (this.projectBookMode === "reading") {
+          void this.activeProjectBook?.turnPage(-1);
+        }
+      },
+      () => {
+        if (this.projectBookMode === "reading") {
+          void this.activeProjectBook?.turnPage(1);
+        }
+      },
     );
 
     this.controls = new OrbitControls(
@@ -418,6 +434,9 @@ export class Game {
     this.projectWebsitePreview.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
     );
+    this.bookPageControls.update(
+      this.projectBookMode === "reading" ? this.activeProjectBook : null,
+    );
 
     const gameplayActive =
       this.phase === "playing" &&
@@ -668,13 +687,13 @@ export class Game {
 
       if (
         this.projectBookMode === "reading" &&
-        (event.code === "ArrowRight" || event.code === "KeyE")
+        (event.code === "ArrowRight" || event.code === "ArrowLeft" || event.code === "KeyE")
       ) {
         event.preventDefault();
 
         if (!event.repeat) {
-          // Play the real Blender paper-curl animation.
-          this.activeProjectBook?.interact();
+          // Reverse or forward the same Blender morph-target animation.
+          void this.activeProjectBook?.turnPage(event.code === "ArrowLeft" ? -1 : 1);
         }
 
         return;
@@ -1130,6 +1149,7 @@ export class Game {
 
   private leaveProjectBookReading(): void {
     this.projectWebsitePreview.hide();
+    this.bookPageControls.hide();
 
     if (
       this.projectBookMode === "idle" ||
@@ -1153,6 +1173,8 @@ export class Game {
   }
 
   private finishProjectBookReading(): void {
+    this.projectWebsitePreview.hide();
+    this.bookPageControls.hide();
     this.projectBookCamera.cancel();
 
     this.projectBookMode = "idle";

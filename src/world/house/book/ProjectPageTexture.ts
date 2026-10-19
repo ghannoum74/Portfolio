@@ -170,13 +170,14 @@ export class ProjectPageTextures {
     this.textLines(ctx, project.technologies.join("  ·  "), 110, footerY + 88, 790, 37, 2);
 
     const texture = this.texture(canvas);
-    if (forLeftPage) {
-      // The left mesh is the inner face of the 180° opening cover.
-      // Only this material needs the half-turn UV correction.
-      texture.center.set(0.5, 0.5);
-      texture.rotation = Math.PI;
-      texture.needsUpdate = true;
-    }
+    // Both the static left sheet and the back of the turning sheet end
+    // up on the left after a 180° hinge movement. In both cases U is
+    // mirrored, not rotated by 180°: flip U only, preserve V.
+    texture.rotation = 0;
+    texture.center.set(0, 0);
+    texture.repeat.set(-1, 1);
+    texture.offset.set(1, 0);
+    texture.needsUpdate = true;
     this.detailsCache.set(key, texture);
     return texture;
   }

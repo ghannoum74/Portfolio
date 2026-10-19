@@ -14,6 +14,8 @@ export class ProjectWebsitePreview {
   private readonly tooltip: HTMLDivElement;
   private readonly title: HTMLSpanElement;
   private readonly host: HTMLSpanElement;
+  private readonly outlineSvg: SVGSVGElement;
+  private readonly outlinePolygon: SVGPolygonElement;
   private pointerX = 0;
   private pointerY = 0;
   private pointerInside = false;
@@ -40,6 +42,12 @@ export class ProjectWebsitePreview {
     this.title = title;
     this.host = host;
     document.body.appendChild(this.tooltip);
+    const ns = "http://www.w3.org/2000/svg";
+    this.outlineSvg = document.createElementNS(ns, "svg");
+    this.outlineSvg.classList.add("book-website-outline");
+    this.outlinePolygon = document.createElementNS(ns, "polygon");
+    this.outlineSvg.appendChild(this.outlinePolygon);
+    document.body.appendChild(this.outlineSvg);
     this.canvas.addEventListener("pointermove", this.onMove);
     this.canvas.addEventListener("pointerleave", this.onLeave);
   }
@@ -134,6 +142,7 @@ export class ProjectWebsitePreview {
     this.title.textContent = project.title;
     this.host.textContent = url.host;
     this.tooltip.classList.add("is-visible");
+    this.updateOutline(mesh);
     const x = Math.min(this.pointerX + 19, window.innerWidth - 280);
     const y = Math.min(this.pointerY + 19, window.innerHeight - 100);
     this.tooltip.style.transform = `translate(${Math.max(12, x)}px, ${Math.max(12, y)}px)`;
@@ -149,13 +158,8 @@ export class ProjectWebsitePreview {
       return false;
     }
 
-    // A real new tab navigates through our short branded entrance page.
-    // No delayed window.open(), so the browser sees a genuine user gesture.
-    const transition = new URL("project-enter.html", document.baseURI);
-    transition.searchParams.set("to", url.href);
-    transition.searchParams.set("title", project.title);
-    transition.searchParams.set("image", project.screenshot);
-    window.open(transition.href, "_blank", "noopener,noreferrer");
+    // Direct website opening; no intermediate entrance animation.
+    window.open(url.href, "_blank", "noopener,noreferrer");
     this.hide();
     return true;
   }
@@ -167,7 +171,55 @@ export class ProjectWebsitePreview {
     return this.openCurrent(book);
   }
 
+  private updateOutline(mesh: THREE.Mesh): void {
+    const uv = mesh.geometry.getAttribute("uv");
+    const positions = mesh.geometry.getAttribute("position");
+    if (!uv || !positions) return;
+
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (let i = 0; i < uv.count; i++) {
+      minU = Math.min(minU, uv.getX(i)); maxU = Math.max(maxU, uv.getX(i));
+      minV = Math.min(minV, uv.getY(i)); maxV = Math.max(maxV, uv.getY(i));
+    }
+    const getCorner = (u: number, v: number): THREE.Vector3 => {
+      let bestIndex = 0, bestDistance = Infinity;
+      for (let i = 0; i < uv.count; i++) {
+        const distance = (uv.getX(i) - u) ** 2 + (uv.getY(i) - v) ** 2;
+        if (distance < bestDistance) { bestDistance = distance; bestIndex = i; }
+      }
+      return new THREE.Vector3().fromBufferAttribute(positions, bestIndex);
+    };
+    const p00 = getCorner(minU, minV);
+    const p10 = getCorner(maxU, minV);
+    const p01 = getCorner(minU, maxV);
+    const p11 = getCorner(maxU, maxV);
+    const frame = PROJECT_SCREENSHOT_FRAME;
+    const uvCorners: Array<[number, number]> = [
+      [frame.x / frame.textureWidth, frame.y / frame.textureHeight],
+      [(frame.x + frame.width) / frame.textureWidth, frame.y / frame.textureHeight],
+      [(frame.x + frame.width) / frame.textureWidth, (frame.y + frame.height) / frame.textureHeight],
+      [frame.x / frame.textureWidth, (frame.y + frame.height) / frame.textureHeight],
+    ];
+    mesh.updateWorldMatrix(true, false);
+    this.camera.updateMatrixWorld(true);
+    const rect = this.canvas.getBoundingClientRect();
+    const pts = uvCorners.map(([u, v]) => {
+      const local = p00.clone().lerp(p10, u).lerp(
+        p01.clone().lerp(p11, u), v,
+      );
+      const projected = local.applyMatrix4(mesh.matrixWorld).project(this.camera);
+      return [
+        rect.left + (projected.x + 1) * rect.width / 2,
+        rect.top + (1 - projected.y) * rect.height / 2,
+      ];
+    });
+    this.outlineSvg.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    this.outlinePolygon.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    this.outlineSvg.classList.add("is-visible");
+  }
+
   hide(): void {
+    this.outlineSvg.classList.remove("is-visible");
     if (this.hovering) this.canvas.style.cursor = "";
     this.hovering = false;
     this.tooltip.classList.remove("is-visible");
@@ -178,5 +230,6 @@ export class ProjectWebsitePreview {
     this.canvas.removeEventListener("pointermove", this.onMove);
     this.canvas.removeEventListener("pointerleave", this.onLeave);
     this.tooltip.remove();
+    this.outlineSvg.remove();
   }
 }

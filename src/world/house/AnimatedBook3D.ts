@@ -39,6 +39,8 @@ export class AnimatedBook3D {
 
   private projectIndex = 0;
   private pendingIndex: number | null = null;
+  private pendingScreenshot: THREE.Texture | null = null;
+  private turnDirection: 1 | -1 = 1;
   private pagesReady = false;
 
   constructor(gltf: BookGLTF) {
@@ -263,26 +265,22 @@ export class AnimatedBook3D {
     this.openAction.reset().play();
   }
 
-  async turnPage(): Promise<void> {
+  /** Turn physical paper forward (+1) or backward (-1). */
+  async turnPage(direction: 1 | -1 = 1): Promise<void> {
     if (
       this.state !== "open" ||
       !this.pagesReady ||
       !this.pageAction ||
       !this.turningPage ||
+      !this.detailsPage ||
       !this.screenshotPage
-    ) {
-      return;
-    }
+    ) return;
 
-    if (!this.canTurnPage) {
-      console.log("Already at the last project");
-      return;
-    }
+    const nextIndex = this.projectIndex + direction;
+    if (nextIndex < 0 || nextIndex >= PROJECTS.length) return;
 
     this.state = "preparing";
-
     const currentProject = PROJECTS[this.projectIndex];
-    const nextIndex = this.projectIndex + 1;
     const nextProject = PROJECTS[nextIndex];
 
     try {
@@ -291,62 +289,75 @@ export class AnimatedBook3D {
         this.textures.screenshot(nextProject),
       ]);
 
-      const nextDetails = this.textures.details(nextProject, false);
-
-      // The turning page carries the old screenshot
-      // on its front, next details on its back.
-      this.paintTurningPage(currentScreenshot, nextDetails);
-
-      // The next screenshot is underneath the sheet.
-      // It becomes visible as the page curls away.
-      this.paintPage(this.screenshotPage, nextScreenshot);
+      if (direction === 1) {
+        // Page goes from right to left. As it lifts, expose the next
+        // right-hand screenshot. Its back carries next project's details.
+        this.paintTurningPage(
+          currentScreenshot,
+          this.textures.details(nextProject, false),
+        );
+        this.paintPage(this.screenshotPage, nextScreenshot);
+      } else {
+        // Page goes from left to right. Its upper side initially shows
+        // current details, then its front reveals previous screenshot.
+        // The previous details are already beneath it on the left.
+        this.paintTurningPage(
+          nextScreenshot,
+          this.textures.details(currentProject, false),
+        );
+        this.paintPage(this.detailsPage, this.textures.details(nextProject));
+      }
 
       this.pendingIndex = nextIndex;
+      this.pendingScreenshot = nextScreenshot;
+      this.turnDirection = direction;
 
-      this.resetTurningMorphs();
+      const action = this.pageAction;
+      action.stop();
+      action.reset();
+      action.setEffectiveTimeScale(direction);
+      action.time = direction === 1 ? 0 : Math.max(0, action.getClip().duration - 0.0001);
 
       this.turningPage.visible = true;
-
       this.state = "turning";
-
-      this.pageAction.reset().play();
+      action.play();
+      // Sample the first frame at the correct endpoint before rendering.
+      this.mixer.update(0);
     } catch (error) {
-      console.error("Could not prepare project page:", error);
-
+      console.error("Could not prepare book page:", error);
       this.pendingIndex = null;
+      this.pendingScreenshot = null;
+      this.turningPage.visible = false;
       this.state = "open";
     }
   }
 
   private completePageTurn(): void {
-    if (this.pendingIndex === null || !this.detailsPage || !this.turningPage) {
+    if (
+      this.pendingIndex === null ||
+      !this.detailsPage ||
+      !this.screenshotPage ||
+      !this.turningPage
+    ) {
       this.state = "open";
       return;
     }
 
-    const nextProject = PROJECTS[this.pendingIndex];
-
-    // Once paper lands on the left, its back has
-    // already revealed this project's details.
-    // Make the permanent left page match it.
-    this.paintPage(this.detailsPage, this.textures.details(nextProject));
-
+    const project = PROJECTS[this.pendingIndex];
+    if (this.turnDirection === -1 && this.pendingScreenshot) {
+      // The page now covers the right stack. Update it before hiding
+      // the temporary sheet so there is no visible screenshot switch.
+      this.paintPage(this.screenshotPage, this.pendingScreenshot);
+    }
+    this.paintPage(this.detailsPage, this.textures.details(project));
     this.projectIndex = this.pendingIndex;
     this.pendingIndex = null;
+    this.pendingScreenshot = null;
 
-    // Hide the temporary sheet before resetting
-    // its morph targets. This prevents a visual pop.
     this.turningPage.visible = false;
-
     this.pageAction?.stop();
     this.resetTurningMorphs();
-
     this.state = "open";
-
-    console.log(
-      `Now showing project ${this.projectIndex + 1}:`,
-      nextProject.title,
-    );
   }
 
   private resetTurningMorphs(): void {
@@ -364,7 +375,7 @@ export class AnimatedBook3D {
     }
 
     if (this.state === "open") {
-      void this.turnPage();
+      void this.turnPage(1);
     }
   }
 
@@ -390,6 +401,14 @@ export class AnimatedBook3D {
 
   get canTurnPage(): boolean {
     return this.pagesReady && this.projectIndex < PROJECTS.length - 1;
+  }
+
+  get canTurnBack(): boolean {
+    return this.pagesReady && this.projectIndex > 0;
+  }
+
+  get projectCount(): number {
+    return PROJECTS.length;
   }
 
   get currentProject() {

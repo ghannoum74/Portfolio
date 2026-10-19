@@ -48,3 +48,26 @@
   color: #426d68;
   text-align: right;
 }
+
+/* Subtle animated frame projected onto the physical website screenshot. */
+.book-website-outline {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 89;
+  opacity: 0; visibility: hidden;
+  transition: opacity 160ms ease, visibility 160ms ease;
+  overflow: visible;
+}
+.book-website-outline.is-visible { opacity: 1; visibility: visible; }
+.book-website-outline polygon {
+  fill: #73b9a614;
+  stroke: #dbf5df;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-dasharray: 12 8;
+  filter: drop-shadow(0 0 7px #71c5a9);
+  animation: book-website-dash 1.4s linear infinite;
+}
+@keyframes book-website-dash { to { stroke-dashoffset: -40; } }
+@media (prefers-reduced-motion: reduce) {
+  .book-website-outline polygon { animation: none; }
+}
