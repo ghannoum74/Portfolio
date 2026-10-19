@@ -1,6 +1,15 @@
 import * as THREE from "three";
 import type { PortfolioProject } from "../../../data/projects";
 
+export const PROJECT_SCREENSHOT_FRAME = {
+  textureWidth: 1024,
+  textureHeight: 1536,
+  x: 94,
+  y: 420,
+  width: 836,
+  height: 650,
+} as const;
+
 const WIDTH = 1024;
 const HEIGHT = 1536;
 const MARGIN = 94;
@@ -256,10 +265,12 @@ export class ProjectPageTextures {
     ctx.font = "italic 30px Georgia";
     ctx.fillText("A window into another world", MARGIN, 300);
 
-    const frameX = 94;
-    const frameY = 420;
-    const frameW = 836;
-    const frameH = 650;
+    const {
+      x: frameX,
+      y: frameY,
+      width: frameW,
+      height: frameH,
+    } = PROJECT_SCREENSHOT_FRAME;
 
     ctx.fillStyle = "#b69768";
     ctx.fillRect(frameX - 12, frameY - 12, frameW + 24, frameH + 24);
