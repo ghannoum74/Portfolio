@@ -8,8 +8,7 @@ type BookState =
   | "opening"
   | "open"
   | "preparing"
-  | "turning"
-  | "turned";
+  | "turning";
 
 interface BookGLTF {
   scene: THREE.Group;
@@ -56,13 +55,6 @@ export class AnimatedBook3D {
 
     this.turningPage = this.model.getObjectByName("BOOK_TURNING_PAGE");
 
-    console.log(
-      "Book animations:",
-      gltf.animations.map((clip) => ({
-        name: clip.name,
-        duration: clip.duration,
-      })),
-    );
 
     const hasMorphTracks = (clip: THREE.AnimationClip) =>
       clip.tracks.some((track) => track.name.includes("morphTargetInfluences"));
@@ -109,7 +101,6 @@ export class AnimatedBook3D {
       if (event.action === this.openAction) {
         this.state = "open";
 
-        console.log("Book opened");
       }
 
       if (event.action === this.pageAction) {
@@ -164,7 +155,6 @@ export class AnimatedBook3D {
     this.projectIndex = 0;
     this.pagesReady = true;
 
-    console.log("3D project pages initialized:", first.title);
   }
 
   private hideBlenderPlaceholders(): void {

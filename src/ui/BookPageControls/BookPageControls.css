@@ -7,32 +7,24 @@
 .book-page-controls.is-visible { opacity: 1; visibility: visible; }
 .book-page-controls__button {
   position: absolute; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  min-width: 90px; padding: 10px 8px;
-  border: 2px solid #806849; border-radius: 16px;
-  background: #f3e7c2; color: #5c4534;
-  box-shadow: 4px 5px 0 #3c291f54, 0 14px 32px #21170f30;
+  display: grid; place-items: center;
+  width: 48px; height: 48px; padding: 8px;
+  appearance: none; border: 0;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer; pointer-events: auto;
-  transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
-  font: inherit; font-size: 12px;
+  transition: transform .18s ease, opacity .18s ease;
 }
-.book-page-controls__button:hover:not(:disabled),
-.book-page-controls__button:focus-visible:not(:disabled) {
-  transform: translate(-50%, -54%);
-  box-shadow: 3px 7px 0 #3c291f54, 0 18px 34px #21170f38;
+.book-page-controls__button:hover:not(:disabled) {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+.book-page-controls__button:focus-visible {
   outline: 2px solid #426d68; outline-offset: 3px;
 }
 .book-page-controls__button:disabled { opacity: .34; cursor: not-allowed; }
-.book-page-controls__button kbd {
-  display: inline-flex; justify-content: center; align-items: center;
-  min-width: 28px; height: 25px; padding: 0 5px;
-  border: 2px solid #6f573b; border-radius: 5px;
-  background: #fff7df; font: 800 13px system-ui, sans-serif;
-  box-shadow: 1px 2px 0 #5c453426;
-}
 .book-page-controls__chevron {
-  position: absolute; top: -30px; width: 20px; height: 20px; object-fit: contain;
-  opacity: .85; pointer-events: none;
+  display: block; width: 32px; height: 32px; object-fit: contain;
+  pointer-events: none; user-select: none;
 }
 .book-page-controls__chevron--left { transform: rotate(90deg); }
 .book-page-controls__chevron--right { transform: rotate(-90deg); }
@@ -45,6 +37,5 @@
   font: 13px var(--font-root, "Coiny", system-ui);
 }
 @media (max-width: 650px) {
- .book-page-controls__button { min-width: 54px; padding: 7px 5px; font-size: 10px; }
  .book-page-controls__counter { bottom: 16px; }
 }

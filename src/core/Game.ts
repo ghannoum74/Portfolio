@@ -408,8 +408,7 @@ export class Game {
 
     if (
       this.projectBookMode === "opening" &&
-      (this.activeProjectBook?.currentState === "open" ||
-        this.activeProjectBook?.currentState === "turned")
+      this.activeProjectBook?.currentState === "open"
     ) {
       this.focusOnProjectBook();
     }
@@ -489,7 +488,9 @@ export class Game {
   private onCanvasClick = (event: MouseEvent): void => {
     if (this.projectBookMode === "reading") {
       this.projectWebsitePreview.openAt(
-        this.activeProjectBook, event.clientX, event.clientY,
+        this.activeProjectBook,
+        event.clientX,
+        event.clientY,
       );
 
       return;
@@ -671,7 +672,8 @@ export class Game {
     if (this.projectBookMode !== "idle") {
       if (this.projectBookMode === "reading" && event.code === "KeyO") {
         event.preventDefault();
-        if (!event.repeat) this.projectWebsitePreview.openCurrent(this.activeProjectBook);
+        if (!event.repeat)
+          this.projectWebsitePreview.openCurrent(this.activeProjectBook);
         return;
       }
 
@@ -687,13 +689,17 @@ export class Game {
 
       if (
         this.projectBookMode === "reading" &&
-        (event.code === "ArrowRight" || event.code === "ArrowLeft" || event.code === "KeyE")
+        (event.code === "ArrowRight" ||
+          event.code === "ArrowLeft" ||
+          event.code === "KeyE")
       ) {
         event.preventDefault();
 
         if (!event.repeat) {
           // Reverse or forward the same Blender morph-target animation.
-          void this.activeProjectBook?.turnPage(event.code === "ArrowLeft" ? -1 : 1);
+          void this.activeProjectBook?.turnPage(
+            event.code === "ArrowLeft" ? -1 : 1,
+          );
         }
 
         return;
@@ -955,11 +961,20 @@ export class Game {
       throw new Error("Missing INTERACT_EXIT_DOOR_01 in house.glb");
     }
 
+    this.interactionSystem.register(
+      new DoorInteraction(
+        exitZone,
+        () => {
+          void this.exitHouse();
+        },
+        "Exit",
+        exitDoor,
+      ),
+    );
+
     const anchor = house.model.getObjectByName("INTERACT_BOOK_PROJECTS");
 
     const book = house.projectBook;
-
-    console.log(anchor, book);
 
     if (anchor && book) {
       this.interactionSystem.register(
@@ -984,9 +999,6 @@ export class Game {
 
               case "turning":
                 return "Turning page...";
-
-              case "turned":
-                return "Page turned";
 
               default:
                 return "Read Projects";

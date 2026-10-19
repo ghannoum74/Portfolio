@@ -4,18 +4,20 @@ import type { PortfolioProject } from "../../data/projects";
 import { PROJECT_SCREENSHOT_FRAME } from "../../world/house/book/ProjectPageTexture";
 import "./ProjectWebsitePreview.css";
 
+type UVRect = { minU: number; maxU: number; minV: number; maxV: number };
+type Point = [number, number];
+
 /**
- * Hover + click interaction over the actual BOOK_SCREENSHOT_PAGE mesh.
- * No wheel listener, camera override, SVG portal, or iframe is involved.
+ * Modern hover for the REAL textured right-hand page, not an HTML book modal.
+ * No scroll input, popup splash screen, or camera overrides.
  */
 export class ProjectWebsitePreview {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
-  private readonly tooltip: HTMLDivElement;
-  private readonly title: HTMLSpanElement;
-  private readonly host: HTMLSpanElement;
-  private readonly outlineSvg: SVGSVGElement;
-  private readonly outlinePolygon: SVGPolygonElement;
+
+  private readonly overlay: HTMLDivElement;
+  private readonly polygon: SVGPolygonElement;
+
   private pointerX = 0;
   private pointerY = 0;
   private pointerInside = false;
@@ -25,29 +27,26 @@ export class ProjectWebsitePreview {
     private readonly camera: THREE.PerspectiveCamera,
     private readonly canvas: HTMLCanvasElement,
   ) {
-    this.tooltip = document.createElement("div");
-    this.tooltip.className = "book-website-tooltip";
-    this.tooltip.setAttribute("role", "status");
-    this.tooltip.innerHTML = `
-      <span class="book-website-tooltip__icon" aria-hidden="true">↗</span>
-      <span class="book-website-tooltip__copy">
-        <span class="book-website-tooltip__title"></span>
-        <span class="book-website-tooltip__host"></span>
-      </span>
-      <span class="book-website-tooltip__action">Click to visit</span>
+    this.overlay = document.createElement("div");
+    this.overlay.className = "book-live-hover";
+    this.overlay.setAttribute("aria-hidden", "true");
+    this.overlay.innerHTML = `
+      <svg class="book-live-hover__outline" focusable="false">
+        <polygon></polygon>
+      </svg>
+      <div class="book-live-hover__action">
+        <span>Open website</span>
+        <span aria-hidden="true">↗</span>
+      </div>
     `;
-    const title = this.tooltip.querySelector<HTMLSpanElement>(".book-website-tooltip__title");
-    const host = this.tooltip.querySelector<HTMLSpanElement>(".book-website-tooltip__host");
-    if (!title || !host) throw new Error("Website tooltip elements missing");
-    this.title = title;
-    this.host = host;
-    document.body.appendChild(this.tooltip);
-    const ns = "http://www.w3.org/2000/svg";
-    this.outlineSvg = document.createElementNS(ns, "svg");
-    this.outlineSvg.classList.add("book-website-outline");
-    this.outlinePolygon = document.createElementNS(ns, "polygon");
-    this.outlineSvg.appendChild(this.outlinePolygon);
-    document.body.appendChild(this.outlineSvg);
+
+    const polygon = this.overlay.querySelector<SVGPolygonElement>("polygon");
+    if (!polygon) {
+      throw new Error("ProjectWebsitePreview DOM could not be created");
+    }
+    this.polygon = polygon;
+
+    document.body.appendChild(this.overlay);
     this.canvas.addEventListener("pointermove", this.onMove);
     this.canvas.addEventListener("pointerleave", this.onLeave);
   }
@@ -67,60 +66,121 @@ export class ProjectWebsitePreview {
     const root = book.model.getObjectByName("BOOK_SCREENSHOT_PAGE");
     if (root instanceof THREE.Mesh) return root;
     let result: THREE.Mesh | null = null;
-    root?.traverse(child => {
+    root?.traverse((child) => {
       if (!result && child instanceof THREE.Mesh) result = child;
     });
     return result;
   }
 
-  private isInsideFrame(mesh: THREE.Mesh, clientX: number, clientY: number): boolean {
+  private bounds(mesh: THREE.Mesh): UVRect | null {
+    const uv = mesh.geometry.getAttribute("uv");
+    if (!uv || uv.count === 0) return null;
+    let minU = Infinity;
+    let minV = Infinity;
+    let maxU = -Infinity;
+    let maxV = -Infinity;
+    for (let i = 0; i < uv.count; i++) {
+      minU = Math.min(minU, uv.getX(i));
+      minV = Math.min(minV, uv.getY(i));
+      maxU = Math.max(maxU, uv.getX(i));
+      maxV = Math.max(maxV, uv.getY(i));
+    }
+    if (maxU - minU < 0.00001 || maxV - minV < 0.00001) return null;
+    return { minU, maxU, minV, maxV };
+  }
+
+  /** Convert the drawn browser rectangle to raw Blender page UVs. */
+  private frameUV(b: UVRect): UVRect {
+    const f = PROJECT_SCREENSHOT_FRAME;
+    const du = b.maxU - b.minU;
+    const dv = b.maxV - b.minV;
+    return {
+      minU: b.minU + du * f.x / f.textureWidth,
+      maxU: b.minU + du * (f.x + f.width) / f.textureWidth,
+      minV: b.minV + dv * f.y / f.textureHeight,
+      maxV: b.minV + dv * (f.y + f.height) / f.textureHeight,
+    };
+  }
+
+  private isInsideFrame(mesh: THREE.Mesh, x: number, y: number): boolean {
     const canvasRect = this.canvas.getBoundingClientRect();
     if (canvasRect.width <= 0 || canvasRect.height <= 0) return false;
+    const uv = this.bounds(mesh);
+    if (!uv) return false;
+    const f = this.frameUV(uv);
+
     this.pointer.set(
-      ((clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
-      -((clientY - canvasRect.top) / canvasRect.height) * 2 + 1,
+      (x - canvasRect.left) / canvasRect.width * 2 - 1,
+      -(y - canvasRect.top) / canvasRect.height * 2 + 1,
     );
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObject(mesh, true)[0];
-    if (!hit?.uv) return false;
+    return !!hit?.uv &&
+      hit.uv.x >= f.minU && hit.uv.x <= f.maxU &&
+      hit.uv.y >= f.minV && hit.uv.y <= f.maxV;
+  }
 
+  /** Project all four corners of the physical screenshot into screen space. */
+  private projectFrame(mesh: THREE.Mesh): Point[] | null {
     const uv = mesh.geometry.getAttribute("uv");
-    if (!uv) return false;
-    let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
-    for (let i = 0; i < uv.count; i++) {
-      minU = Math.min(minU, uv.getX(i));
-      maxU = Math.max(maxU, uv.getX(i));
-      minV = Math.min(minV, uv.getY(i));
-      maxV = Math.max(maxV, uv.getY(i));
-    }
-    const du = maxU - minU;
-    const dv = maxV - minV;
-    if (du <= 0 || dv <= 0) return false;
+    const position = mesh.geometry.getAttribute("position");
+    const b = this.bounds(mesh);
+    if (!b || !uv || !position) return null;
+    const f = this.frameUV(b);
 
-    // Same UV mapping that is currently used by the Blender-exported page.
-    const u = (hit.uv.x - minU) / du;
-    const v = (hit.uv.y - minV) / dv;
-    const frame = PROJECT_SCREENSHOT_FRAME;
-    return (
-      u >= frame.x / frame.textureWidth &&
-      u <= (frame.x + frame.width) / frame.textureWidth &&
-      v >= frame.y / frame.textureHeight &&
-      v <= (frame.y + frame.height) / frame.textureHeight
-    );
+    // The supplied Blender book uses a rectangular four-corner page.
+    const corner = (u: number, v: number): THREE.Vector3 => {
+      let index = 0;
+      let best = Infinity;
+      for (let i = 0; i < uv.count; i++) {
+        const d = (uv.getX(i) - u) ** 2 + (uv.getY(i) - v) ** 2;
+        if (d < best) { best = d; index = i; }
+      }
+      return new THREE.Vector3().fromBufferAttribute(position, index);
+    };
+
+    const p00 = corner(b.minU, b.minV);
+    const p10 = corner(b.maxU, b.minV);
+    const p01 = corner(b.minU, b.maxV);
+    const p11 = corner(b.maxU, b.maxV);
+
+    mesh.updateWorldMatrix(true, false);
+    this.camera.updateMatrixWorld(true);
+    const rect = this.canvas.getBoundingClientRect();
+
+    const project = (u: number, v: number): Point => {
+      const du = (u - b.minU) / (b.maxU - b.minU);
+      const dv = (v - b.minV) / (b.maxV - b.minV);
+      const local = p00.clone().lerp(p10, du)
+        .lerp(p01.clone().lerp(p11, du), dv);
+      const ndc = local.applyMatrix4(mesh.matrixWorld).project(this.camera);
+      return [
+        rect.left + (ndc.x + 1) * 0.5 * rect.width,
+        rect.top + (1 - ndc.y) * 0.5 * rect.height,
+      ];
+    };
+
+    const points = [
+      project(f.minU, f.minV),
+      project(f.maxU, f.minV),
+      project(f.maxU, f.maxV),
+      project(f.minU, f.maxV),
+    ];
+    return points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
+      ? points : null;
   }
 
   private getProjectUrl(project: PortfolioProject): URL | null {
     try {
-      const configured = project.demoUrl || project.projectUrl;
-      const url = new URL(configured, window.location.href);
+      const url = new URL(project.demoUrl || project.projectUrl, window.location.href);
       return url.protocol === "https:" || url.protocol === "http:" ? url : null;
     } catch {
       return null;
     }
   }
 
-  /** Called each frame; updates the hover state as the player changes projects. */
+  /** Called every frame by Game.ts, only when the book is in reading mode. */
   update(book: AnimatedBook3D | null): void {
     if (!book || book.currentState !== "open" || !this.pointerInside) {
       this.hide();
@@ -131,34 +191,35 @@ export class ProjectWebsitePreview {
       this.hide();
       return;
     }
-    const project = book.currentProject;
-    const url = this.getProjectUrl(project);
+    const url = this.getProjectUrl(book.currentProject);
     if (!url) {
       this.hide();
       return;
     }
+    const points = this.projectFrame(mesh);
+    if (!points) { this.hide(); return; }
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    this.polygon.setAttribute("points", points.map(([x, y]) => `${x},${y}`).join(" "));
+    this.overlay.querySelector("svg")?.setAttribute("viewBox", `0 0 ${vw} ${vh}`);
+
+    // CTA is anchored to the PAGE, not the moving mouse cursor.
+    const right = Math.max(...points.map(([x]) => x));
+    const bottom = Math.max(...points.map(([, y]) => y));
+    this.overlay.style.setProperty("--book-action-x", `${THREE.MathUtils.clamp(right - 14, 160, vw - 16)}px`);
+    this.overlay.style.setProperty("--book-action-y", `${THREE.MathUtils.clamp(bottom - 12, 75, vh - 16)}px`);
+
     this.hovering = true;
     this.canvas.style.cursor = "pointer";
-    this.title.textContent = project.title;
-    this.host.textContent = url.host;
-    this.tooltip.classList.add("is-visible");
-    this.updateOutline(mesh);
-    const x = Math.min(this.pointerX + 19, window.innerWidth - 280);
-    const y = Math.min(this.pointerY + 19, window.innerHeight - 100);
-    this.tooltip.style.transform = `translate(${Math.max(12, x)}px, ${Math.max(12, y)}px)`;
+    this.overlay.classList.add("is-visible");
   }
 
-  /** Invoke synchronously from the user's click or keydown for popup safety. */
+  /** Opens directly in a new tab, synchronously within the click or key event. */
   openCurrent(book: AnimatedBook3D | null): boolean {
     if (!book || book.currentState !== "open") return false;
-    const project = book.currentProject;
-    const url = this.getProjectUrl(project);
-    if (!url) {
-      console.warn("Invalid website URL for project:", project.id);
-      return false;
-    }
-
-    // Direct website opening; no intermediate entrance animation.
+    const url = this.getProjectUrl(book.currentProject);
+    if (!url) return false;
     window.open(url.href, "_blank", "noopener,noreferrer");
     this.hide();
     return true;
@@ -171,65 +232,16 @@ export class ProjectWebsitePreview {
     return this.openCurrent(book);
   }
 
-  private updateOutline(mesh: THREE.Mesh): void {
-    const uv = mesh.geometry.getAttribute("uv");
-    const positions = mesh.geometry.getAttribute("position");
-    if (!uv || !positions) return;
-
-    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
-    for (let i = 0; i < uv.count; i++) {
-      minU = Math.min(minU, uv.getX(i)); maxU = Math.max(maxU, uv.getX(i));
-      minV = Math.min(minV, uv.getY(i)); maxV = Math.max(maxV, uv.getY(i));
-    }
-    const getCorner = (u: number, v: number): THREE.Vector3 => {
-      let bestIndex = 0, bestDistance = Infinity;
-      for (let i = 0; i < uv.count; i++) {
-        const distance = (uv.getX(i) - u) ** 2 + (uv.getY(i) - v) ** 2;
-        if (distance < bestDistance) { bestDistance = distance; bestIndex = i; }
-      }
-      return new THREE.Vector3().fromBufferAttribute(positions, bestIndex);
-    };
-    const p00 = getCorner(minU, minV);
-    const p10 = getCorner(maxU, minV);
-    const p01 = getCorner(minU, maxV);
-    const p11 = getCorner(maxU, maxV);
-    const frame = PROJECT_SCREENSHOT_FRAME;
-    const uvCorners: Array<[number, number]> = [
-      [frame.x / frame.textureWidth, frame.y / frame.textureHeight],
-      [(frame.x + frame.width) / frame.textureWidth, frame.y / frame.textureHeight],
-      [(frame.x + frame.width) / frame.textureWidth, (frame.y + frame.height) / frame.textureHeight],
-      [frame.x / frame.textureWidth, (frame.y + frame.height) / frame.textureHeight],
-    ];
-    mesh.updateWorldMatrix(true, false);
-    this.camera.updateMatrixWorld(true);
-    const rect = this.canvas.getBoundingClientRect();
-    const pts = uvCorners.map(([u, v]) => {
-      const local = p00.clone().lerp(p10, u).lerp(
-        p01.clone().lerp(p11, u), v,
-      );
-      const projected = local.applyMatrix4(mesh.matrixWorld).project(this.camera);
-      return [
-        rect.left + (projected.x + 1) * rect.width / 2,
-        rect.top + (1 - projected.y) * rect.height / 2,
-      ];
-    });
-    this.outlineSvg.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
-    this.outlinePolygon.setAttribute("points", pts.map(p => p.join(",")).join(" "));
-    this.outlineSvg.classList.add("is-visible");
-  }
-
   hide(): void {
-    this.outlineSvg.classList.remove("is-visible");
+    this.overlay.classList.remove("is-visible");
     if (this.hovering) this.canvas.style.cursor = "";
     this.hovering = false;
-    this.tooltip.classList.remove("is-visible");
   }
 
   destroy(): void {
     this.hide();
     this.canvas.removeEventListener("pointermove", this.onMove);
     this.canvas.removeEventListener("pointerleave", this.onLeave);
-    this.tooltip.remove();
-    this.outlineSvg.remove();
+    this.overlay.remove();
   }
 }

@@ -19,11 +19,9 @@ export class BookPageControls {
     this.root.innerHTML = `
       <button class="book-page-controls__button" type="button" data-book-prev aria-label="Previous project">
         <img src="/assets/icons/chevron-icon.webp" class="book-page-controls__chevron book-page-controls__chevron--left" alt="" />
-        <kbd>←</kbd><span>Previous</span>
       </button>
       <div class="book-page-controls__counter" aria-live="polite"></div>
       <button class="book-page-controls__button" type="button" data-book-next aria-label="Next project">
-        <span>Next</span><kbd>→</kbd>
         <img src="/assets/icons/chevron-icon.webp" class="book-page-controls__chevron book-page-controls__chevron--right" alt="" />
       </button>
     `;
