@@ -34,6 +34,8 @@ import { ProjectBookCamera } from "../world/house/ProjectBookCamera";
 import type { AnimatedBook3D } from "../world/house/AnimatedBook3D";
 import { ProjectWebsitePreview } from "../ui/ProjectWebsitePreview/ProjectWebsitePreview";
 import { BookPageControls } from "../ui/BookPageControls/BookPageControls";
+import { WorkshopExperience } from "../world/house/workshop/WorkshopExperience";
+import { WorkshopInteraction } from "../interactions/interactions/WorkshopInteraction";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -115,6 +117,7 @@ export class Game {
 
   private readonly projectWebsitePreview: ProjectWebsitePreview;
   private readonly bookPageControls: BookPageControls;
+  private workshop: WorkshopExperience | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -425,10 +428,14 @@ export class Game {
     ) {
       // Cinematic camera focused on the real 3D book.
       this.projectBookCamera.update(delta);
+    } else if (this.workshop?.isControllingCamera) {
+      // The workshop camera is driven in workshop.update() below.
     } else {
       // Normal third-person camera.
       this.thirdPersonCamera?.update(delta);
     }
+
+    this.workshop?.update(delta);
 
     this.projectWebsitePreview.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
@@ -441,6 +448,7 @@ export class Game {
       this.phase === "playing" &&
       !this.transitioning &&
       this.projectBookMode === "idle" &&
+      !this.workshop?.isControllingCamera &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -486,6 +494,13 @@ export class Game {
   };
 
   private onCanvasClick = (event: MouseEvent): void => {
+    if (this.workshop?.isControllingCamera) {
+      if (this.workshop.mode === "active") {
+        this.workshop.clickAt(event.clientX, event.clientY);
+      }
+      return;
+    }
+
     if (this.projectBookMode === "reading") {
       this.projectWebsitePreview.openAt(
         this.activeProjectBook,
@@ -669,6 +684,19 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    if (this.workshop?.isControllingCamera) {
+      if (event.code === "Escape") {
+        event.preventDefault();
+        if (!event.repeat) this.leaveWorkshopExperience();
+      } else if (event.code === "KeyE" || event.code === "Enter") {
+        event.preventDefault();
+        if (!event.repeat) this.workshop.toggleSelection();
+      } else if (["Space", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
     if (this.projectBookMode !== "idle") {
       if (this.projectBookMode === "reading" && event.code === "KeyO") {
         event.preventDefault();
@@ -1010,6 +1038,19 @@ export class Game {
       console.warn("Animated Projects Book or interaction anchor missing");
     }
 
+    // Reuse the existing Blender workshop stand as an E-key anchor.
+    const workshopStand = house.model.getObjectByName("SEC_WORKSHOP_WeaponStand");
+    if (workshopStand) {
+      this.workshop = new WorkshopExperience(
+        house.model, workshopStand, this.playerCamera, this.renderer.instance.domElement,
+      );
+      this.interactionSystem.register(
+        new WorkshopInteraction(workshopStand, () => this.enterWorkshopExperience()),
+      );
+    } else {
+      console.warn("Workshop asset SEC_WORKSHOP_WeaponStand not found in house.glb");
+    }
+
     this.houseInteractionsRegistered = true;
   }
 
@@ -1065,6 +1106,32 @@ export class Game {
         this.keyboard.setEnabled(true);
       }
     }
+  }
+
+  private enterWorkshopExperience(): void {
+    const workshop = this.workshop;
+    if (!workshop || this.phase !== "playing" || !this.insideHouse ||
+        this.transitioning || this.projectBookMode !== "idle") return;
+    if (this.debugMode) {
+      this.debugMode = false;
+      this.updateOverlay();
+    }
+    if (!workshop.enter()) return;
+    this.keyboard.setEnabled(false);
+    this.thirdPersonCamera?.setInputEnabled(false);
+    this.renderer.setInteractionOutline(null);
+    this.world.player.model.visible = false;
+  }
+
+  private leaveWorkshopExperience(): void {
+    this.workshop?.leave(() => {
+      this.world.player.model.visible = true;
+      this.thirdPersonCamera?.snap();
+      this.keyboard.setEnabled(
+        this.phase === "playing" && this.insideHouse &&
+        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+      );
+    });
   }
 
   private startProjectBookReading(house: HouseInterior): void {

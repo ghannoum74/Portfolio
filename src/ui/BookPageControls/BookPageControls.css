@@ -1,41 +1,77 @@
 .book-page-controls {
-  position: fixed; inset: 0; z-index: 85;
-  pointer-events: none; opacity: 0; visibility: hidden;
-  transition: opacity .22s ease, visibility .22s ease;
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.22s ease,
+    visibility 0.22s ease;
   font-family: var(--font-root, "Coiny", system-ui);
 }
-.book-page-controls.is-visible { opacity: 1; visibility: visible; }
-.book-page-controls__button {
-  position: absolute; transform: translate(-50%, -50%);
-  display: grid; place-items: center;
-  width: 48px; height: 48px; padding: 8px;
-  appearance: none; border: 0;
+.book-page-controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+.book-page-controls_button {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 8px;
+  appearance: none;
+  border: 0;
   background: transparent;
   box-shadow: none;
-  cursor: pointer; pointer-events: auto;
-  transition: transform .18s ease, opacity .18s ease;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
 }
-.book-page-controls__button:hover:not(:disabled) {
+.book-page-controls_button:hover:not(:disabled) {
   transform: translate(-50%, -50%) scale(1.08);
 }
-.book-page-controls__button:focus-visible {
-  outline: 2px solid #426d68; outline-offset: 3px;
+.book-page-controls_button:focus-visible {
+  outline: 2px solid #426d68;
+  outline-offset: 3px;
 }
-.book-page-controls__button:disabled { opacity: .34; cursor: not-allowed; }
-.book-page-controls__chevron {
-  display: block; width: 32px; height: 32px; object-fit: contain;
-  pointer-events: none; user-select: none;
+.book-page-controls_button:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
 }
-.book-page-controls__chevron--left { transform: rotate(90deg); }
-.book-page-controls__chevron--right { transform: rotate(-90deg); }
-.book-page-controls__counter {
-  position: absolute; left: 50%; bottom: 39px;
-  transform: translateX(-50%); padding: 7px 15px;
-  color: #5c4534; background: #f3e7c2ed;
-  border: 1px solid #bda782; border-radius: 999px;
+.book-page-controls_chevron {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.book-page-controls_chevron--left {
+  transform: rotate(90deg);
+}
+.book-page-controls_chevron--right {
+  transform: rotate(-90deg);
+}
+.book-page-controls_counter {
+  position: absolute;
+  left: 50%;
+  bottom: 39px;
+  transform: translateX(-50%);
+  padding: 7px 15px;
+  color: #5c4534;
+  background: #f3e7c2ed;
+  border: 1px solid #bda782;
+  border-radius: 999px;
   box-shadow: 0 4px 14px #271c1726;
   font: 13px var(--font-root, "Coiny", system-ui);
 }
 @media (max-width: 650px) {
- .book-page-controls__counter { bottom: 16px; }
+  .book-page-controls_counter {
+    bottom: 16px;
+  }
 }

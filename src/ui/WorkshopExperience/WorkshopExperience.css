@@ -1,0 +1,133 @@
+/* Workshop polish: small contextual UI rather than another large dialog. */
+.workshop-rune-label {
+  position: fixed;
+  z-index: 96;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, 9px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: 8px 12px;
+  border: 1px solid rgba(192, 167, 118, .9);
+  border-radius: 8px;
+  background: rgba(56, 45, 33, .94);
+  color: #f9edce;
+  font: 12px var(--font-root, "Coiny", system-ui);
+  letter-spacing: .04em;
+  box-shadow: 0 7px 18px rgba(30, 23, 16, .22);
+  transition: opacity 180ms ease, transform 200ms ease, visibility 180ms ease;
+}
+.workshop-rune-label.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.workshop-inspector {
+  position: fixed;
+  z-index: 96;
+  right: clamp(18px, 4vw, 64px);
+  bottom: clamp(92px, 12vh, 146px);
+  width: min(310px, calc(100vw - 36px));
+  padding: 23px 24px 21px;
+  border: 1px solid #b89c73;
+  border-left: 4px solid #47796d;
+  border-radius: 12px;
+  background: #f5e9c8;
+  color: #493727;
+  box-shadow: 4px 5px 0 rgba(71, 53, 37, .22), 0 16px 38px rgba(34, 26, 18, .21);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(.97);
+  transform-origin: bottom right;
+  transition: opacity 220ms ease, transform 340ms cubic-bezier(.18,.8,.3,1), visibility 220ms;
+}
+.workshop-inspector.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+.workshop-inspector__eyebrow {
+  color: #52796c;
+  font: 700 10px system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+}
+.workshop-inspector h2 {
+  margin: 8px 0 11px;
+  font: 29px/1.08 var(--font-root, "Coiny", system-ui);
+  letter-spacing: -.02em;
+}
+.workshop-inspector__description {
+  margin: 0 0 14px;
+  color: #6c5641;
+  font: 13px/1.58 system-ui, sans-serif;
+}
+.workshop-inspector__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 13px;
+  border-top: 1px solid #cab795;
+}
+.workshop-inspector__tools span {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid #c3b493;
+  border-radius: 5px;
+  background: #eae4ce;
+  color: #3d6256;
+  font: 700 11px system-ui, sans-serif;
+}
+.workshop-controls {
+  position: fixed;
+  z-index: 95;
+  bottom: max(19px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translate(-50%, 8px);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 13px;
+  border: 1px solid #bea67c;
+  border-radius: 9px;
+  background: #f3e7c2f2;
+  box-shadow: 3px 4px 0 #49372736;
+  color: #493727;
+  font: 12px system-ui, sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 220ms ease, visibility 220ms ease, transform 220ms ease;
+}
+.workshop-controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.workshop-controls kbd {
+  font: bold 12px system-ui, sans-serif;
+  background: #fff8e5;
+  border: 2px solid #6f573b;
+  border-radius: 5px;
+  padding: 4px 7px;
+  box-shadow: 1px 2px 0 #5c453426;
+}
+.workshop-controls__divider { width: 1px; height: 22px; background: #c5ae8b; }
+@media (max-width: 520px) {
+  .workshop-inspector {
+    width: min(270px, calc(100vw - 30px));
+    right: 15px;
+    bottom: 78px;
+    padding: 18px;
+  }
+  .workshop-inspector h2 { font-size: 25px; }
+  .workshop-controls { gap: 7px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workshop-rune-label, .workshop-inspector, .workshop-controls { transition: none; }
+}

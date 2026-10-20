@@ -31,10 +31,10 @@ export class ProjectWebsitePreview {
     this.overlay.className = "book-live-hover";
     this.overlay.setAttribute("aria-hidden", "true");
     this.overlay.innerHTML = `
-      <svg class="book-live-hover__outline" focusable="false">
+      <svg class="book-live-hover_outline" focusable="false">
         <polygon></polygon>
       </svg>
-      <div class="book-live-hover__action">
+      <div class="book-live-hover_action">
         <span>Open website</span>
         <span aria-hidden="true">↗</span>
       </div>
@@ -95,10 +95,10 @@ export class ProjectWebsitePreview {
     const du = b.maxU - b.minU;
     const dv = b.maxV - b.minV;
     return {
-      minU: b.minU + du * f.x / f.textureWidth,
-      maxU: b.minU + du * (f.x + f.width) / f.textureWidth,
-      minV: b.minV + dv * f.y / f.textureHeight,
-      maxV: b.minV + dv * (f.y + f.height) / f.textureHeight,
+      minU: b.minU + (du * f.x) / f.textureWidth,
+      maxU: b.minU + (du * (f.x + f.width)) / f.textureWidth,
+      minV: b.minV + (dv * f.y) / f.textureHeight,
+      maxV: b.minV + (dv * (f.y + f.height)) / f.textureHeight,
     };
   }
 
@@ -110,15 +110,19 @@ export class ProjectWebsitePreview {
     const f = this.frameUV(uv);
 
     this.pointer.set(
-      (x - canvasRect.left) / canvasRect.width * 2 - 1,
-      -(y - canvasRect.top) / canvasRect.height * 2 + 1,
+      ((x - canvasRect.left) / canvasRect.width) * 2 - 1,
+      (-(y - canvasRect.top) / canvasRect.height) * 2 + 1,
     );
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObject(mesh, true)[0];
-    return !!hit?.uv &&
-      hit.uv.x >= f.minU && hit.uv.x <= f.maxU &&
-      hit.uv.y >= f.minV && hit.uv.y <= f.maxV;
+    return (
+      !!hit?.uv &&
+      hit.uv.x >= f.minU &&
+      hit.uv.x <= f.maxU &&
+      hit.uv.y >= f.minV &&
+      hit.uv.y <= f.maxV
+    );
   }
 
   /** Project all four corners of the physical screenshot into screen space. */
@@ -135,7 +139,10 @@ export class ProjectWebsitePreview {
       let best = Infinity;
       for (let i = 0; i < uv.count; i++) {
         const d = (uv.getX(i) - u) ** 2 + (uv.getY(i) - v) ** 2;
-        if (d < best) { best = d; index = i; }
+        if (d < best) {
+          best = d;
+          index = i;
+        }
       }
       return new THREE.Vector3().fromBufferAttribute(position, index);
     };
@@ -152,7 +159,9 @@ export class ProjectWebsitePreview {
     const project = (u: number, v: number): Point => {
       const du = (u - b.minU) / (b.maxU - b.minU);
       const dv = (v - b.minV) / (b.maxV - b.minV);
-      const local = p00.clone().lerp(p10, du)
+      const local = p00
+        .clone()
+        .lerp(p10, du)
         .lerp(p01.clone().lerp(p11, du), dv);
       const ndc = local.applyMatrix4(mesh.matrixWorld).project(this.camera);
       return [
@@ -168,12 +177,16 @@ export class ProjectWebsitePreview {
       project(f.minU, f.maxV),
     ];
     return points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
-      ? points : null;
+      ? points
+      : null;
   }
 
   private getProjectUrl(project: PortfolioProject): URL | null {
     try {
-      const url = new URL(project.demoUrl || project.projectUrl, window.location.href);
+      const url = new URL(
+        project.demoUrl || project.projectUrl,
+        window.location.href,
+      );
       return url.protocol === "https:" || url.protocol === "http:" ? url : null;
     } catch {
       return null;
@@ -197,18 +210,32 @@ export class ProjectWebsitePreview {
       return;
     }
     const points = this.projectFrame(mesh);
-    if (!points) { this.hide(); return; }
+    if (!points) {
+      this.hide();
+      return;
+    }
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    this.polygon.setAttribute("points", points.map(([x, y]) => `${x},${y}`).join(" "));
-    this.overlay.querySelector("svg")?.setAttribute("viewBox", `0 0 ${vw} ${vh}`);
+    this.polygon.setAttribute(
+      "points",
+      points.map(([x, y]) => `${x},${y}`).join(" "),
+    );
+    this.overlay
+      .querySelector("svg")
+      ?.setAttribute("viewBox", `0 0 ${vw} ${vh}`);
 
     // CTA is anchored to the PAGE, not the moving mouse cursor.
     const right = Math.max(...points.map(([x]) => x));
     const bottom = Math.max(...points.map(([, y]) => y));
-    this.overlay.style.setProperty("--book-action-x", `${THREE.MathUtils.clamp(right - 14, 160, vw - 16)}px`);
-    this.overlay.style.setProperty("--book-action-y", `${THREE.MathUtils.clamp(bottom - 12, 75, vh - 16)}px`);
+    this.overlay.style.setProperty(
+      "--book-action-x",
+      `${THREE.MathUtils.clamp(right - 14, 160, vw - 16)}px`,
+    );
+    this.overlay.style.setProperty(
+      "--book-action-y",
+      `${THREE.MathUtils.clamp(bottom - 12, 75, vh - 16)}px`,
+    );
 
     this.hovering = true;
     this.canvas.style.cursor = "pointer";
@@ -225,7 +252,11 @@ export class ProjectWebsitePreview {
     return true;
   }
 
-  openAt(book: AnimatedBook3D | null, clientX: number, clientY: number): boolean {
+  openAt(
+    book: AnimatedBook3D | null,
+    clientX: number,
+    clientY: number,
+  ): boolean {
     if (!book || book.currentState !== "open") return false;
     const mesh = this.screenshotMesh(book);
     if (!mesh || !this.isInsideFrame(mesh, clientX, clientY)) return false;

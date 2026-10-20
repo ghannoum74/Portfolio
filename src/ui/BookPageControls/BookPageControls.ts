@@ -17,17 +17,20 @@ export class BookPageControls {
     this.root = document.createElement("div");
     this.root.className = "book-page-controls";
     this.root.innerHTML = `
-      <button class="book-page-controls__button" type="button" data-book-prev aria-label="Previous project">
-        <img src="/assets/icons/chevron-icon.webp" class="book-page-controls__chevron book-page-controls__chevron--left" alt="" />
+      <button class="book-page-controls_button" type="button" data-book-prev aria-label="Previous project">
+        <img src="/assets/icons/chevron-icon.webp" class="book-page-controls_chevron book-page-controls_chevron--left" alt="" />
       </button>
-      <div class="book-page-controls__counter" aria-live="polite"></div>
-      <button class="book-page-controls__button" type="button" data-book-next aria-label="Next project">
-        <img src="/assets/icons/chevron-icon.webp" class="book-page-controls__chevron book-page-controls__chevron--right" alt="" />
+      <div class="book-page-controls_counter" aria-live="polite"></div>
+      <button class="book-page-controls_button" type="button" data-book-next aria-label="Next project">
+        <img src="/assets/icons/chevron-icon.webp" class="book-page-controls_chevron book-page-controls_chevron--right" alt="" />
       </button>
     `;
-    this.previous = this.root.querySelector<HTMLButtonElement>("[data-book-prev]")!;
+    this.previous =
+      this.root.querySelector<HTMLButtonElement>("[data-book-prev]")!;
     this.next = this.root.querySelector<HTMLButtonElement>("[data-book-next]")!;
-    this.counter = this.root.querySelector<HTMLSpanElement>(".book-page-controls__counter")!;
+    this.counter = this.root.querySelector<HTMLSpanElement>(
+      ".book-page-controls_counter",
+    )!;
     this.previous.addEventListener("click", this.onPreviousClick);
     this.next.addEventListener("click", this.onNextClick);
     document.body.appendChild(this.root);
@@ -58,10 +61,12 @@ export class BookPageControls {
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const minX = Math.min(...corners.map(p => (p.x + 1) * 0.5 * vw));
-    const maxX = Math.max(...corners.map(p => (p.x + 1) * 0.5 * vw));
-    const centerY = (Math.min(...corners.map(p => (1 - p.y) * 0.5 * vh)) +
-      Math.max(...corners.map(p => (1 - p.y) * 0.5 * vh))) / 2;
+    const minX = Math.min(...corners.map((p) => (p.x + 1) * 0.5 * vw));
+    const maxX = Math.max(...corners.map((p) => (p.x + 1) * 0.5 * vw));
+    const centerY =
+      (Math.min(...corners.map((p) => (1 - p.y) * 0.5 * vh)) +
+        Math.max(...corners.map((p) => (1 - p.y) * 0.5 * vh))) /
+      2;
     const left = THREE.MathUtils.clamp(minX - 76, 62, vw - 62);
     const right = THREE.MathUtils.clamp(maxX + 76, 62, vw - 62);
     const y = THREE.MathUtils.clamp(centerY, 86, vh - 86);
@@ -72,7 +77,9 @@ export class BookPageControls {
     this.next.style.top = `${y}px`;
   }
 
-  hide(): void { this.root.classList.remove("is-visible"); }
+  hide(): void {
+    this.root.classList.remove("is-visible");
+  }
 
   destroy(): void {
     this.previous.removeEventListener("click", this.onPreviousClick);

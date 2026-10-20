@@ -13,7 +13,7 @@
   visibility: visible;
 }
 
-.book-live-hover__outline {
+.book-live-hover_outline {
   position: absolute;
   inset: 0;
   display: block;
@@ -24,18 +24,18 @@
   transition: opacity 180ms ease;
 }
 
-.book-live-hover.is-visible .book-live-hover__outline {
+.book-live-hover.is-visible .book-live-hover_outline {
   opacity: 1;
 }
 
-.book-live-hover__outline polygon {
+.book-live-hover_outline polygon {
   fill: none;
   stroke: rgba(255, 249, 234, 0.65);
   stroke-width: 1;
   stroke-linejoin: round;
 }
 
-.book-live-hover__action {
+.book-live-hover_action {
   position: absolute;
   left: var(--book-action-x, 50%);
   top: var(--book-action-y, 50%);
@@ -57,13 +57,13 @@
   transition: opacity 150ms ease;
 }
 
-.book-live-hover.is-visible .book-live-hover__action {
+.book-live-hover.is-visible .book-live-hover_action {
   opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .book-live-hover__outline,
-  .book-live-hover__action {
+  .book-live-hover_outline,
+  .book-live-hover_action {
     transition: none;
   }
 }
