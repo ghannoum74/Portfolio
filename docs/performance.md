@@ -9,6 +9,10 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
 - Renderer counters reset once per frame and accumulate the scene, outline,
   and output passes. Triangle totals include repeated passes and are not a
   count of unique geometry.
+- Default interaction feedback is a warm material glow/tint in the existing
+  scene draw. It creates no composer, render targets, extra meshes, or extra
+  render passes. Only target materials are cloned; originals are restored on
+  focus change. `highlight=outline` opts into the previous blurred border.
 - Workshop, furniture, journey, and awards updates pause outside the house.
   On exit the house model detaches from the scene, avoiding hidden transform
   updates. Re-entry reattaches it with the same interaction state.
@@ -26,13 +30,13 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   activate. Active effects retain their colored lights and fade behavior. Faded
   intensity below 0.001 hides the light. `activeLightsOnly=0` restores the previous
   furniture membership independently of the workshop policy below.
-- All four workshop point lights remain enabled by default, preserving colored
-  illumination on every craft. The idle house uses 5 point lights (main warm +
-  four workshop), compared with 12 before idle furniture lights were excluded.
-  The optional `workshopLights=focused` mode retains one workshop light for the
-  selected, hovered, or nearest artifact, reducing the total to 2 and changing
-  simultaneous colored spill. All sprites, runes, and emissive animations remain.
-  Focus changes retain one slot; nearest selection uses hysteresis.
+- Workshop point lights are off while walking or in the collection overview.
+  Inspecting a craft lights only that craft; closing it or leaving switches its
+  light off immediately. The idle house uses 1 point light (main warm), rising
+  to 2 during inspection, plus any active furniture effects. Both common light
+  variants are compiled behind the house-entry cover. Sprites, runes, and
+  emissive animations remain. Explicit `workshopLights=all` and
+  `workshopLights=focused` retain the earlier appearances for comparison.
 - Workshop tones use cached mono PCM WAV clips through HTMLAudioElement. This
   removes synchronous AudioContext construction from workshop entry. The same
   sine notes, envelopes, pitch drift, and quiet playback level are retained,
@@ -90,9 +94,11 @@ objects, and the actual house's 61-to-2 beam batching result. Additional checks
 cover fixed physics/mixer cadence, accumulated animation time/pose, light
 activation and fading, 12-to-5 idle light membership, flat-ring materials, hint
 DOM changes, exterior/NPC restoration, and NPC loading while indoors. There are
-20 tests. The latest checks exercise focused/nearest light selection, fixed
-light count, original four-light restoration, WAV format/timing/pitch, bounded
-voice reuse, mute/blocked playback, and audio resource cleanup.
+24 tests. The latest checks exercise inspection-only workshop light transitions,
+shader warm-up restoration on success/failure, single-render material feedback,
+shared material isolation/restoration, texture/geometry preservation, optional
+legacy highlights/lights, WAV format/timing/pitch, bounded voice reuse, mute and
+blocked playback, and audio resource cleanup.
 
 GPU rendering and gameplay have not been visually verified in the remote
 environment, which could not create a WebGL context during the earlier tests.
@@ -109,12 +115,14 @@ captures to avoid measuring their overhead.
 
 | URL query | Purpose |
 | --- | --- |
-| `?perfdiag=1` | New normal baseline: original visual quality, stats off |
-| `?perfdiag=1&outlines=0` | Outline cost only |
+| `?perfdiag=1` | Current defaults: material highlight, inspection-only workshop lights, stats off |
+| `?perfdiag=1&outlines=0` | Disable interaction highlighting (legacy switch name) |
+| `?perfdiag=1&highlight=outline` | Original multi-pass blurred border highlight; higher rendering cost |
 | `?perfdiag=1&shadows=0` | Shadow cost only |
 | `?perfdiag=1&dpr=1` | Resolution cost only |
 | `?perfdiag=1&decorativeLights=0` | Furniture/workshop light cost; glow sprites remain |
-| `?perfdiag=1&workshopLights=all` | Explicitly keep the default four workshop lights |
+| `?perfdiag=1&workshopLights=inspect` | Explicitly keep the default inspection-only light behavior |
+| `?perfdiag=1&workshopLights=all` | Keep all four workshop point lights on, including while walking |
 | `?perfdiag=1&workshopLights=focused` | Opt into one focused workshop light; changes illumination on other crafts |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
 | `?perfdiag=1&activeLightsOnly=0` | Include idle zero-power furniture lights; workshop policy is unchanged |
@@ -320,15 +328,12 @@ include different camera/interaction sequences and profiler overhead; the
 numbers do not isolate per-light GPU time or guarantee a 50% gain from the new
 one-light policy.
 
-The initial follow-up made one workshop light the default, prioritizing a
-selected artifact over hover, then the nearest artifact when neither is focused.
-The user screenshot showed the crystal illuminated while the other crafts lost
-their local lighting. All four workshop lights are now restored by default;
-the one-light policy is explicitly optional through `workshopLights=focused`.
-All four auras, runes, artifact animations, and emissive material pulses continue
-in both modes. Furniture effects retain their existing real lights. Scene tests
-cover the restored default and the optional one-light mode. No FPS gain is
-claimed for the default restoration.
+The lighting modes retain all four auras, runes, artifact animations, and
+emissive material pulses. Furniture effects keep their existing real lights.
+The current default, described below, switches workshop lights off while walking
+and illuminates only an inspected craft. Earlier all-four and nearest/focused
+policies remain explicit comparison options. The recordings above predate the
+current inspection-only policy and do not measure its FPS.
 
 Both traces also identify a workshop-entry stall in WorkshopSound.play: about
 295 and 302 ms of self-sample time on its setup line, with the entry interaction
@@ -345,16 +350,42 @@ on the user's Windows system. Tests verify cue duration/pitch, cache bounds,
 global-mute callback, playback rejection handling, and cleanup. The clips contain
 no downloaded audio and introduce no asset or package dependency.
 
-For local visual review, use `?perfdiag=1` and inspect lighting and interaction
-outlines. The earlier `outlines=0` URL intentionally disables highlights and is
-only a diagnostic configuration. A full reload at
-`?perfdiag=1&outlines=1&workshopLights=all` restores both features even on the
-previous one-light revision. Remove `lowfx=1` or `decorativeLights=0` if present.
-Idle diagnostics should show pointLights=5, increasing with furniture effects;
-`workshopLights=focused` explicitly opts into the lower-light appearance.
-Enter/select/close/exit with sound enabled and check global mute. The audio fix,
-idle furniture light exclusion, beam batching, and animation work reductions
-remain. No additional Chrome trace is required for this visual correction.
+### Material highlighting and inspection-only workshop lights
+
+Source inspection confirms that the legacy OutlinePass renders a non-selected
+depth scene and a selected-object mask, then runs edge detection, blur, and
+compositing in addition to the normal scene/output passes. Re-enabling that path
+can therefore restore substantial rendering work. This is an identified source
+cost, not a new GPU timing measurement.
+
+Default highlighting now adds warm emission/tint to the target's existing
+materials and keeps the direct scene render. There are no full-screen passes or
+additional geometry. Clones are shared within the selected target, never with
+unselected objects, and the original material/array references return on focus
+change. Textures, geometry, skinning, morph data, and shader hooks are preserved;
+authored color, emissive intensity, and opacity changes are followed. Unsupported
+custom shaders and invisible hit helpers are left alone. The visual difference
+is an illuminated/tinted surface instead of the old blurred silhouette border.
+
+The workshop's default `inspect` policy has no real point lights while walking,
+entering, in the overview, hovering without selection, or leaving. E/Enter,
+click, or arrow selection inside the workshop illuminates that craft only;
+closing the selection or leaving turns it off immediately. The main house light
+is independent. Zero/one-workshop-light shader variants compile while the
+house-entry overlay covers the screen, preserving visibility/state afterwards
+even if compilation fails.
+
+For local review, open `?perfdiag=1` after pulling. Remove previous overrides
+such as `workshopLights=all`, `workshopLights=focused`, `highlight=outline`,
+`outlines=0`, `lowfx=1`, and `decorativeLights=0`. Check that nearby interactables
+receive material feedback, original materials return when moving away, workshop
+overview has no point light, and selecting/closing/leaving correctly switches
+the individual craft light. Idle diagnostics should read pointLights=1, rising
+to 2 for workshop inspection, plus active furniture lights. In default mode,
+highlightActive can be true while outlineActive is false: highlightMode=material
+uses no OutlinePass. `highlight=outline` explicitly restores the legacy border
+and its cost. Appearance, post-change FPS, and Windows audio playback still need
+local review; no new measured FPS gain is claimed.
 
 ### Uploaded exterior source audit
 

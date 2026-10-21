@@ -124,7 +124,8 @@ export class WorkshopExperience {
     const glowLight = new THREE.PointLight(tint, 0.28, 1.65, 2);
     glowLight.name = `WORKSHOP_TREASURE_LIGHT_${index + 1}`;
     glowLight.castShadow = false;
-    glowLight.visible = performanceOptions.workshopLights === "all" || index === 0;
+    glowLight.visible = performanceOptions.workshopLights === "all" ||
+      (performanceOptions.workshopLights === "focused" && index === 0);
     glowLight.position.set(0, 0.04, 0.02);
     if (performanceOptions.decorativeLights) floating.add(glowLight);
 
@@ -496,6 +497,7 @@ export class WorkshopExperience {
     this.updateDesiredCamera();
     this.beginTransition(this.desiredPosition, this.desiredQuaternion, 0.95);
     this.state = "entering";
+    this.updateTreasureLights();
     this.sound.play("enter");
     return true;
   }
@@ -503,6 +505,7 @@ export class WorkshopExperience {
   leave(onComplete: () => void): void {
     if (this.state === "idle" || this.state === "leaving") return;
     this.state = "leaving";
+    this.updateTreasureLights();
     this.selectedIndex = -1;
     this.hoveredIndex = -1;
     this.setCursor(false);
@@ -531,6 +534,7 @@ export class WorkshopExperience {
     ) {
       const previous = this.selectedIndex;
       this.selectedIndex = -1;
+      this.updateTreasureLights();
       this.panel.classList.remove("is-visible");
       this.sound.play("close", previous);
       this.updateControlHint();
@@ -572,6 +576,7 @@ export class WorkshopExperience {
         { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" },
       );
     }
+    this.updateTreasureLights();
     this.updateControlHint();
   }
 
@@ -831,11 +836,30 @@ export class WorkshopExperience {
     this.camera.quaternion.slerp(this.desiredQuaternion, alpha);
   }
 
-  /** Keep one local colored spill; sprites/runes/emissive remain on every craft.
-   * A fixed light count also avoids shader variants on focus changes.
-   */
+  /** Warm the zero/one-workshop-light variants under the house-entry cover. */
+  async prepareLightingVariants(compile: () => Promise<unknown>): Promise<void> {
+    if (!performanceOptions.decorativeLights || performanceOptions.workshopLights !== "inspect" ||
+        !this.artifacts.length) return;
+    const light = this.artifacts[0].glowLight;
+    const visible = light.visible;
+    try {
+      light.visible = true;
+      await compile();
+    } finally {
+      light.visible = visible;
+    }
+  }
+
+  /** Walking/overview has no workshop light; inspection lights only that craft. */
   private updateTreasureLights(): void {
     if (!performanceOptions.decorativeLights) return;
+    if (performanceOptions.workshopLights === "inspect") {
+      const inspected = this.state === "active" ? this.selectedIndex : -1;
+      this.artifacts.forEach((artifact, index) => {
+        artifact.glowLight.visible = index === inspected;
+      });
+      return;
+    }
     if (performanceOptions.workshopLights === "all") {
       for (const artifact of this.artifacts) artifact.glowLight.visible = true;
       return;

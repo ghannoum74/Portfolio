@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import Stats from "stats-gl";
 import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
+import { InteractionHighlight } from "./InteractionHighlight";
 
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -15,6 +16,7 @@ export class Renderer {
   private renderPass?: RenderPass;
   private outlinePass?: OutlinePass;
   private hasInteractionOutline = false;
+  private readonly materialHighlight = new InteractionHighlight();
 
   private readonly options = performanceOptions;
   private outlinedObject: THREE.Object3D | null = null;
@@ -45,7 +47,7 @@ export class Renderer {
     }
   }
   setupInteractionOutline(scene: THREE.Scene, camera: THREE.Camera): void {
-    if (!this.options.outlines) return;
+    if (!this.options.outlines || this.options.highlightMode !== "outline") return;
     this.composer = new EffectComposer(this.instance);
 
     this.renderPass = new RenderPass(scene, camera);
@@ -75,9 +77,16 @@ export class Renderer {
   }
 
   setInteractionOutline(object: THREE.Object3D | null): void {
-    if (!this.options.outlines || !this.outlinePass) return;
+    if (!this.options.outlines) return;
     if (object === this.outlinedObject) return;
     this.outlinedObject = object;
+
+    if (this.options.highlightMode === "material") {
+      this.materialHighlight.setTarget(object);
+      this.hasInteractionOutline = this.materialHighlight.active;
+      return;
+    }
+    if (!this.outlinePass) return;
 
     const meshes: THREE.Object3D[] = [];
 
@@ -95,10 +104,12 @@ export class Renderer {
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     const renderStarted = this.options.perfDiag ? performance.now() : 0;
     this.instance.info.reset();
+    this.materialHighlight.update();
     this.stats?.begin();
 
     if (
       this.options.outlines &&
+      this.options.highlightMode === "outline" &&
       this.hasInteractionOutline &&
       this.composer &&
       this.renderPass &&
@@ -135,7 +146,9 @@ export class Renderer {
           trianglesLastFrame: info.render.triangles,
           gpuTextures: info.memory.textures,
           gpuGeometries: info.memory.geometries,
-          outlineActive: this.hasInteractionOutline && this.options.outlines,
+          highlightActive: this.hasInteractionOutline && this.options.outlines,
+          highlightMode: this.options.highlightMode,
+          outlineActive: this.hasInteractionOutline && this.options.outlines && this.options.highlightMode === "outline",
           lowFx: this.options.lowFx,
           shadows: this.options.shadows,
           pixelRatio: this.instance.getPixelRatio(),

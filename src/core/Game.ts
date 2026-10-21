@@ -1015,6 +1015,9 @@ export class Game {
        * so there is no visible hitch.
        */
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      await this.workshop?.prepareLightingVariants(() =>
+        this.renderer.instance.compileAsync(this.scene, this.playerCamera),
+      );
 
       this.insideHouse = true;
 

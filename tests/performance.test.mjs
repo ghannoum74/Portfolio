@@ -15,6 +15,7 @@ const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: {
   contents: `export { getPerformanceOptions, performanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
+    export { InteractionHighlight } from './src/core/InteractionHighlight';
     export { World } from './src/world/World';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
@@ -27,7 +28,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { getPerformanceOptions, performanceOptions, Renderer, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -46,7 +47,9 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
-  assert.equal(normal.workshopLights, 'all');
+  assert.equal(normal.workshopLights, 'inspect');
+  assert.equal(normal.highlightMode, 'material');
+  assert.equal(getPerformanceOptions('?highlight=outline', 1).highlightMode, 'outline');
   assert.equal(getPerformanceOptions('?workshopLights=all', 1).workshopLights, 'all');
   assert.equal(getPerformanceOptions('?workshopLights=focused', 1).workshopLights, 'focused');
   assert.equal(getPerformanceOptions('?perfdiag=1', 1).outlines, true);
@@ -69,13 +72,14 @@ test('DPR rejects invalid values and lowfx overrides expensive effects', () => {
   assert.equal(getPerformanceOptions('?lowfx=0', 2).outlines, true);
 });
 
-function rendererFixture(outlines = true) {
+function rendererFixture(outlines = true, highlightMode = 'outline') {
   const renderer = Object.create(Renderer.prototype);
   const info = { render: { calls: 99, triangles: 999 }, memory: {},
     reset() { this.render.calls = 0; this.render.triangles = 0; } };
   const draw = () => { info.render.calls++; info.render.triangles += 100; };
   Object.assign(renderer, {
-    options: { outlines, perfDiag: false }, outlinedObject: null,
+    options: { outlines, highlightMode, perfDiag: false }, outlinedObject: null,
+    materialHighlight: new InteractionHighlight(),
     instance: { info, render: draw }, outlinePass: { selectedObjects: [] },
     renderPass: {}, composer: { render() { draw(); draw(); draw(); } },
     hasInteractionOutline: false,
@@ -83,7 +87,7 @@ function rendererFixture(outlines = true) {
   return renderer;
 }
 
-test('outline path counts all passes, clears counters each frame, and returns to direct rendering', () => {
+test('opt-in outline path counts all passes, clears counters each frame, and returns to direct rendering', () => {
   const renderer = rendererFixture();
   const group = new THREE.Group();
   group.add(new THREE.Mesh(new THREE.BoxGeometry()));
@@ -103,6 +107,68 @@ test('disabled outlines use direct rendering even if a target is supplied', () =
   renderer.setInteractionOutline(new THREE.Mesh(new THREE.BoxGeometry()));
   renderer.render({}, {});
   assert.equal(renderer.instance.info.render.calls, 1);
+});
+
+test('default material highlight uses a single scene render without allocating a composer', () => {
+  const renderer = rendererFixture(true, 'material');
+  renderer.composer = undefined; renderer.outlinePass = undefined; renderer.renderPass = undefined;
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const material = new THREE.MeshStandardMaterial();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material); scene.add(mesh);
+  renderer.setupInteractionOutline(scene, camera);
+  assert.equal(renderer.composer, undefined);
+  renderer.setInteractionOutline(mesh);
+  assert.equal(renderer.materialHighlight.active, true);
+  assert.notEqual(mesh.material, material);
+  renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
+  renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
+  assert.equal(scene.children.length, 1);
+  renderer.setInteractionOutline(null);
+  renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
+  assert.equal(mesh.material, material);
+});
+
+test('material highlighting isolates shared materials, preserves textures/geometry, and follows authored color', () => {
+  const highlight = new InteractionHighlight(), group = new THREE.Group();
+  const texture = new THREE.Texture();
+  const material = new THREE.MeshStandardMaterial({ color: 0x625031, emissive: 0x101010, map: texture });
+  const hook = () => {}; material.onBeforeCompile = hook;
+  const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(a.geometry, material);
+  const outside = new THREE.Mesh(a.geometry, material); group.add(a, b);
+  const geometry = a.geometry, originalColor = material.color.clone(), originalEmission = material.emissive.clone();
+  highlight.setTarget(group);
+  const clone = a.material;
+  assert.notEqual(clone, material); assert.equal(b.material, clone);
+  assert.equal(outside.material, material); assert.equal(a.geometry, geometry);
+  assert.equal(clone.map, texture); assert.equal(clone.onBeforeCompile, hook);
+  assert.deepEqual(material.color, originalColor); assert.deepEqual(material.emissive, originalEmission);
+  material.opacity = 0.6; material.emissiveIntensity = 1.7;
+  highlight.update(); assert.equal(clone.opacity, 0.6); assert.equal(clone.emissiveIntensity, 1.7);
+  let disposed = 0, textureDisposals = 0;
+  clone.addEventListener('dispose', () => { disposed++; });
+  texture.addEventListener('dispose', () => { textureDisposals++; });
+  highlight.setTarget(group); assert.equal(a.material, clone);
+  highlight.clear(); highlight.clear();
+  assert.equal(a.material, material); assert.equal(b.material, material);
+  assert.equal(disposed, 1); assert.equal(textureDisposals, 0); assert.equal(highlight.active, false);
+});
+
+test('material highlight restores arrays, skips invisible helpers, and preserves external material replacement', () => {
+  const highlight = new InteractionHighlight(), group = new THREE.Group();
+  const basic = new THREE.MeshBasicMaterial({ color: 0x334455 });
+  const shader = new THREE.ShaderMaterial();
+  const originals = [basic, shader];
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), originals); group.add(mesh);
+  const hidden = new THREE.Mesh(mesh.geometry, basic); hidden.visible = false; group.add(hidden);
+  const hit = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ colorWrite: false })); group.add(hit);
+  highlight.setTarget(group);
+  assert.notEqual(mesh.material, originals); assert.notEqual(mesh.material[0], basic);
+  assert.equal(mesh.material[1], shader); assert.equal(hidden.material, basic);
+  assert.equal(hit.material.colorWrite, false);
+  highlight.clear(); assert.equal(mesh.material, originals);
+  highlight.setTarget(group);
+  const replacement = new THREE.MeshStandardMaterial(); mesh.material = replacement;
+  highlight.clear(); assert.equal(mesh.material, replacement);
 });
 
 test('hidden bubbles do not upload matrices; activation and deactivation remain functional', () => {
@@ -368,7 +434,7 @@ test('only flat workshop and map rings request a single double-sided transparenc
   assert.equal(journey.stops[0].ring.material.side, THREE.DoubleSide);
 });
 
-test('workshop lights all four crafts by default and limits lights only when explicitly requested', () => {
+function workshopLightFixture() {
   const workshop = Object.create(WorkshopExperience.prototype);
   const scene = new THREE.Scene(), house = new THREE.Group();
   house.position.set(10, -30, 3); house.scale.setScalar(2); scene.add(house);
@@ -385,11 +451,25 @@ test('workshop lights all four crafts by default and limits lights only when exp
   const count = () => { let n = 0; scene.traverseVisible(x => { if (x.isPointLight) n++; }); return n; };
   const visible = () => workshop.artifacts.flatMap((a, i) => a.glowLight.visible ? [i] : []);
   const first = workshop.artifacts[0].glowLight.getWorldPosition(new THREE.Vector3());
-  assert.equal(count(), 5);
+  return { workshop, count, visible, first, camera };
+}
+
+test('workshop lights stay off while walking and light only the craft being inspected', () => {
+  const { workshop, count, visible, first, camera } = workshopLightFixture();
+  assert.equal(count(), 1);
   camera.position.copy(first);
-  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0, 1, 2, 3]);
-  workshop.state = 'active'; workshop.selectedIndex = 2; workshop.hoveredIndex = 3;
-  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0, 1, 2, 3]);
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), []);
+  workshop.state = 'entering'; workshop.hoveredIndex = 1;
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), []);
+  workshop.state = 'active';
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), []); // Overview/hover has no light.
+  const classList = { add() {}, remove() {} };
+  Object.assign(workshop, { panel: { classList, animate() {} }, label: { classList }, controls: { classList },
+    sound: { play() {} }, updateControlHint() {}, renderPanel() {}, setCursor() {}, beginTransition() {} });
+  workshop.toggleSelection(); assert.deepEqual(visible(), [1]); assert.equal(count(), 2);
+  workshop.toggleSelection(); assert.deepEqual(visible(), []); assert.equal(count(), 1);
+  workshop.toggleSelection(); assert.deepEqual(visible(), [1]);
+  workshop.leave(() => {}); assert.deepEqual(visible(), []); assert.equal(count(), 1);
   const previous = performanceOptions.workshopLights;
   try {
     performanceOptions.workshopLights = 'focused';
@@ -416,6 +496,19 @@ test('workshop lights all four crafts by default and limits lights only when exp
     performanceOptions.workshopLights = 'all';
     workshop.updateTreasureLights(); assert.equal(count(), 5);
   } finally { performanceOptions.workshopLights = previous; }
+});
+
+test('workshop light shader warm-up restores visibility and inspection state even if compilation fails', async () => {
+  const { workshop, count } = workshopLightFixture();
+  assert.equal(count(), 1);
+  let calls = 0;
+  await workshop.prepareLightingVariants(async () => { calls++; assert.equal(count(), 2); });
+  assert.equal(calls, 1); assert.equal(count(), 1);
+  assert.equal(workshop.state, 'idle'); assert.equal(workshop.selectedIndex, -1);
+  await assert.rejects(workshop.prepareLightingVariants(async () => {
+    assert.equal(count(), 2); throw new Error('compile failed');
+  }), /compile failed/);
+  assert.equal(count(), 1);
 });
 
 test('procedural workshop WAV cues retain timing, mono PCM, low amplitude, and pitched feedback', () => {

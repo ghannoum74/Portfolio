@@ -14,10 +14,11 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     lowFx,
     perfDiag: enabled("perfdiag"),
     outlines: !lowFx && params.get("outlines") !== "0",
+    highlightMode: params.get("highlight") === "outline" ? "outline" : "material",
     shadows: !lowFx && params.get("shadows") !== "0",
     decorativeLights: params.get("decorativeLights") !== "0",
-    // Preserve illumination on all four crafts; the reduced-light mode is opt-in.
-    workshopLights: params.get("workshopLights") === "focused" ? "focused" : "all",
+    workshopLights: params.get("workshopLights") === "all" ? "all"
+      : params.get("workshopLights") === "focused" ? "focused" : "inspect",
     beamBatching: params.get("beamBatching") !== "0",
     activeLightsOnly: params.get("activeLightsOnly") !== "0",
     pixelRatio,
