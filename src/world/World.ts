@@ -27,6 +27,16 @@ export class World {
   physics = new PhysicsWorld();
   private worldColliders!: WorldColliders;
   private initialized = false;
+
+  // HOUSE_PERFORMANCE_V1: accumulate real time rather than slowing physics at low FPS.
+  private physicsAccumulator = 0;
+  private readonly fixedPhysicsStep = 1 / 60;
+  private readonly maxPhysicsSteps = 5;
+  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private physicsTimingStarted = performance.now();
+  private physicsTimingMs = 0;
+  private physicsTimingFrames = 0;
+  private physicsStepCount = 0;
   private physicsDebugRenderer!: PhysicsDebugRenderer;
   private stairDetector!: StairDetector;
   private dayNightCycle: DayNightCycle;
@@ -122,33 +132,56 @@ export class World {
       return;
     }
 
-    const safeDelta = Math.min(delta, 1 / 30);
+    // Visuals use elapsed wall time (capped only after a tab was suspended).
+    const visualDelta = Math.min(Math.max(delta, 0), 0.1);
 
     if (!exteriorActive) {
-      this.houseInterior?.update(safeDelta);
+      this.houseInterior?.update(visualDelta);
+    } else {
+      this.dayNightCycle.update(visualDelta);
+      this.water.update(visualDelta);
+      this.npcManager.update(visualDelta, this.player.model.position);
     }
 
-    if (exteriorActive) {
-      this.dayNightCycle.update(safeDelta);
-
-      this.water.update(safeDelta);
-
-      this.npcManager.update(safeDelta, this.player.model.position);
+    // Stable physics substeps. At 15 FPS we now simulate ~4 x 1/60 s,
+    // rather than advancing only 1/30 s and making the player half-speed.
+    const physicsStarted = this.perfDiag ? performance.now() : 0;
+    this.physicsAccumulator += visualDelta;
+    let steps = 0;
+    while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsSteps) {
+      this.physics.beginFrame(this.fixedPhysicsStep);
+      this.player.update(this.fixedPhysicsStep);
+      this.physics.step();
+      this.physicsAccumulator -= this.fixedPhysicsStep;
+      steps++;
     }
 
-    this.physics.beginFrame(safeDelta);
+    // Drop impossible backlog after a severe stall (e.g. a tab was suspended).
+    // This prevents an escalating CPU spiral; low FPS still needs separate tuning.
+    if (steps === this.maxPhysicsSteps && this.physicsAccumulator >= this.fixedPhysicsStep) {
+      this.physicsAccumulator = 0;
+    }
+    if (steps > 0) this.player.syncFromPhysics();
 
-    this.player?.update(safeDelta);
-
-    this.physics.step();
-
-    this.player?.syncFromPhysics();
+    if (this.perfDiag) {
+      this.physicsTimingMs += performance.now() - physicsStarted;
+      this.physicsTimingFrames++;
+      this.physicsStepCount += steps;
+      const now = performance.now();
+      if (now - this.physicsTimingStarted >= 3000) {
+        console.info("[House physics]", {
+          physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
+          physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
+        });
+        this.physicsTimingStarted = now;
+        this.physicsTimingMs = 0;
+        this.physicsTimingFrames = 0;
+        this.physicsStepCount = 0;
+      }
+    }
 
     this.physicsDebugRenderer.update();
-
-    if (exteriorActive) {
-      this.sunHelper?.update();
-    }
+    if (exteriorActive) this.sunHelper?.update();
   }
 
   setSunDebugVisible(visible: boolean): void {

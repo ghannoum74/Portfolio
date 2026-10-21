@@ -15,6 +15,15 @@ export class Renderer {
   private outlinePass?: OutlinePass;
   private hasInteractionOutline = false;
 
+  // HOUSE_PERFORMANCE_V1: append ?lowfx=1 for a temporary A/B GPU test.
+  // The normal render quality is unchanged unless that query param is present.
+  private readonly lowFx = new URLSearchParams(window.location.search).has("lowfx");
+  // Append ?perfdiag=1 and inspect the browser console every ~3 seconds.
+  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private perfStarted = performance.now();
+  private perfFrames = 0;
+  private perfRenderMs = 0;
+
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
       canvas,
@@ -23,13 +32,13 @@ export class Renderer {
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
-    this.instance.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.instance.setPixelRatio(this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2));
 
-    this.instance.shadowMap.enabled = true;
+    this.instance.shadowMap.enabled = !this.lowFx;
 
     // PERFORMANCE STATS
     this.stats = new Stats({
-      trackGPU: true,
+      trackGPU: !this.lowFx,
     });
 
     this.stats.init(this.instance);
@@ -85,9 +94,11 @@ export class Renderer {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera): void {
+    const renderStarted = this.perfDiag ? performance.now() : 0;
     this.stats.begin();
 
     if (
+      !this.lowFx &&
       this.hasInteractionOutline &&
       this.composer &&
       this.renderPass &&
@@ -107,10 +118,33 @@ export class Renderer {
 
     this.stats.end();
     this.stats.update();
+
+    if (this.perfDiag) {
+      this.perfFrames++;
+      this.perfRenderMs += performance.now() - renderStarted;
+      const now = performance.now();
+      const seconds = (now - this.perfStarted) / 1000;
+      if (seconds >= 3) {
+        const info = this.instance.info;
+        console.info("[House perf]", {
+          fpsApprox: Math.round(this.perfFrames / seconds),
+          rendererCpuMsApprox: +(this.perfRenderMs / this.perfFrames).toFixed(2),
+          drawCallsLastFrame: info.render.calls,
+          trianglesLastFrame: info.render.triangles,
+          gpuTextures: info.memory.textures,
+          gpuGeometries: info.memory.geometries,
+          outlineActive: this.hasInteractionOutline && !this.lowFx,
+          lowFx: this.lowFx,
+        });
+        this.perfFrames = 0;
+        this.perfRenderMs = 0;
+        this.perfStarted = now;
+      }
+    }
   }
 
   resize() {
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2);
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
