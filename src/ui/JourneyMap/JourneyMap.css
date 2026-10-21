@@ -1,0 +1,55 @@
+/* Small parchment chapter plaque; the route itself lives on the physical map. */
+.journey-inspector {
+  position: fixed;
+  right: clamp(15px, 3.5vw, 58px);
+  bottom: clamp(95px, 12vh, 135px);
+  z-index: 95;
+  width: min(315px, calc(100vw - 30px));
+  padding: 20px 22px 19px;
+  border-radius: 9px;
+  border: 1px solid #b99c70;
+  border-left: 3px solid #978357;
+  background: #f3e7c2;
+  box-shadow: 4px 5px 0 #44322538, 0 15px 40px #291d1429;
+  color: #493728;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(11px) scale(.985);
+  transition: opacity 220ms ease, transform 260ms ease, visibility 220ms;
+}
+.journey-inspector.is-visible { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+.journey-inspector__eyebrow { font: 700 10px system-ui, sans-serif; color: #6d8069; letter-spacing: .15em; }
+.journey-inspector h2 { margin: 9px 0 12px; font: 28px/1.12 var(--font-root, "Coiny", system-ui); }
+.journey-inspector p { font: 13px/1.62 system-ui, sans-serif; color: #6c5740; margin: 0 0 13px; }
+.journey-inspector__chips { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 12px; border-top: 1px solid #cab995; }
+.journey-inspector__chips span { font: 700 10px system-ui, sans-serif; color: #607466; padding: 5px 7px; border: 1px solid #c5b99d; background: #e8e1c9; border-radius: 4px; }
+.journey-hover-hint {
+  position: fixed; top: 0; left: 0; z-index: 94;
+  pointer-events: none;
+  padding: 7px 10px; border: 1px solid #bda575; border-radius: 6px;
+  background: #3f3228ec; color: #f4e7c9;
+  font: 11px var(--font-root, "Coiny", system-ui);
+  opacity: 0; visibility: hidden; transform: translate(-50%, 7px);
+  transition: opacity 180ms, transform 180ms, visibility 180ms;
+}
+.journey-hover-hint.is-visible { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.journey-controls {
+  position: fixed; z-index: 94;
+  left: 50%; bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 8px);
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #c3ab82; background: #f3e7c2f2;
+  box-shadow: 2px 4px 0 #4937282e; color: #584631;
+  opacity: 0; visibility: hidden;
+  transition: opacity 210ms, visibility 210ms, transform 210ms;
+}
+.journey-controls.is-visible { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.journey-controls button { pointer-events: auto; cursor: pointer; display: grid; place-items: center; font: 24px/1 Georgia, serif; color: #4d6257; width: 33px; height: 31px; border: 1px solid #beaa8d; background: #fff7e0; border-radius: 5px; transition: background 150ms, transform 150ms; }
+.journey-controls button:hover { background: #dfe5d2; transform: translateY(-1px); }
+.journey-controls__title { font: 11px var(--font-root, "Coiny", system-ui); letter-spacing: .035em; min-width: 124px; text-align: center; white-space: nowrap; }
+.journey-controls__keys { font: 11px system-ui, sans-serif; white-space: nowrap; border-left: 1px solid #c4b394; padding-left: 12px; }
+.journey-controls kbd { display: inline-block; border: 1px solid #82694b; border-radius: 4px; background: #fff8e8; font: bold 10px system-ui, sans-serif; padding: 3px 5px; margin: 0 2px; }
+@media (max-width: 680px) { .journey-controls__title { display: none; } .journey-inspector { bottom: 83px; width: min(275px, calc(100vw - 30px)); padding: 16px; } .journey-inspector h2 {font-size:24px;} }
+@media (prefers-reduced-motion: reduce) { .journey-inspector, .journey-hover-hint, .journey-controls {transition:none;} }

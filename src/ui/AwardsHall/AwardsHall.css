@@ -1,0 +1,208 @@
+/* The room and real props remain the focus: this is a small museum label. */
+.awards-inspector {
+  position: fixed;
+  z-index: 98;
+  right: clamp(18px, 4vw, 60px);
+  bottom: clamp(96px, 14vh, 150px);
+  width: min(305px, calc(100vw - 40px));
+  padding: 20px 21px 17px;
+  border: 1px solid #bca077;
+  border-top: 3px solid #aa7d43;
+  border-radius: 7px;
+  background: #f4e8ca;
+  box-shadow:
+    3px 4px 0 #47332333,
+    0 13px 33px #32251840;
+  color: #493727;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(13px) rotate(0.7deg);
+  transform-origin: bottom right;
+  transition:
+    opacity 230ms,
+    visibility 230ms,
+    transform 320ms cubic-bezier(0.2, 0.78, 0.3, 1);
+}
+.awards-inspector.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) rotate(0);
+}
+.awards-inspector_eyebrow {
+  font:
+    700 10px system-ui,
+    sans-serif;
+  letter-spacing: 0.17em;
+  color: #96703e;
+}
+.awards-inspector h2 {
+  font: 26px/1.1 var(--font-root, "Coiny", system-ui);
+  margin: 9px 0 12px;
+}
+.awards-inspector_description {
+  font:
+    13px/1.6 system-ui,
+    sans-serif;
+  color: #685039;
+  margin: 0 0 12px;
+}
+.awards-inspector_footnote {
+  margin: 0 0 12px;
+  border-left: 2px solid #ba9b65;
+  padding-left: 10px;
+  color: #8a6b4b;
+  font:
+    italic 11px/1.48 system-ui,
+    sans-serif;
+}
+.awards-inspector_counter {
+  display: block;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #d4c09c;
+  text-align: right;
+  font:
+    bold 11px system-ui,
+    sans-serif;
+  letter-spacing: 0.12em;
+  color: #8c6d48;
+}
+.awards-inspector_proof {
+  display: inline-block;
+  padding: 6px 0;
+  color: #567366;
+  font:
+    700 12px system-ui,
+    sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.awards-inspector_proof[hidden] {
+  display: none;
+}
+.awards-hover-hint {
+  position: fixed;
+  z-index: 97;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(-50%, 5px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms ease;
+  color: #fbeec8;
+  background: #4b392aef;
+  border: 1px solid #c0a372;
+  border-radius: 7px;
+  padding: 7px 11px;
+  box-shadow: 0 7px 14px #21170e40;
+  font: 12px var(--font-root, "Coiny", system-ui);
+  white-space: nowrap;
+}
+.awards-hover-hint.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.awards-controls {
+  position: fixed;
+  z-index: 97;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 11px;
+  border: 1px solid #bca077;
+  border-radius: 8px;
+  color: #54412c;
+  background: #f3e7c2f2;
+  box-shadow: 3px 3px 0 #4533222b;
+  transform: translate(-50%, 10px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 200ms,
+    opacity 200ms,
+    visibility 200ms;
+  white-space: nowrap;
+}
+.awards-controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.awards-controls_caption {
+  font: 11px var(--font-root, "Coiny", system-ui);
+  color: #85663e;
+}
+.awards-controls_keys {
+  font:
+    11px system-ui,
+    sans-serif;
+}
+.awards-controls kbd {
+  padding: 3px 6px;
+  border: 1px solid #947b54;
+  background: #fff8e4;
+  border-radius: 4px;
+  font:
+    bold 11px system-ui,
+    sans-serif;
+  margin-left: 5px;
+}
+.awards-controls_arrow {
+  cursor: pointer;
+  border: 1px solid #b9a47b;
+  background: #e9d6ab;
+  color: #5a422a;
+  border-radius: 5px;
+  width: 30px;
+  height: 29px;
+  font:
+    25px/1 Georgia,
+    serif;
+  transition:
+    background 150ms,
+    transform 150ms;
+}
+.awards-controls_arrow:hover {
+  background: #f8e7c1;
+  transform: translateY(-2px);
+}
+.awards-controls_arrow:focus-visible,
+.awards-inspector_proof:focus-visible {
+  outline: 2px solid #698e79;
+  outline-offset: 3px;
+}
+@media (max-width: 620px) {
+  .awards-controls {
+    gap: 5px;
+    padding: 7px;
+  }
+  .awards-controls_caption {
+    display: none;
+  }
+  .awards-inspector {
+    right: 14px;
+    bottom: 88px;
+    width: min(270px, calc(100vw - 28px));
+    padding: 15px 16px;
+  }
+  .awards-inspector h2 {
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .awards-inspector,
+  .awards-hover-hint,
+  .awards-controls,
+  .awards-controls_arrow {
+    transition: none;
+  }
+}

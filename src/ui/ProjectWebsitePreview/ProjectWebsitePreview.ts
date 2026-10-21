@@ -9,7 +9,6 @@ type Point = [number, number];
 
 /**
  * Modern hover for the REAL textured right-hand page, not an HTML book modal.
- * No scroll input, popup splash screen, or camera overrides.
  */
 export class ProjectWebsitePreview {
   private readonly raycaster = new THREE.Raycaster();

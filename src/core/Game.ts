@@ -36,6 +36,12 @@ import { ProjectWebsitePreview } from "../ui/ProjectWebsitePreview/ProjectWebsit
 import { BookPageControls } from "../ui/BookPageControls/BookPageControls";
 import { WorkshopExperience } from "../world/house/workshop/WorkshopExperience";
 import { WorkshopInteraction } from "../interactions/interactions/WorkshopInteraction";
+import { JourneyMapExperience } from "../world/house/journey/JourneyMapExperience";
+import { JourneyMapInteraction } from "../interactions/interactions/JourneyMapInteraction";
+import { AwardsExperience } from "../world/house/awards/AwardsExperience";
+import { AwardsInteraction } from "../interactions/interactions/AwardsInteraction";
+
+import { HouseFurnitureInteractions } from "../world/house/furniture/HouseFurnitureInteractions";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
 
@@ -118,6 +124,10 @@ export class Game {
   private readonly projectWebsitePreview: ProjectWebsitePreview;
   private readonly bookPageControls: BookPageControls;
   private workshop: WorkshopExperience | null = null;
+  private journey: JourneyMapExperience | null = null;
+  private awards: AwardsExperience | null = null;
+
+  private furniture: HouseFurnitureInteractions | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -430,12 +440,21 @@ export class Game {
       this.projectBookCamera.update(delta);
     } else if (this.workshop?.isControllingCamera) {
       // The workshop camera is driven in workshop.update() below.
+    } else if (this.awards?.isControllingCamera) {
+      // AwardsExperience owns the cinematic shot while inspecting.
+    } else if (this.journey?.isControllingCamera) {
+      // JourneyMapExperience animates the camera in its own update.
+    } else if (this.furniture?.isControllingCamera) {
+      // Rest camera is animated by furniture.update below.
     } else {
       // Normal third-person camera.
       this.thirdPersonCamera?.update(delta);
     }
 
     this.workshop?.update(delta);
+    this.furniture?.update(delta);
+    this.journey?.update(delta);
+    this.awards?.update(delta);
 
     this.projectWebsitePreview.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
@@ -449,6 +468,9 @@ export class Game {
       !this.transitioning &&
       this.projectBookMode === "idle" &&
       !this.workshop?.isControllingCamera &&
+      !this.furniture?.isControllingCamera &&
+      !this.journey?.isControllingCamera &&
+      !this.awards?.isControllingCamera &&
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
@@ -494,6 +516,18 @@ export class Game {
   };
 
   private onCanvasClick = (event: MouseEvent): void => {
+    if (this.furniture?.isControllingCamera) return;
+
+    if (this.journey?.isControllingCamera) {
+      this.journey.clickAt(event.clientX, event.clientY);
+      return;
+    }
+
+    if (this.awards?.isControllingCamera) {
+      this.awards.clickAt(event.clientX, event.clientY);
+      return;
+    }
+
     if (this.workshop?.isControllingCamera) {
       if (this.workshop.mode === "active") {
         this.workshop.clickAt(event.clientX, event.clientY);
@@ -684,6 +718,49 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    // Bed / fireside cinematic: allow E or Esc to return, not gameplay input.
+    if (this.furniture?.isControllingCamera) {
+      if (event.code === "Escape" || event.code === "KeyE" || event.code === "Enter") {
+        event.preventDefault();
+        if (!event.repeat) this.furniture.leaveFocus();
+      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (this.journey?.isControllingCamera) {
+      if (event.code === "Escape") {
+        event.preventDefault();
+        if (!event.repeat) this.leaveJourneyMap();
+      } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        event.preventDefault();
+        if (!event.repeat) this.journey.selectRelative(event.code === "ArrowRight" ? 1 : -1);
+      } else if (event.code === "KeyE" || event.code === "Enter") {
+        event.preventDefault();
+        if (!event.repeat) this.journey.toggleSelection();
+      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (this.awards?.isControllingCamera) {
+      if (event.code === "Escape") {
+        event.preventDefault();
+        if (!event.repeat) this.leaveAwardsExperience();
+      } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        event.preventDefault();
+        if (!event.repeat) this.awards.selectRelative(event.code === "ArrowRight" ? 1 : -1);
+      } else if (event.code === "KeyE" || event.code === "Enter") {
+        event.preventDefault();
+        if (!event.repeat) this.awards.toggleSelection();
+      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
     if (this.workshop?.isControllingCamera) {
       if (event.code === "Escape") {
         event.preventDefault();
@@ -691,6 +768,11 @@ export class Game {
       } else if (event.code === "KeyE" || event.code === "Enter") {
         event.preventDefault();
         if (!event.repeat) this.workshop.toggleSelection();
+      } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        event.preventDefault();
+        if (!event.repeat) {
+          this.workshop.selectRelative(event.code === "ArrowLeft" ? -1 : 1);
+        }
       } else if (["Space", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
         event.preventDefault();
       }
@@ -1043,6 +1125,7 @@ export class Game {
     if (workshopStand) {
       this.workshop = new WorkshopExperience(
         house.model, workshopStand, this.playerCamera, this.renderer.instance.domElement,
+        () => !this.worldAudio.isMuted,
       );
       this.interactionSystem.register(
         new WorkshopInteraction(workshopStand, () => this.enterWorkshopExperience()),
@@ -1050,6 +1133,78 @@ export class Game {
     } else {
       console.warn("Workshop asset SEC_WORKSHOP_WeaponStand not found in house.glb");
     }
+
+    // Awards Hall: inspect the actual physical framed pictures and trophy.
+    // No duplicated geometry or guessed certification claims.
+    this.awards = new AwardsExperience(
+      house.model,
+      this.playerCamera,
+      this.renderer.instance.domElement,
+    );
+    if (this.awards.exhibitCount > 0) {
+      const exhibitNames = [
+        "SEC_AWARDS_Frame_M",
+        "SEC_AWARDS_Frame_S",
+        "SEC_AWARDS_TrophyCup",
+      ];
+      for (const [index, name] of exhibitNames.entries()) {
+        const exhibit = house.model.getObjectByName(name);
+        if (!exhibit) continue;
+        this.interactionSystem.register(
+          new AwardsInteraction(exhibit, () => this.enterAwardsExperience(index)),
+        );
+      }
+    }
+
+    // Cartographer's Trail: interactive symbolic path on the REAL map table.
+    const mapTop = house.model.getObjectByName("SEC_MAP_MapTop");
+    const mapTable = house.model.getObjectByName("SEC_MAP_Table_Large");
+    if (mapTop && mapTable) {
+      this.journey = new JourneyMapExperience(
+        house.model, mapTop, this.playerCamera, this.renderer.instance.domElement,
+      );
+      this.interactionSystem.register(
+        new JourneyMapInteraction(mapTable, () => this.enterJourneyMap()),
+      );
+    } else {
+      console.warn("Journey Map requires SEC_MAP_MapTop and SEC_MAP_Table_Large in house.glb");
+    }
+
+    // Extra cottage furniture: a single system for the remaining physical props.
+    this.furniture = new HouseFurnitureInteractions(
+      house.model,
+      this.playerCamera,
+      {
+        onFocusStart: () => {
+          if (
+            this.phase !== "playing" || !this.insideHouse ||
+            this.transitioning || this.projectBookMode !== "idle" ||
+            this.paperPanel.isOpen || this.dialogueBox.isOpen
+          ) return false;
+          if (this.debugMode) {
+            this.debugMode = false;
+            this.updateOverlay();
+          }
+          this.keyboard.setEnabled(false);
+          this.thirdPersonCamera?.setInputEnabled(false);
+          this.renderer.setInteractionOutline(null);
+          this.world.player.model.visible = false;
+          this.helpButton.setVisible(false);
+          return true;
+        },
+        onFocusEnd: () => {
+          this.world.player.model.visible = true;
+          this.thirdPersonCamera?.snap();
+          this.helpButton.setVisible(this.phase === "playing");
+          this.keyboard.setEnabled(
+            this.phase === "playing" && this.insideHouse &&
+            !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+          );
+        },
+        isMuted: () => this.worldAudio.isMuted,
+      },
+    );
+    this.furniture.register((interaction) => this.interactionSystem.register(interaction));
 
     this.houseInteractionsRegistered = true;
   }
@@ -1127,6 +1282,68 @@ export class Game {
     this.workshop?.leave(() => {
       this.world.player.model.visible = true;
       this.thirdPersonCamera?.snap();
+      this.keyboard.setEnabled(
+        this.phase === "playing" && this.insideHouse &&
+        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+      );
+    });
+  }
+
+  private enterAwardsExperience(index: number): void {
+    if (
+      !this.awards || this.phase !== "playing" || !this.insideHouse ||
+      this.transitioning || this.projectBookMode !== "idle" ||
+      this.workshop?.isControllingCamera || this.paperPanel.isOpen ||
+      this.dialogueBox.isOpen
+    ) return;
+    if (this.debugMode) {
+      this.debugMode = false;
+      this.updateOverlay();
+    }
+    if (!this.awards.enter(index)) return;
+    this.keyboard.setEnabled(false);
+    this.thirdPersonCamera?.setInputEnabled(false);
+    this.renderer.setInteractionOutline(null);
+    this.world.player.model.visible = false;
+    this.helpButton.setVisible(false);
+  }
+
+  private leaveAwardsExperience(): void {
+    this.awards?.leave(() => {
+      this.world.player.model.visible = true;
+      this.thirdPersonCamera?.snap();
+      this.helpButton.setVisible(this.phase === "playing");
+      this.keyboard.setEnabled(
+        this.phase === "playing" && this.insideHouse &&
+        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+      );
+    });
+  }
+
+  private enterJourneyMap(): void {
+    if (
+      !this.journey || this.phase !== "playing" || !this.insideHouse ||
+      this.transitioning || this.projectBookMode !== "idle" ||
+      this.workshop?.isControllingCamera || this.awards?.isControllingCamera ||
+      this.paperPanel.isOpen || this.dialogueBox.isOpen
+    ) return;
+    if (this.debugMode) {
+      this.debugMode = false;
+      this.updateOverlay();
+    }
+    if (!this.journey.enter()) return;
+    this.keyboard.setEnabled(false);
+    this.thirdPersonCamera?.setInputEnabled(false);
+    this.renderer.setInteractionOutline(null);
+    this.world.player.model.visible = false;
+    this.helpButton.setVisible(false);
+  }
+
+  private leaveJourneyMap(): void {
+    this.journey?.leave(() => {
+      this.world.player.model.visible = true;
+      this.thirdPersonCamera?.snap();
+      this.helpButton.setVisible(this.phase === "playing");
       this.keyboard.setEnabled(
         this.phase === "playing" && this.insideHouse &&
         !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,

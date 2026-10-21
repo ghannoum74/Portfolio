@@ -1,108 +1,148 @@
-/* Workshop polish: small contextual UI rather than another large dialog. */
-.workshop-rune-label {
+/* Workshop Phase 2: a small, physical-object-led interface. */
+.workshop-label {
   position: fixed;
-  z-index: 96;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, 9px);
+  z-index: 92;
+  pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  pointer-events: none;
+  transform: translate(-50%, -85%) scale(0.94);
+  transition:
+    opacity 180ms ease,
+    transform 230ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 180ms;
+  background: rgba(55, 43, 31, 0.95);
+  color: #f6e9ca;
   padding: 8px 12px;
-  border: 1px solid rgba(192, 167, 118, .9);
-  border-radius: 8px;
-  background: rgba(56, 45, 33, .94);
-  color: #f9edce;
-  font: 12px var(--font-root, "Coiny", system-ui);
-  letter-spacing: .04em;
-  box-shadow: 0 7px 18px rgba(30, 23, 16, .22);
-  transition: opacity 180ms ease, transform 200ms ease, visibility 180ms ease;
+  border: 1px solid rgba(220, 195, 144, 0.65);
+  border-radius: 9px;
+  box-shadow: 0 6px 20px rgba(24, 19, 12, 0.2);
+  font: 13px/1.15 var(--font-root, "Coiny", system-ui);
+  letter-spacing: 0.015em;
+  white-space: nowrap;
 }
-.workshop-rune-label.is-visible {
+.workshop-label.is-visible {
   opacity: 1;
   visibility: visible;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, -100%) scale(1);
 }
 
 .workshop-inspector {
   position: fixed;
-  z-index: 96;
-  right: clamp(18px, 4vw, 64px);
-  bottom: clamp(92px, 12vh, 146px);
-  width: min(310px, calc(100vw - 36px));
-  padding: 23px 24px 21px;
-  border: 1px solid #b89c73;
-  border-left: 4px solid #47796d;
+  z-index: 91;
+  right: clamp(16px, 3vw, 46px);
+  bottom: clamp(92px, 12vh, 138px);
+  width: min(300px, calc(100vw - 32px));
+  background: #f3e7c2;
+  color: #4b3829;
+  border: 1px solid #af9776;
   border-radius: 12px;
-  background: #f5e9c8;
-  color: #493727;
-  box-shadow: 4px 5px 0 rgba(71, 53, 37, .22), 0 16px 38px rgba(34, 26, 18, .21);
+  padding: 19px 21px 17px;
+  box-shadow:
+    4px 5px 0 rgba(59, 44, 28, 0.25),
+    0 18px 48px rgba(24, 18, 14, 0.19);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(12px) scale(.97);
-  transform-origin: bottom right;
-  transition: opacity 220ms ease, transform 340ms cubic-bezier(.18,.8,.3,1), visibility 220ms;
+  transform: translateY(12px) scale(0.975);
+  transition:
+    opacity 200ms ease,
+    transform 270ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    visibility 200ms;
 }
 .workshop-inspector.is-visible {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scale(1);
 }
-.workshop-inspector__eyebrow {
-  color: #52796c;
-  font: 700 10px system-ui, sans-serif;
+.workshop-inspector_topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #d0be9b;
+  font:
+    700 10px system-ui,
+    sans-serif;
+  letter-spacing: 0.15em;
+  color: #4f7569;
   text-transform: uppercase;
-  letter-spacing: .18em;
+}
+.workshop-inspector_count {
+  font-variant-numeric: tabular-nums;
+  color: #826b51;
+}
+.workshop-inspector_artifact {
+  margin: 15px 0 5px;
+  color: #91785a;
+  font:
+    12px system-ui,
+    sans-serif;
 }
 .workshop-inspector h2 {
-  margin: 8px 0 11px;
-  font: 29px/1.08 var(--font-root, "Coiny", system-ui);
-  letter-spacing: -.02em;
+  margin: 0 0 11px;
+  font: 28px/1.1 var(--font-root, "Coiny", system-ui);
+  letter-spacing: -0.015em;
 }
-.workshop-inspector__description {
-  margin: 0 0 14px;
-  color: #6c5641;
-  font: 13px/1.58 system-ui, sans-serif;
+.workshop-inspector_description {
+  margin: 0 0 17px;
+  color: #65523f;
+  font:
+    13px/1.58 system-ui,
+    sans-serif;
 }
-.workshop-inspector__tools {
+.workshop-inspector_tools {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-top: 13px;
-  border-top: 1px solid #cab795;
+  padding: 12px 0;
+  border-top: 1px solid #d0be9b;
 }
-.workshop-inspector__tools span {
-  display: inline-flex;
-  align-items: center;
+.workshop-inspector_tools span {
+  border: 1px solid #b7af8e;
+  border-radius: 6px;
+  background: #e7e3cd;
+  color: #3c675a;
   padding: 5px 8px;
-  border: 1px solid #c3b493;
-  border-radius: 5px;
-  background: #eae4ce;
-  color: #3d6256;
-  font: 700 11px system-ui, sans-serif;
+  font:
+    700 11px system-ui,
+    sans-serif;
 }
+.workshop-inspector_note {
+  font:
+    italic 12px/1.4 Georgia,
+    serif;
+  color: #806950;
+  margin: 7px 0 0;
+}
+
 .workshop-controls {
   position: fixed;
   z-index: 95;
-  bottom: max(19px, env(safe-area-inset-bottom));
+  bottom: max(18px, env(safe-area-inset-bottom));
   left: 50%;
-  transform: translate(-50%, 8px);
+  transform: translate(-50%, 9px);
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 8px 13px;
-  border: 1px solid #bea67c;
-  border-radius: 9px;
-  background: #f3e7c2f2;
+  justify-content: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid #b9a17b;
+  border-radius: 10px;
+  background: rgba(243, 231, 194, 0.97);
   box-shadow: 3px 4px 0 #49372736;
   color: #493727;
-  font: 12px system-ui, sans-serif;
+  font:
+    12px system-ui,
+    sans-serif;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    visibility 180ms ease,
+    transform 180ms ease;
   white-space: nowrap;
-  transition: opacity 220ms ease, visibility 220ms ease, transform 220ms ease;
 }
 .workshop-controls.is-visible {
   opacity: 1;
@@ -110,24 +150,87 @@
   transform: translate(-50%, 0);
 }
 .workshop-controls kbd {
-  font: bold 12px system-ui, sans-serif;
-  background: #fff8e5;
+  display: inline-grid;
+  place-items: center;
+  min-width: 29px;
+  height: 29px;
+  padding: 0 6px;
   border: 2px solid #6f573b;
   border-radius: 5px;
-  padding: 4px 7px;
+  color: #5c4534;
+  background: #fff7df;
   box-shadow: 1px 2px 0 #5c453426;
+  font:
+    750 12px system-ui,
+    sans-serif;
 }
-.workshop-controls__divider { width: 1px; height: 22px; background: #c5ae8b; }
-@media (max-width: 520px) {
+.workshop-controls_divider {
+  width: 1px;
+  height: 22px;
+  background: #d1ba98;
+}
+.workshop-controls_step {
+  font: 12px var(--font-root, "Coiny", system-ui);
+  color: #426f66;
+}
+
+@media (max-width: 650px) {
   .workshop-inspector {
-    width: min(270px, calc(100vw - 30px));
-    right: 15px;
     bottom: 78px;
-    padding: 18px;
+    right: 12px;
+    width: min(262px, calc(100vw - 24px));
+    padding: 14px 16px;
   }
-  .workshop-inspector h2 { font-size: 25px; }
-  .workshop-controls { gap: 7px; font-size: 11px; }
+  .workshop-inspector h2 {
+    font-size: 23px;
+  }
+  .workshop-controls {
+    gap: 5px;
+    font-size: 10px;
+  }
+  .workshop-controls kbd {
+    min-width: 24px;
+    height: 25px;
+    padding: 0 4px;
+  }
+  .workshop-controls_step {
+    display: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .workshop-rune-label, .workshop-inspector, .workshop-controls { transition: none; }
+  .workshop-label,
+  .workshop-inspector,
+  .workshop-controls {
+    transition: none;
+  }
+}
+
+/* Each craft has a restrained accent. No animated borders or intrusive bloom. */
+.workshop-inspector {
+  position: fixed;
+  overflow: hidden;
+}
+.workshop-inspector::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--craft-accent, #638778);
+}
+.workshop-inspector[data-craft="interface-craft"] {
+  --craft-accent: #52877b;
+}
+.workshop-inspector[data-craft="systems-logic"] {
+  --craft-accent: #a37d4d;
+}
+.workshop-inspector[data-craft="creative-worlds"] {
+  --craft-accent: #8e7ca3;
+}
+.workshop-inspector[data-craft="developer-tools"] {
+  --craft-accent: #8a6150;
+}
+.workshop-inspector_artifact {
+  color: var(--craft-accent, #52877b);
 }
