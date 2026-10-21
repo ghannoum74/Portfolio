@@ -140,6 +140,7 @@ export class Renderer {
           stats: this.options.stats,
           gpuStats: this.options.gpuStats,
           decorativeLights: this.options.decorativeLights,
+          beamBatching: this.options.beamBatching,
         });
         this.perfFrames = 0;
         this.perfRenderMs = 0;

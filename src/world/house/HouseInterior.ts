@@ -5,6 +5,8 @@ import { ASSETS } from "../../loaders/AssetManifest";
 import { WorldColliders } from "../../physics/WorldColliders";
 import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { AnimatedBook3D } from "./AnimatedBook3D";
+import { performanceOptions } from "../../core/PerformanceOptions";
+import { batchHouseBeams } from "./batchHouseBeams";
 
 export class HouseInterior {
   public model = new THREE.Group();
@@ -113,6 +115,11 @@ export class HouseInterior {
     colliders.createFromEnvironment(this.model);
 
     this.createInteriorLighting();
+
+    if (performanceOptions.beamBatching) {
+      const batches = batchHouseBeams(this.model, house.animations);
+      if (performanceOptions.perfDiag) console.info("[House beams]", batches);
+    }
 
     this.loaded = true;
 

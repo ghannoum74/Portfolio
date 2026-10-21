@@ -16,6 +16,11 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   uses dynamic usage; transparent furniture auras hide when their power is zero.
 - The book mixer runs while opening or turning. Finished poses stay clamped.
 - Camera debug geometry and helper updates run only when needed.
+- Static building beams sharing a material are merged into root-local render
+  meshes. In the current house, 61 source meshes become 2 render meshes while
+  preserving all 5,104 triangles, positions, normals, UVs, and material references.
+  The mirrored window bar keeps its original rendering. Source object names
+  remain available; colliders and interaction objects are excluded.
 - Independent query switches allow controlled comparisons.
 - Three GLBs use unfiltered Meshopt encoding without simplifying, quantizing,
   joining, flattening, renaming, or changing textures. The existing loader already
@@ -54,7 +59,9 @@ npm run dev
 
 Tests cover query options, outline/direct render paths, complete frame counters,
 hidden bubble uploads and reactivation, decoding all compressed buffers with
-Three.js's bundled decoder, and loading/sampling the book's morph animations.
+Three.js's bundled decoder, loading/sampling the book's morph animations, beam
+world-space geometry/material preservation, exclusion of animated/gameplay
+objects, and the actual house's 61-to-2 beam batching result. There are 10 tests.
 
 GPU rendering and gameplay have not been visually verified in the remote
 environment, which could not create a WebGL context during the earlier tests.
@@ -76,6 +83,7 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&shadows=0` | Shadow cost only |
 | `?perfdiag=1&dpr=1` | Resolution cost only |
 | `?perfdiag=1&decorativeLights=0` | Furniture/workshop light cost; glow sprites remain |
+| `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |
 | `?perfdiag=1&gpuStats=1` | Stats including GPU queries |
 | `?perfdiag=1&lowfx=1` | Combined outlines/shadows/GPU-stats off and DPR 1 |
@@ -116,6 +124,48 @@ exports also remain available in Git at the baseline commit above. Never use
 an optimized output as the source for later art edits.
 
 ## Remaining investigation
+
+### Follow-up captures, before beam batching
+
+The warmed captures supplied on October 21 used identical window and canvas
+dimensions. Both had stats/GPU stats disabled, shadows and decorative lights
+enabled. Geometry counts were nearly stable (normal 533–534, outlines off 537).
+
+| Metric | Normal | Outlines disabled |
+| --- | ---: | ---: |
+| Average FPS | 19.8 | 22.6 |
+| Median frame time | 33.4 ms | 16.9 ms |
+| 95th percentile frame time | 116.9 ms | 116.7 ms |
+| 99th percentile frame time | 183.6 ms | 150.1 ms |
+| Frames over 100 ms | 47 / 395 | 36 / 450 |
+| Main-thread long tasks | 7 | 0 |
+
+The outlines-off run was 14.1% faster on average, but the normal run's six
+diagnostic snapshots also had outlineActive=false. Sparse snapshots do not
+measure how long outlines were active between samples, and visible mesh/triangle
+counts varied with camera direction. The entire improvement cannot be assigned
+to outline rendering from this pair alone. Both reports had zero errors/warnings.
+Long frames persist without recorded main-thread long tasks in the second run;
+their cause is not identified by the collector.
+
+### Next rendering change: small static beams
+
+Beam batching targets CPU draw submission overhead without changing topology.
+With every eligible beam visible it replaces 61 submissions with 2 per scene
+pass. It does not reduce all scene rendering to two calls. Only a small set of
+5,104 beam triangles shares coarser culling; large walls, high-poly stones, and
+furniture keep their individual bounds. Transparent, mirrored, morphed, animated,
+hidden, specially rendered, collider, and interaction meshes are excluded.
+The batch uses the original material objects and shadow/layer settings.
+
+This revision is enabled by default and can be disabled with beamBatching=0.
+It passed CPU structural/transform tests and a production build, but GPU visuals
+and FPS still require local verification. For a first capture, use
+`?perfdiag=1&outlines=0` again after updating the branch and walking through the
+house once. Compare it to the previous 22.6-FPS outlines-off capture while
+checking that beams/window bars and interaction highlights still look correct.
+
+### Geometry and remaining stalls
 
 The house still has roughly 361k triangles and 366 exported mesh primitives.
 Its two largest stone meshes contribute about 100k triangles. Simplification
