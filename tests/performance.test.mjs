@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -16,7 +16,7 @@ await build({ stdin: {
   contents: `export { getPerformanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
-  resolveDir: new URL('..', import.meta.url).pathname, loader: 'ts',
+  resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
 const { getPerformanceOptions, Renderer, HouseFurnitureInteractions } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
