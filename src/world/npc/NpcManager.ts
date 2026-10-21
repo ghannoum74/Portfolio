@@ -63,9 +63,8 @@ export class NpcManager {
       shadowMeshes.push(child);
     });
 
-    this.scene.add(model);
-
     model.visible = this.visible;
+    if (this.visible) this.scene.add(model);
 
     model.updateMatrixWorld(true);
 
@@ -155,6 +154,8 @@ export class NpcManager {
 
     for (const npc of this.npcs) {
       npc.model.visible = visible;
+      if (visible) this.scene.add(npc.model);
+      else this.scene.remove(npc.model);
     }
   }
 }

@@ -282,6 +282,7 @@ export class HouseFurnitureInteractions {
     };
     if (["cauldron", "potion", "flame", "sink"].includes(def.kind)) {
       node.light = new THREE.PointLight(def.color, 0, def.kind === "cauldron" ? 1.9 : 1.1, 2);
+      node.light.visible = !performanceOptions.activeLightsOnly;
       node.light.castShadow = false;
       if (performanceOptions.decorativeLights) anchor.add(node.light);
     }
@@ -319,7 +320,11 @@ export class HouseFurnitureInteractions {
     node.auraMaterial.opacity = Math.min(0.34, power * 0.18 * pulse);
     const halo = Math.max(0.3, node.effectSize * 3.2) * (1 + node.burst * 0.2 + node.progress * 0.06);
     node.aura.scale.set(halo, halo, 1);
-    if (node.light) node.light.intensity = Math.max(0, power * (k === "cauldron" ? 0.8 : 0.43) * pulse);
+    if (node.light) {
+      node.light.intensity = Math.max(0, power * (k === "cauldron" ? 0.8 : 0.43) * pulse);
+      // Zero-power lights otherwise still occupy shader light slots/uniforms.
+      node.light.visible = !performanceOptions.activeLightsOnly || node.light.intensity > 0.001;
+    }
 
     if (k === "potion") {
       // Bottles only: a tiny physical lift, restored when set down.

@@ -1,4 +1,4 @@
-# Performance improvements — first pass
+# Performance improvements
 
 Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
 
@@ -22,6 +22,19 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   The mirrored window bar keeps its original rendering. Source object names
   remain available; colliders and interaction objects are excluded.
 - Independent query switches allow controlled comparisons.
+- Idle furniture point lights leave the visible light list until their effects
+  activate. The current idle house uses 5 point lights instead of 12; active
+  effects retain their colored lights and fade behavior. Faded intensity below
+  0.001 hides the light. `activeLightsOnly=0` restores the previous membership.
+- Player movement/collision still uses fixed 60 Hz substeps. Its skeleton is
+  evaluated once per displayed frame using the same accumulated simulation
+  delta. Physics diagnostic timing now excludes visual mixer evaluation.
+- The exterior and NPC roots detach while indoors, avoiding matrix traversal
+  of invisible scenery and skeletons. They reattach with their original state;
+  NPCs finishing a background load while indoors also remain detached.
+- Flat workshop/map glow rings use one double-sided transparent pass. Volumetric
+  flame and water materials retain their existing rendering behavior.
+- Interaction hints only write text/visibility when the label or state changes.
 - Three GLBs use unfiltered Meshopt encoding without simplifying, quantizing,
   joining, flattening, renaming, or changing textures. The existing loader already
   includes the compatible decoder. The unused `house-webp.glb` is untouched.
@@ -61,7 +74,11 @@ Tests cover query options, outline/direct render paths, complete frame counters,
 hidden bubble uploads and reactivation, decoding all compressed buffers with
 Three.js's bundled decoder, loading/sampling the book's morph animations, beam
 world-space geometry/material preservation, exclusion of animated/gameplay
-objects, and the actual house's 61-to-2 beam batching result. There are 10 tests.
+objects, and the actual house's 61-to-2 beam batching result. Additional checks
+cover fixed physics/mixer cadence, accumulated animation time/pose, light
+activation and fading, 12-to-5 idle light membership, flat-ring materials, hint
+DOM changes, exterior/NPC restoration, and NPC loading while indoors. There are
+17 tests.
 
 GPU rendering and gameplay have not been visually verified in the remote
 environment, which could not create a WebGL context during the earlier tests.
@@ -84,6 +101,7 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&dpr=1` | Resolution cost only |
 | `?perfdiag=1&decorativeLights=0` | Furniture/workshop light cost; glow sprites remain |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
+| `?perfdiag=1&activeLightsOnly=0` | Previous light-list behavior including idle zero-power furniture lights |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |
 | `?perfdiag=1&gpuStats=1` | Stats including GPU queries |
 | `?perfdiag=1&lowfx=1` | Combined outlines/shadows/GPU-stats off and DPR 1 |
@@ -164,6 +182,56 @@ and FPS still require local verification. For a first capture, use
 `?perfdiag=1&outlines=0` again after updating the branch and walking through the
 house once. Compare it to the previous 22.6-FPS outlines-off capture while
 checking that beams/window bars and interaction highlights still look correct.
+
+### Chrome trace findings and follow-up changes
+
+The uploaded trace used `?perfdiag=1&outlines=0`. Its TypeScript source maps
+match the code before these trace-driven changes. The supplied graphics status
+confirms hardware-accelerated WebGL through an Intel GPU, not software rendering.
+
+The analysis excludes the CPU-profiler startup period (roughly 0.95 s). The
+steady window contains 422 animation-frame callbacks over 20.83 s. Callback
+duration averages 16.92 ms with a 24.78 ms 95th percentile; the median interval
+between callbacks is 49.93 ms. These timings include recording overhead and
+should not be treated as a fresh unprofiled FPS benchmark.
+
+V8 samples attribute approximately 5.19 s of 6.68 s in `Game.update` to the
+renderer (about 78%). `World.update` accounts for about 1.16 s, including 0.53 s
+in the player AnimationMixer. These are inclusive sample estimates: nested
+rows must not be added together. The source confirms that mixer work currently
+repeated in the fixed-step loop in the recorded version. InteractionHint.show accounts for about 0.11 s
+and rewrites unchanged text.
+
+Scene matrix traversal appears prominently too: invisible exterior meshes and
+NPC skeletons stay attached and receive matrix updates. They are now detached
+indoors. The fixed-step animation change removes repeated skeletal evaluation
+while preserving the amount of simulated animation time.
+
+The GPU-process main thread spends about 20.68 s within task spans but only
+7.40 s of thread CPU time in those spans. This includes substantial waiting;
+it is not a measurement of hardware GPU utilization or shader execution time.
+The trace supports further work on the graphics path but does not identify an
+exact per-mesh GPU cost. It does not justify changing Chrome acceleration flags.
+
+The code also creates seven zero-intensity furniture point lights. Invisible
+lights are excluded from Three.js's light list; retaining zero-power lights
+otherwise keeps their shader slots and uniforms. They now start hidden and
+participate only during their effect/fade. The existing interior point light
+and four workshop lights stay enabled. Renderer diagnostics report the visible
+point-light count. Light-count changes can compile/cache additional shader
+variants on first activation; check the effect controls and warm them once
+before collecting a new steady-state capture.
+
+Flat double-sided transparent rings previously took front/back passes. They
+now set forceSinglePass, as described in the [Three.js material documentation](https://threejs.org/docs/pages/Material.html#forceSinglePass).
+The change applies only to flat workshop/map rings. All tests, type checking,
+and the production build pass; GPU visuals and the FPS gain of this revision
+still require local verification. No new asset simplification is included.
+
+After updating, use `?perfdiag=1&outlines=0`, test walking/running/jumping, enter
+and leave twice, and toggle the furniture effects. Capture one warmed 20-second
+report along the previous route. The diagnostic pointLights count should be
+5 while furniture effects are fully off, increasing when their lights activate.
 
 ### Geometry and remaining stalls
 

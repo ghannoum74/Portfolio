@@ -126,6 +126,8 @@ export class Renderer {
       const seconds = (now - this.perfStarted) / 1000;
       if (seconds >= 3) {
         const info = this.instance.info;
+        let pointLights = 0;
+        scene.traverseVisible(object => { if (object instanceof THREE.PointLight) pointLights++; });
         console.info("[House perf]", {
           fpsApprox: Math.round(this.perfFrames / seconds),
           rendererCpuMsApprox: +(this.perfRenderMs / this.perfFrames).toFixed(2),
@@ -141,6 +143,8 @@ export class Renderer {
           gpuStats: this.options.gpuStats,
           decorativeLights: this.options.decorativeLights,
           beamBatching: this.options.beamBatching,
+          activeLightsOnly: this.options.activeLightsOnly,
+          pointLights,
         });
         this.perfFrames = 0;
         this.perfRenderMs = 0;

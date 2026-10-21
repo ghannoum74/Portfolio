@@ -150,7 +150,7 @@ export class World {
     let steps = 0;
     while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsSteps) {
       this.physics.beginFrame(this.fixedPhysicsStep);
-      this.player.update(this.fixedPhysicsStep);
+      this.player.updatePhysics(this.fixedPhysicsStep);
       this.physics.step();
       this.physicsAccumulator -= this.fixedPhysicsStep;
       steps++;
@@ -179,6 +179,10 @@ export class World {
         this.physicsStepCount = 0;
       }
     }
+
+    // Evaluate the skeleton once per displayed frame, preserving the total
+    // elapsed simulation time instead of repeating it in every physics step.
+    if (steps > 0) this.player.updateAnimation(steps * this.fixedPhysicsStep);
 
     this.physicsDebugRenderer.update();
     if (exteriorActive) this.sunHelper?.update();
@@ -254,6 +258,10 @@ export class World {
 
   setExteriorVisible(visible: boolean): void {
     this.model.visible = visible;
+    // Scene matrix updates also visit invisible descendants. Detach the
+    // exterior while indoors, keeping its colliders and world transforms.
+    if (visible) this.scene.add(this.model);
+    else this.scene.remove(this.model);
 
     this.npcManager.setVisible(visible);
   }

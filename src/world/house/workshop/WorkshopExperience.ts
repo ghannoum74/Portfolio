@@ -131,6 +131,7 @@ export class WorkshopExperience {
         transparent: true,
         opacity: 0.05,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),

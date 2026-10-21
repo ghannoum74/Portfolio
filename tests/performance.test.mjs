@@ -15,11 +15,17 @@ const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: {
   contents: `export { getPerformanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
+    export { World } from './src/world/World';
+    export { Player } from './src/world/player/Player';
+    export { NpcManager } from './src/world/npc/NpcManager';
+    export { InteractionHint } from './src/ui/InteractionHint/InteractionHint';
+    export { WorkshopExperience } from './src/world/house/workshop/WorkshopExperience';
+    export { JourneyMapExperience } from './src/world/house/journey/JourneyMapExperience';
     export { batchHouseBeams } from './src/world/house/batchHouseBeams';
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
-}, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
-const { getPerformanceOptions, Renderer, HouseFurnitureInteractions, batchHouseBeams } = await import(pathToFileURL(bundle));
+}, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
+const { getPerformanceOptions, Renderer, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -37,6 +43,8 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?gpuStats=1', 1).stats, true);
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
+  assert.equal(normal.activeLightsOnly, true);
+  assert.equal(getPerformanceOptions('?activeLightsOnly=0', 1).activeLightsOnly, false);
   assert.equal(getPerformanceOptions('?beamBatching=0', 1).beamBatching, false);
 });
 
@@ -97,18 +105,22 @@ test('hidden bubbles do not upload matrices; activation and deactivation remain 
   const bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(), new THREE.MeshBasicMaterial(), 11);
   const node = { def: { kind: 'cauldron' }, progress: 0, burst: 0, phase: 0,
     active: false, aura: new THREE.Sprite(), auraMaterial: new THREE.SpriteMaterial(),
-    bubbles, effectSize: 0.3 };
+    bubbles, light: new THREE.PointLight(0xffffff, 0), effectSize: 0.3 };
   const version = bubbles.instanceMatrix.version;
   effects.animateNode(node, 1 / 60);
   assert.equal(bubbles.visible, false);
+  assert.equal(node.light.visible, false);
   assert.equal(bubbles.instanceMatrix.version, version);
   node.active = true;
   effects.animateNode(node, 1 / 60);
   assert.equal(bubbles.visible, true);
+  assert.equal(node.light.visible, true);
+  assert.ok(node.light.intensity > 0);
   assert.equal(bubbles.instanceMatrix.version, version + 1);
   node.active = false;
   for (let i = 0; i < 120; i++) effects.animateNode(node, 1 / 60);
   assert.equal(bubbles.visible, false);
+  assert.equal(node.light.visible, false);
   const settledVersion = bubbles.instanceMatrix.version;
   effects.animateNode(node, 1 / 60);
   assert.equal(bubbles.instanceMatrix.version, settledVersion);
@@ -280,4 +292,133 @@ test('the current house batches exactly 61 static beams into 2 render meshes', a
   assert.ok(gltf.scene.getObjectByName('INTERACT_EXIT_DOOR_01').visible);
   assert.ok(gltf.scene.getObjectByName('SEC_WORKSHOP_WeaponStand').visible);
   assert.ok(gltf.scene.getObjectByName('SEC_ALCHEMY_Cauldron').visible);
+});
+
+test('fixed physics steps run at 60 Hz while animation advances once for the accumulated time', () => {
+  const world = Object.create(World.prototype);
+  const physicsDeltas = [], animationDeltas = [];
+  let physicalSteps = 0, syncs = 0;
+  Object.assign(world, {
+    initialized: true, physicsAccumulator: 0, fixedPhysicsStep: 1 / 60, maxPhysicsSteps: 5,
+    perfDiag: false, physicsDebugRenderer: { update() {} },
+    physics: { beginFrame() {}, step() { physicalSteps++; } },
+    player: { updatePhysics(dt) { physicsDeltas.push(dt); },
+      updateAnimation(dt) { animationDeltas.push(dt); }, syncFromPhysics() { syncs++; } },
+  });
+  world.update(0.05, false);
+  assert.equal(physicalSteps, 3);
+  assert.equal(syncs, 1);
+  assert.deepEqual(physicsDeltas, [1 / 60, 1 / 60, 1 / 60]);
+  assert.deepEqual(animationDeltas, [0.05]);
+  world.update(0, false);
+  assert.equal(animationDeltas.length, 1);
+  world.update(0.1, false);
+  assert.equal(physicalSteps, 8);
+  assert.equal(animationDeltas.length, 2);
+  assert.equal(animationDeltas[1], 5 / 60);
+});
+
+test('player physics does not resample animation and one visual update preserves the final pose', () => {
+  const model = new THREE.Group();
+  const arm = new THREE.Object3D(); arm.name = 'arm'; model.add(arm);
+  const clip = new THREE.AnimationClip('reach', 1, [new THREE.NumberKeyframeTrack('arm.position[x]', [0, 1], [0, 1])]);
+  const mixer = new THREE.AnimationMixer(model); mixer.clipAction(clip).play();
+  const player = Object.create(Player.prototype);
+  let controllerCalls = 0;
+  Object.assign(player, { mixer, controller: { update() { controllerCalls++; } } });
+  for (let i = 0; i < 3; i++) player.updatePhysics(1 / 60);
+  assert.equal(controllerCalls, 3);
+  assert.equal(mixer.time, 0);
+  player.updateAnimation(0.05);
+  assert.ok(Math.abs(arm.position.x - 0.05) < 0.000001);
+});
+
+test('unchanged interaction hints avoid DOM writes and still update on state changes', () => {
+  const hint = Object.create(InteractionHint.prototype);
+  let textWrites = 0, adds = 0, removes = 0, text = '';
+  Object.assign(hint, { visible: false, currentLabel: null,
+    label: { set textContent(value) { text = value; textWrites++; } },
+    root: { classList: { add() { adds++; }, remove() { removes++; } } },
+  });
+  for (let i = 0; i < 60; i++) hint.show('Open');
+  assert.equal(textWrites, 1); assert.equal(adds, 1);
+  hint.show('Close'); assert.equal(text, 'Close'); assert.equal(textWrites, 2);
+  hint.hide(); hint.hide(); assert.equal(removes, 1);
+  hint.show('Close'); assert.equal(adds, 2); assert.equal(textWrites, 2);
+});
+
+test('only flat workshop and map rings request a single double-sided transparency pass', () => {
+  const workshop = Object.create(WorkshopExperience.prototype);
+  workshop.glowTexture = new THREE.Texture();
+  const glow = workshop.makeTreasureGlow(0, new THREE.Group(), new THREE.Group());
+  assert.equal(glow.glowRune.material.forceSinglePass, true);
+  assert.equal(glow.glowRune.material.side, THREE.DoubleSide);
+  const journey = Object.create(JourneyMapExperience.prototype);
+  Object.assign(journey, { root: new THREE.Group(), stops: [], glowTexture: new THREE.Texture() });
+  journey.createStop({}, new THREE.Vector3(), 0);
+  assert.equal(journey.stops[0].ring.material.forceSinglePass, true);
+  assert.equal(journey.stops[0].ring.material.side, THREE.DoubleSide);
+});
+
+test('detached exterior/NPCs skip scene matrix updates and retain their transforms on return', () => {
+  const scene = new THREE.Scene();
+  const model = new THREE.Group(); model.position.set(1, 2, 3);
+  const npc = new THREE.Group(); npc.position.set(4, 5, 6);
+  scene.add(model, npc);
+  const witness = new THREE.Object3D(); model.add(witness);
+  let updates = 0;
+  witness.updateMatrixWorld = function(force) { updates++; THREE.Object3D.prototype.updateMatrixWorld.call(this, force); };
+  const manager = Object.create(NpcManager.prototype);
+  Object.assign(manager, { scene, npcs: [{ model: npc }], visible: true });
+  const world = Object.create(World.prototype);
+  Object.assign(world, { scene, model, npcManager: manager });
+  scene.updateMatrixWorld(true); const before = updates;
+  world.setExteriorVisible(false);
+  scene.updateMatrixWorld(true);
+  assert.equal(updates, before);
+  assert.equal(model.parent, null); assert.equal(npc.parent, null);
+  world.setExteriorVisible(true);
+  scene.updateMatrixWorld(true);
+  assert.ok(updates > before);
+  assert.equal(model.parent, scene); assert.equal(npc.parent, scene);
+  assert.deepEqual(model.getWorldPosition(new THREE.Vector3()).toArray(), [1, 2, 3]);
+  assert.deepEqual(npc.getWorldPosition(new THREE.Vector3()).toArray(), [4, 5, 6]);
+});
+
+test('an NPC loaded while indoors stays detached until the exterior is restored', () => {
+  const manager = Object.create(NpcManager.prototype);
+  const scene = new THREE.Scene();
+  Object.assign(manager, { scene, npcs: [], visible: false });
+  const model = new THREE.Group();
+  const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3']
+    .map(name => [name, new THREE.AnimationClip(name, 1, [])]));
+  manager.createNpc({ id: 'late', name: 'Late', company: '', position: new THREE.Vector3(1, 0, 2), dialogues: [] }, model, clips);
+  assert.equal(model.parent, null); assert.equal(model.visible, false);
+  const animator = manager.npcs[0].animator;
+  manager.setVisible(true);
+  assert.equal(model.parent, scene); assert.equal(model.visible, true);
+  assert.equal(manager.npcs[0].animator, animator);
+});
+
+test('seven idle furniture lights leave the shader light list and return while effects are active', () => {
+  const scene = new THREE.Scene();
+  const house = new THREE.Group(); scene.add(house);
+  // One interior fill point light and the four workshop lights stay enabled.
+  for (let i = 0; i < 5; i++) scene.add(new THREE.PointLight());
+  const effects = Object.create(HouseFurnitureInteractions.prototype);
+  Object.assign(effects, { house, texture: new THREE.Texture(), elapsed: 0,
+    bubblePosition: new THREE.Vector3(), bubbleScale: new THREE.Vector3(),
+    bubbleMatrix: new THREE.Matrix4(), bubbleQuaternion: new THREE.Quaternion() });
+  const nodes = ['cauldron', 'potion', 'potion', 'potion', 'sink', 'flame', 'flame'].map((kind, i) => {
+    const model = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    house.add(model);
+    return effects.makeNode({ id: `test-${i}`, kind, color: 0xffaa77 }, model);
+  });
+  const countLights = () => { let count = 0; scene.traverseVisible(o => { if (o.isPointLight) count++; }); return count; };
+  assert.equal(countLights(), 5);
+  for (const node of nodes) { node.active = true; effects.animateNode(node, 1 / 60); }
+  assert.equal(countLights(), 12);
+  for (const node of nodes) node.active = false;
+  for (let i = 0; i < 120; i++) for (const node of nodes) effects.animateNode(node, 1 / 60);
+  assert.equal(countLights(), 5);
 });

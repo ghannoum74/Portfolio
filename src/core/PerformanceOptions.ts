@@ -17,6 +17,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     shadows: !lowFx && params.get("shadows") !== "0",
     decorativeLights: params.get("decorativeLights") !== "0",
     beamBatching: params.get("beamBatching") !== "0",
+    activeLightsOnly: params.get("activeLightsOnly") !== "0",
     pixelRatio,
     stats: enabled("stats") || gpuStats,
     gpuStats,
