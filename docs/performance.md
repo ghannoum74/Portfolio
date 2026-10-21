@@ -198,9 +198,9 @@ should not be treated as a fresh unprofiled FPS benchmark.
 V8 samples attribute approximately 5.19 s of 6.68 s in `Game.update` to the
 renderer (about 78%). `World.update` accounts for about 1.16 s, including 0.53 s
 in the player AnimationMixer. These are inclusive sample estimates: nested
-rows must not be added together. The source confirms that mixer work currently
-repeated in the fixed-step loop in the recorded version. InteractionHint.show accounts for about 0.11 s
-and rewrites unchanged text.
+rows must not be added together. The source confirms that mixer work was
+repeated in the fixed-step loop in the recorded version. InteractionHint.show
+accounts for about 0.11 s and rewrites unchanged text.
 
 Scene matrix traversal appears prominently too: invisible exterior meshes and
 NPC skeletons stay attached and receive matrix updates. They are now detached
@@ -225,13 +225,79 @@ before collecting a new steady-state capture.
 Flat double-sided transparent rings previously took front/back passes. They
 now set forceSinglePass, as described in the [Three.js material documentation](https://threejs.org/docs/pages/Material.html#forceSinglePass).
 The change applies only to flat workshop/map rings. All tests, type checking,
-and the production build pass; GPU visuals and the FPS gain of this revision
-still require local verification. No new asset simplification is included.
+and the production build pass. The following capture provides performance
+evidence; GPU visuals still require local review. No asset simplification is
+included.
 
-After updating, use `?perfdiag=1&outlines=0`, test walking/running/jumping, enter
-and leave twice, and toggle the furniture effects. Capture one warmed 20-second
-report along the previous route. The diagnostic pointLights count should be
-5 while furniture effects are fully off, increasing when their lights activate.
+### Follow-up trace after the lighting and animation changes
+
+`Trace-20261021T233508.json.gz` records the same
+`?perfdiag=1&outlines=0` URL as `Trace-20261021T230512.json.gz`. Its sampled
+Player functions include the new `updatePhysics` and `updateAnimation` methods.
+Unlike the earlier trace, it embeds no application TypeScript source maps, so
+the exact application source revision cannot be independently verified from
+this recording alone.
+
+Both analyses exclude profiler startup (about 0.92 s in the new trace) and use
+the window from the first animation-frame callback to the end of the last.
+The new window contains 669 callbacks over 23.32 s. FPS below is calculated from
+callback intervals, not measured screen presentations.
+
+| Metric | Earlier trace | Follow-up trace |
+| --- | ---: | ---: |
+| FPS from animation-frame intervals | 20.23 | 28.66 |
+| Mean animation-frame callback work | 16.92 ms | 9.20 ms |
+| 95th percentile callback work | 24.78 ms | 15.15 ms |
+| Median callback interval | 49.93 ms | 33.31 ms |
+| 95th percentile callback interval | 71.54 ms | 63.77 ms |
+| Intervals over 100 ms | 5 / 421 | 1 / 668 |
+
+This is 41.7% higher callback FPS and 45.6% less mean callback work in the
+supplied recordings. Camera paths, interaction modes, effect activation, and
+recording overhead are not controlled by the URL. These observations support
+the direction of the changes but cannot isolate their individual gains or
+promise the same FPS improvement throughout the project.
+
+Inclusive V8 sample estimates, divided by the number of callbacks, also fell:
+renderer 12.29 to 5.89 ms, World.update 2.75 to 0.79 ms, matrix traversal 2.31 to
+0.73 ms, and player AnimationMixer evaluation 1.26 to 0.34 ms. InteractionHint.show
+fell from 0.26 to about 0.005 ms per callback. Nested estimates overlap and must
+not be summed. Rendering still represents about 81% of sampled Game.update
+work, so further physics tuning is not the first priority suggested by this
+capture.
+
+GPU-process task spans total about 22.78 s with 8.39 s of thread CPU time in the
+new window. This still includes substantial waiting and does not report GPU
+hardware utilization or identify an individual mesh's GPU cost. No additional
+runtime changes were made in response to this capture.
+
+### Uploaded exterior source audit
+
+The separately supplied `world.glb` is 7,981,548 bytes with 157 nodes, 182 mesh
+primitives, and 232,176 triangles. Two nodes contain 219,904 triangles (94.7%):
+
+| Node | Triangles |
+| --- | ---: |
+| Cube_Material.002_0 | 124,063 |
+| Cube_Material.002_0.001 | 95,841 |
+
+Their accessor bounds, exported transforms, and triangle counts match the same
+nodes in the repository's original runtime world. The supplied `portfolio.blend1`
+backup contains the same two objects with 124,063 and 95,841 triangular faces,
+respectively. The backup was inspected through its file blocks and DNA layout;
+it was not opened or rendered in Blender.
+
+Both supplied sources omit the current project's COL_, INTERACT_, ZONE_, and
+SHADOW_ object tags. The GLB lacks, for example, INTERACT_DOOR_01 and ZONE_DOOR_01.
+They therefore cannot directly replace the runtime asset without restoring
+gameplay metadata. The repository world remains unchanged.
+
+These dense meshes are candidates for an exterior-only simplification study,
+preserving current runtime names, colliders, and interactions and comparing
+silhouettes/normals before accepting an output. Their triangle share does not
+measure GPU time. They also cannot explain indoor rendering costs while their
+exterior root is detached. This audit does not justify replacing or decimating
+the scene automatically.
 
 ### Geometry and remaining stalls
 
@@ -241,6 +307,7 @@ and static batching need visual comparison and interaction exclusions before
 they can be accepted. The world has roughly 240k triangles; two meshes account
 for about 220k. Rendering passes can submit these triangles more than once.
 
-The historical 327–333 ms stalls have not been attributed to a function. A fresh
-Chrome Performance trace is required if they persist. No new FPS result is
-claimed by these changes.
+The historical 327–333 ms stalls have not been attributed to a function. The
+latest trace's longest callback interval is about 100.65 ms, so it does not
+reproduce stalls of that magnitude. The observed FPS change above applies to
+the supplied traces, not a controlled benchmark of each optimization.
