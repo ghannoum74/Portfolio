@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { performanceOptions } from "../../../core/PerformanceOptions";
 import { WORKSHOP_SKILLS, type WorkshopSkill } from "../../../data/skills";
 import "../../../ui/WorkshopExperience/WorkshopExperience.css";
 import { WorkshopSound } from "./WorkshopSound";
@@ -121,7 +122,7 @@ export class WorkshopExperience {
     glowLight.name = `WORKSHOP_TREASURE_LIGHT_${index + 1}`;
     glowLight.castShadow = false;
     glowLight.position.set(0, 0.04, 0.02);
-    floating.add(glowLight);
+    if (performanceOptions.decorativeLights) floating.add(glowLight);
 
     const glowRune = new THREE.Mesh(
       new THREE.RingGeometry(0.26, 0.335, 40),
@@ -616,6 +617,7 @@ export class WorkshopExperience {
   }
 
   update(delta: number): void {
+    if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.clock += dt;
 

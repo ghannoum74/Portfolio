@@ -238,6 +238,8 @@ export class HouseInterior {
 
   hide(): void {
     this.model.visible = false;
+    // Invisible objects still receive matrix updates while attached to a scene.
+    this.scene.remove(this.model);
     this.lightGroup.visible = false;
     this.restoreEnvironment();
   }

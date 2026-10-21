@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import Stats from "stats-gl";
+import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
 
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -8,18 +9,15 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 export class Renderer {
   instance: THREE.WebGLRenderer;
-  stats: Stats;
+  stats?: Stats;
 
   private composer?: EffectComposer;
   private renderPass?: RenderPass;
   private outlinePass?: OutlinePass;
   private hasInteractionOutline = false;
 
-  // HOUSE_PERFORMANCE_V1: append ?lowfx=1 for a temporary A/B GPU test.
-  // The normal render quality is unchanged unless that query param is present.
-  private readonly lowFx = new URLSearchParams(window.location.search).has("lowfx");
-  // Append ?perfdiag=1 and inspect the browser console every ~3 seconds.
-  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private readonly options = performanceOptions;
+  private outlinedObject: THREE.Object3D | null = null;
   private perfStarted = performance.now();
   private perfFrames = 0;
   private perfRenderMs = 0;
@@ -32,20 +30,22 @@ export class Renderer {
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
-    this.instance.setPixelRatio(this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.instance.setPixelRatio(this.options.pixelRatio);
 
-    this.instance.shadowMap.enabled = !this.lowFx;
+    this.instance.shadowMap.enabled = this.options.shadows;
+    // Count every render pass, including OutlinePass and its final output.
+    this.instance.info.autoReset = false;
 
-    // PERFORMANCE STATS
-    this.stats = new Stats({
-      trackGPU: !this.lowFx,
-    });
-
-    this.stats.init(this.instance);
-
-    document.body.appendChild(this.stats.dom);
+    // GPU queries and graph drawing are opt-in during normal gameplay.
+    if (this.options.stats) {
+      this.stats = new Stats({ trackGPU: this.options.gpuStats });
+      // Pass the context so stats-gl does not also wrap every render pass.
+      void this.stats.init(this.instance.getContext());
+      document.body.appendChild(this.stats.dom);
+    }
   }
   setupInteractionOutline(scene: THREE.Scene, camera: THREE.Camera): void {
+    if (!this.options.outlines) return;
     this.composer = new EffectComposer(this.instance);
 
     this.renderPass = new RenderPass(scene, camera);
@@ -75,10 +75,9 @@ export class Renderer {
   }
 
   setInteractionOutline(object: THREE.Object3D | null): void {
-    if (!this.outlinePass) {
-      console.error("OutlinePass not initialized");
-      return;
-    }
+    if (!this.options.outlines || !this.outlinePass) return;
+    if (object === this.outlinedObject) return;
+    this.outlinedObject = object;
 
     const meshes: THREE.Object3D[] = [];
 
@@ -94,11 +93,12 @@ export class Renderer {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera): void {
-    const renderStarted = this.perfDiag ? performance.now() : 0;
-    this.stats.begin();
+    const renderStarted = this.options.perfDiag ? performance.now() : 0;
+    this.instance.info.reset();
+    this.stats?.begin();
 
     if (
-      !this.lowFx &&
+      this.options.outlines &&
       this.hasInteractionOutline &&
       this.composer &&
       this.renderPass &&
@@ -116,10 +116,10 @@ export class Renderer {
       this.instance.render(scene, camera);
     }
 
-    this.stats.end();
-    this.stats.update();
+    this.stats?.end();
+    this.stats?.update();
 
-    if (this.perfDiag) {
+    if (this.options.perfDiag) {
       this.perfFrames++;
       this.perfRenderMs += performance.now() - renderStarted;
       const now = performance.now();
@@ -133,8 +133,13 @@ export class Renderer {
           trianglesLastFrame: info.render.triangles,
           gpuTextures: info.memory.textures,
           gpuGeometries: info.memory.geometries,
-          outlineActive: this.hasInteractionOutline && !this.lowFx,
-          lowFx: this.lowFx,
+          outlineActive: this.hasInteractionOutline && this.options.outlines,
+          lowFx: this.options.lowFx,
+          shadows: this.options.shadows,
+          pixelRatio: this.instance.getPixelRatio(),
+          stats: this.options.stats,
+          gpuStats: this.options.gpuStats,
+          decorativeLights: this.options.decorativeLights,
         });
         this.perfFrames = 0;
         this.perfRenderMs = 0;
@@ -144,7 +149,7 @@ export class Renderer {
   }
 
   resize() {
-    const pixelRatio = this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = getPerformanceOptions(window.location.search, window.devicePixelRatio).pixelRatio;
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 

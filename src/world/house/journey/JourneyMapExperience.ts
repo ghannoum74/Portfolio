@@ -228,6 +228,7 @@ export class JourneyMapExperience {
   }
 
   update(delta: number): void {
+    if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.seconds += dt;
     this.routeProgress = THREE.MathUtils.damp(this.routeProgress, this.state === "idle" ? 0 : 1, 2.8, dt);

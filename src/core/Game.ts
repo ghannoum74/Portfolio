@@ -451,10 +451,13 @@ export class Game {
       this.thirdPersonCamera?.update(delta);
     }
 
-    this.workshop?.update(delta);
-    this.furniture?.update(delta);
-    this.journey?.update(delta);
-    this.awards?.update(delta);
+    // House systems retain their state, but do no frame work outside.
+    if (this.insideHouse) {
+      this.workshop?.update(delta);
+      this.furniture?.update(delta);
+      this.journey?.update(delta);
+      this.awards?.update(delta);
+    }
 
     this.projectWebsitePreview.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
@@ -480,7 +483,7 @@ export class Game {
       this.interactionSystem.update(this.world.player.model.position);
     }
 
-    this.syncCameraDebugMesh();
+    if (this.debugMode) this.syncCameraDebugMesh();
 
     this.controls.enabled = gameplayActive && this.debugMode;
 
@@ -496,7 +499,7 @@ export class Game {
 
     this.world.setPhysicsDebugVisible(showDebug);
 
-    this.cameraHelper.update();
+    if (showDebug) this.cameraHelper.update();
 
     this.renderer.render(this.scene, this.getActiveCamera());
   };
@@ -592,13 +595,11 @@ export class Game {
   private hideDebugUI(): void {
     this.gui.domElement.style.display = "none";
 
-    this.renderer.stats.dom.style.display = "none";
   }
 
   private showDebugUI(): void {
     this.gui.domElement.style.display = "";
 
-    this.renderer.stats.dom.style.display = "";
   }
 
   private createCameraDebugMesh(): THREE.Group {
