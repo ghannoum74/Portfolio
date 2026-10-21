@@ -13,19 +13,21 @@ globalThis.window = { location: { search: '' }, devicePixelRatio: 1 };
 const temporary = await mkdtemp(new URL('../.perf-test-', import.meta.url));
 const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: {
-  contents: `export { getPerformanceOptions } from './src/core/PerformanceOptions';
+  contents: `export { getPerformanceOptions, performanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
     export { World } from './src/world/World';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
     export { InteractionHint } from './src/ui/InteractionHint/InteractionHint';
     export { WorkshopExperience } from './src/world/house/workshop/WorkshopExperience';
+    export { WorkshopSound } from './src/world/house/workshop/WorkshopSound';
+    export { createWorkshopCue } from './src/world/house/workshop/WorkshopCue';
     export { JourneyMapExperience } from './src/world/house/journey/JourneyMapExperience';
     export { batchHouseBeams } from './src/world/house/batchHouseBeams';
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { getPerformanceOptions, Renderer, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { getPerformanceOptions, performanceOptions, Renderer, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -44,6 +46,9 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
+  assert.equal(normal.workshopLights, 'focused');
+  assert.equal(getPerformanceOptions('?workshopLights=all', 1).workshopLights, 'all');
+  assert.equal(getPerformanceOptions('?workshopLights=all', 1).decorativeLights, true);
   assert.equal(getPerformanceOptions('?activeLightsOnly=0', 1).activeLightsOnly, false);
   assert.equal(getPerformanceOptions('?beamBatching=0', 1).beamBatching, false);
 });
@@ -358,6 +363,124 @@ test('only flat workshop and map rings request a single double-sided transparenc
   journey.createStop({}, new THREE.Vector3(), 0);
   assert.equal(journey.stops[0].ring.material.forceSinglePass, true);
   assert.equal(journey.stops[0].ring.material.side, THREE.DoubleSide);
+});
+
+test('workshop keeps one focused light, all four glows, and stable light count across focus changes', () => {
+  const workshop = Object.create(WorkshopExperience.prototype);
+  const scene = new THREE.Scene(), house = new THREE.Group();
+  house.position.set(10, -30, 3); house.scale.setScalar(2); scene.add(house);
+  scene.add(new THREE.PointLight()); // Main warm house light.
+  const camera = new THREE.PerspectiveCamera();
+  Object.assign(workshop, { house, camera, artifacts: [], glowTexture: new THREE.Texture(),
+    state: 'idle', selectedIndex: -1, hoveredIndex: -1, activeGlowIndex: 0,
+    lightCameraPosition: new THREE.Vector3(), lightPosition: new THREE.Vector3() });
+  for (let index = 0; index < 4; index++) {
+    const anchor = new THREE.Group(), floating = new THREE.Group();
+    floating.position.x = index * 4; anchor.add(floating); house.add(anchor);
+    workshop.artifacts.push({ anchor, floating, ...workshop.makeTreasureGlow(index, anchor, floating) });
+  }
+  const count = () => { let n = 0; scene.traverseVisible(x => { if (x.isPointLight) n++; }); return n; };
+  const visible = () => workshop.artifacts.flatMap((a, i) => a.glowLight.visible ? [i] : []);
+  const first = workshop.artifacts[0].glowLight.getWorldPosition(new THREE.Vector3());
+  camera.position.copy(first); workshop.updateTreasureLights();
+  assert.equal(count(), 2); assert.deepEqual(visible(), [0]);
+  camera.position.x = first.x + 4.02; // Just across the midpoint: keep current light.
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0]);
+  camera.position.x = first.x + 6;
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), [1]);
+  workshop.state = 'active';
+  for (let index = 0; index < 4; index++) {
+    workshop.selectedIndex = index; workshop.hoveredIndex = (index + 1) % 4;
+    workshop.updateTreasureLights();
+    assert.deepEqual(visible(), [index]); assert.equal(count(), 2);
+  }
+  workshop.selectedIndex = -1; workshop.hoveredIndex = 2;
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), [2]);
+  for (const artifact of workshop.artifacts) {
+    assert.equal(artifact.glowHalo.visible, true);
+    assert.equal(artifact.glowRune.visible, true);
+    assert.equal(artifact.glowLight.castShadow, false);
+  }
+  const previous = performanceOptions.workshopLights;
+  try {
+    performanceOptions.workshopLights = 'all';
+    workshop.updateTreasureLights(); assert.equal(count(), 5);
+    performanceOptions.workshopLights = 'focused';
+    workshop.updateTreasureLights(); assert.equal(count(), 2);
+  } finally { performanceOptions.workshopLights = previous; }
+});
+
+test('procedural workshop WAV cues retain timing, mono PCM, low amplitude, and pitched feedback', () => {
+  const expectedDuration = { enter: 0.34, select: 0.335, close: 0.15, exit: 0.2 };
+  for (const [cue, duration] of Object.entries(expectedDuration)) {
+    for (let index = 0; index < 4; index++) {
+      const buffer = createWorkshopCue(cue, index), bytes = new Uint8Array(buffer), view = new DataView(buffer);
+      const ascii = (a, b) => String.fromCharCode(...bytes.slice(a, b));
+      assert.equal(ascii(0, 4), 'RIFF'); assert.equal(ascii(8, 12), 'WAVE');
+      assert.equal(ascii(36, 40), 'data');
+      assert.equal(view.getUint32(4, true), buffer.byteLength - 8);
+      assert.equal(view.getUint16(20, true), 1); // PCM, mono, 16-bit.
+      assert.equal(view.getUint16(22, true), 1); assert.equal(view.getUint16(34, true), 16);
+      const rate = view.getUint32(24, true), frames = view.getUint32(40, true) / 2;
+      assert.equal(rate, 22050); assert.equal(buffer.byteLength, 44 + frames * 2);
+      assert.ok(Math.abs(frames / rate - duration) < 1 / rate);
+      let peak = 0;
+      for (let frame = 0; frame < frames; frame++) {
+        const value = view.getInt16(44 + frame * 2, true);
+        if (frame < Math.floor(0.012 * rate)) assert.equal(value, 0);
+        peak = Math.max(peak, Math.abs(value));
+      }
+      assert.ok(peak > 1000 && peak < 32767);
+      if (cue === 'close') {
+        let crossings = 0;
+        for (let f = Math.ceil(0.022 * rate); f < Math.floor(0.112 * rate); f++) {
+          if (view.getInt16(44 + (f - 1) * 2, true) <= 0 && view.getInt16(44 + f * 2, true) > 0) crossings++;
+        }
+        assert.ok(Math.abs(crossings - [392, 330, 294, 440][index] * 0.75 * 0.09) < 2);
+      }
+    }
+  }
+  assert.deepEqual(createWorkshopCue('select', -2), createWorkshopCue('select', 0));
+  assert.deepEqual(createWorkshopCue('select', 8), createWorkshopCue('select', 3));
+});
+
+test('workshop sound reuses bounded media voices, respects mute, and releases audio URLs', async () => {
+  const previousAudio = globalThis.Audio;
+  const previousCreate = URL.createObjectURL, previousRevoke = URL.revokeObjectURL;
+  const voices = [], blobs = [], revoked = [];
+  let enabled = false, rejectPlayback = false;
+  class AudioDouble {
+    constructor(src) { this.src = src; this.currentTime = 0.5; this.plays = 0; voices.push(this); }
+    pause() { this.paused = true; }
+    play() { this.plays++; this.paused = false; return rejectPlayback ? Promise.reject(new Error('blocked')) : Promise.resolve(); }
+    removeAttribute(name) { if (name === 'src') this.src = ''; }
+    load() { this.reloaded = true; }
+  }
+  try {
+    globalThis.Audio = AudioDouble;
+    URL.createObjectURL = blob => { blobs.push(blob); return `blob:cue-${blobs.length}`; };
+    URL.revokeObjectURL = url => { revoked.push(url); };
+    const sound = new WorkshopSound(() => enabled);
+    sound.play('enter'); assert.equal(voices.length, 0);
+    enabled = true;
+    sound.play('enter'); sound.play('enter'); sound.play('enter');
+    assert.equal(voices.length, 2); assert.equal(blobs.length, 1);
+    assert.equal(voices.reduce((n, v) => n + v.plays, 0), 3);
+    assert.equal(blobs[0].type, 'audio/wav');
+    assert.equal(voices[0].currentTime, 0); assert.equal(voices[0].volume, 0.02);
+    sound.play('select', 2); assert.equal(voices.length, 4); assert.equal(blobs.length, 2);
+    rejectPlayback = true; sound.play('exit'); await Promise.resolve();
+    assert.equal(voices.length, 6);
+    enabled = false; const plays = voices.reduce((n, v) => n + v.plays, 0);
+    sound.play('close'); assert.equal(voices.reduce((n, v) => n + v.plays, 0), plays);
+    sound.destroy(); sound.destroy();
+    assert.equal(revoked.length, 3);
+    assert.ok(voices.every(v => v.paused && v.src === '' && v.reloaded));
+    enabled = true; sound.play('close'); assert.equal(voices.length, 6);
+  } finally {
+    globalThis.Audio = previousAudio;
+    URL.createObjectURL = previousCreate; URL.revokeObjectURL = previousRevoke;
+  }
 });
 
 test('detached exterior/NPCs skip scene matrix updates and retain their transforms on return', () => {

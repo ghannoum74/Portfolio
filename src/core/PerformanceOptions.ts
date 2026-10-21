@@ -16,6 +16,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     outlines: !lowFx && params.get("outlines") !== "0",
     shadows: !lowFx && params.get("shadows") !== "0",
     decorativeLights: params.get("decorativeLights") !== "0",
+    workshopLights: params.get("workshopLights") === "all" ? "all" : "focused",
     beamBatching: params.get("beamBatching") !== "0",
     activeLightsOnly: params.get("activeLightsOnly") !== "0",
     pixelRatio,

@@ -142,6 +142,7 @@ export class Renderer {
           stats: this.options.stats,
           gpuStats: this.options.gpuStats,
           decorativeLights: this.options.decorativeLights,
+          workshopLights: this.options.workshopLights,
           beamBatching: this.options.beamBatching,
           activeLightsOnly: this.options.activeLightsOnly,
           pointLights,

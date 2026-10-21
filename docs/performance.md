@@ -23,9 +23,21 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   remain available; colliders and interaction objects are excluded.
 - Independent query switches allow controlled comparisons.
 - Idle furniture point lights leave the visible light list until their effects
-  activate. The current idle house uses 5 point lights instead of 12; active
-  effects retain their colored lights and fade behavior. Faded intensity below
-  0.001 hides the light. `activeLightsOnly=0` restores the previous membership.
+  activate. Active effects retain their colored lights and fade behavior. Faded
+  intensity below 0.001 hides the light. `activeLightsOnly=0` restores the previous
+  furniture membership independently of the workshop policy below.
+- One workshop point light follows the selected, hovered, or nearest artifact
+  while all four keep their animated sprites, runes, and emissive materials.
+  The idle house now uses 2 point lights (main warm + one workshop), compared
+  with 5 before this policy and 12 before idle furniture lights were excluded.
+  This reduces simultaneous colored light spill on nearby surfaces.
+  `workshopLights=all` restores the original four workshop lights. Focus changes
+  retain one light slot; nearest selection uses hysteresis to avoid flicker.
+- Workshop tones use cached mono PCM WAV clips through HTMLAudioElement. This
+  removes synchronous AudioContext construction from workshop entry. The same
+  sine notes, envelopes, pitch drift, and quiet playback level are retained,
+  with two reusable voices per cue/index. Muted/blocked playback stays optional;
+  destroy pauses players and releases their object URLs.
 - Player movement/collision still uses fixed 60 Hz substeps. Its skeleton is
   evaluated once per displayed frame using the same accumulated simulation
   delta. Physics diagnostic timing now excludes visual mixer evaluation.
@@ -78,7 +90,9 @@ objects, and the actual house's 61-to-2 beam batching result. Additional checks
 cover fixed physics/mixer cadence, accumulated animation time/pose, light
 activation and fading, 12-to-5 idle light membership, flat-ring materials, hint
 DOM changes, exterior/NPC restoration, and NPC loading while indoors. There are
-17 tests.
+20 tests. The latest checks exercise focused/nearest light selection, fixed
+light count, original four-light restoration, WAV format/timing/pitch, bounded
+voice reuse, mute/blocked playback, and audio resource cleanup.
 
 GPU rendering and gameplay have not been visually verified in the remote
 environment, which could not create a WebGL context during the earlier tests.
@@ -100,8 +114,9 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&shadows=0` | Shadow cost only |
 | `?perfdiag=1&dpr=1` | Resolution cost only |
 | `?perfdiag=1&decorativeLights=0` | Furniture/workshop light cost; glow sprites remain |
+| `?perfdiag=1&workshopLights=all` | Restore all four workshop point lights; furniture policy is unchanged |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
-| `?perfdiag=1&activeLightsOnly=0` | Previous light-list behavior including idle zero-power furniture lights |
+| `?perfdiag=1&activeLightsOnly=0` | Include idle zero-power furniture lights; workshop policy is unchanged |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |
 | `?perfdiag=1&gpuStats=1` | Stats including GPU queries |
 | `?perfdiag=1&lowfx=1` | Combined outlines/shadows/GPU-stats off and DPR 1 |
@@ -271,6 +286,70 @@ new window. This still includes substantial waiting and does not report GPU
 hardware utilization or identify an individual mesh's GPU cost. No additional
 runtime changes were made in response to this capture.
 
+### Decorative-light comparison and workshop changes
+
+The next pair of supplied traces uses these URLs, respectively:
+
+- `Trace-20261021T235306.json.gz`: `?perfdiag=1&outlines=0`.
+- `Trace-20261021T235608.json.gz`:
+  `?perfdiag=1&outlines=0&decorativeLights=0`.
+
+Both report host DPR 1 and the same application-module HMR URLs, but embed no
+application source maps. Analysis excludes profiler startup (about 0.61 and
+0.63 s) and uses the first-to-last animation-frame callback window. CPU-profile
+chunks are joined by process/profile ID: Chrome emits these chunks on a profiler
+worker thread, different from the sampled renderer main thread.
+
+| Metric | Decorative lights on | Decorative lights off |
+| --- | ---: | ---: |
+| Callback window | 23.17 s | 26.32 s |
+| Animation-frame callbacks | 809 | 1,379 |
+| FPS from callback intervals | 34.90 | 52.38 |
+| Mean callback duration | 10.72 ms | 10.31 ms |
+| 95th percentile callback duration | 18.05 ms | 17.79 ms |
+| Median callback interval | 31.79 ms | 16.92 ms |
+| 95th percentile callback interval | 49.70 ms | 30.12 ms |
+| Longest callback interval | 329.09 ms | 345.42 ms |
+
+Disabling the decorative lights coincides with 50.1% higher callback FPS while
+mean JavaScript callback duration changes only 3.8%. The five-second windows
+range from 29.5-40.5 FPS with the lights on and 45.1-59.2 FPS with them off. This
+supports graphics-side lighting as the next priority. These recordings still
+include different camera/interaction sequences and profiler overhead; the
+numbers do not isolate per-light GPU time or guarantee a 50% gain from the new
+one-light policy.
+
+The original four workshop lights stay active even while browsing the rest of
+the room. The new default retains one, prioritizing a selected artifact over
+hover, then the nearest artifact when neither is focused. All four auras, runes,
+artifact animations, and emissive material pulses continue. Furniture effects
+retain their existing real lights. The main visual tradeoff is less simultaneous
+colored spill around the three unfocused crafts. `workshopLights=all` provides
+the exact previous workshop membership for a visual comparison. This policy
+has CPU scene/light-count coverage; GPU visuals and its FPS need local review.
+
+Both traces also identify a workshop-entry stall in WorkshopSound.play: about
+295 and 302 ms of self-sample time on its setup line, with the entry interaction
+inside a roughly 300 ms main-thread task. The source constructs an AudioContext
+synchronously there, before scheduling the notes. The longest callback intervals
+therefore persist with decorative lights disabled and should not all be assigned
+to lighting or geometry.
+
+WorkshopSound now renders the short sine cues to small PCM WAV buffers on first
+use, caches two native media voices per cue/index, and calls media play without
+constructing a separate AudioContext. First-use WAV generation and browser media
+startup still have a cost; removal of the recorded stall has not been measured
+on the user's Windows system. Tests verify cue duration/pitch, cache bounds,
+global-mute callback, playback rejection handling, and cleanup. The clips contain
+no downloaded audio and introduce no asset or package dependency.
+
+For local review, use `?perfdiag=1&outlines=0`, inspect the four workshop crafts
+and their colored spill, enter/select/close/exit with sound enabled, and check
+the global mute button. Idle diagnostics should show pointLights=2, increasing
+with active furniture effects. The original workshop-light appearance is
+available with `&workshopLights=all`. No additional Chrome trace is required to
+assess the lighting conclusion from this pair.
+
 ### Uploaded exterior source audit
 
 The separately supplied `world.glb` is 7,981,548 bytes with 157 nodes, 182 mesh
@@ -307,7 +386,8 @@ and static batching need visual comparison and interaction exclusions before
 they can be accepted. The world has roughly 240k triangles; two meshes account
 for about 220k. Rendering passes can submit these triangles more than once.
 
-The historical 327–333 ms stalls have not been attributed to a function. The
-latest trace's longest callback interval is about 100.65 ms, so it does not
-reproduce stalls of that magnitude. The observed FPS change above applies to
-the supplied traces, not a controlled benchmark of each optimization.
+The early 327-333 ms stalls were not attributed to a function. The later light
+comparison reproduces a similar workshop-entry stall in WorkshopSound.play,
+which is addressed above. This does not establish that every historical stall
+had the same cause. Observed FPS changes apply to the supplied traces, not a
+controlled benchmark of each optimization.

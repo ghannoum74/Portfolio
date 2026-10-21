@@ -66,6 +66,9 @@ export class WorkshopExperience {
   private pointerY = 0;
   private hoveredIndex = -1;
   private selectedIndex = -1;
+  private activeGlowIndex = 0;
+  private readonly lightCameraPosition = new THREE.Vector3();
+  private readonly lightPosition = new THREE.Vector3();
   private previousCursor = "";
   private exitCallback: (() => void) | null = null;
   private cameraDistance = 3.0;
@@ -121,6 +124,7 @@ export class WorkshopExperience {
     const glowLight = new THREE.PointLight(tint, 0.28, 1.65, 2);
     glowLight.name = `WORKSHOP_TREASURE_LIGHT_${index + 1}`;
     glowLight.castShadow = false;
+    glowLight.visible = performanceOptions.workshopLights === "all" || index === 0;
     glowLight.position.set(0, 0.04, 0.02);
     if (performanceOptions.decorativeLights) floating.add(glowLight);
 
@@ -765,6 +769,8 @@ export class WorkshopExperience {
       );
     });
 
+    this.updateTreasureLights();
+
     if (this.state === "idle") return;
     if (this.state === "entering" || this.state === "leaving") {
       this.elapsed = Math.min(this.duration, this.elapsed + dt);
@@ -823,6 +829,40 @@ export class WorkshopExperience {
     const alpha = 1 - Math.exp(-2.7 * dt);
     this.camera.position.lerp(this.desiredPosition, alpha);
     this.camera.quaternion.slerp(this.desiredQuaternion, alpha);
+  }
+
+  /** Keep one local colored spill; sprites/runes/emissive remain on every craft.
+   * A fixed light count also avoids shader variants on focus changes.
+   */
+  private updateTreasureLights(): void {
+    if (!performanceOptions.decorativeLights) return;
+    if (performanceOptions.workshopLights === "all") {
+      for (const artifact of this.artifacts) artifact.glowLight.visible = true;
+      return;
+    }
+    const focused = this.state === "active"
+      ? this.selectedIndex >= 0 ? this.selectedIndex : this.hoveredIndex
+      : -1;
+    if (focused >= 0 && focused < this.artifacts.length) {
+      this.activeGlowIndex = focused;
+    } else if (this.artifacts.length) {
+      this.camera.getWorldPosition(this.lightCameraPosition);
+      this.activeGlowIndex = Math.min(this.activeGlowIndex, this.artifacts.length - 1);
+      let distance = this.artifacts[this.activeGlowIndex].glowLight
+        .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
+      for (let index = 0; index < this.artifacts.length; index++) {
+        const candidate = this.artifacts[index].glowLight
+          .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
+        // Hysteresis prevents spill flicker near the midpoint of two artifacts.
+        if (candidate < distance * 0.8) {
+          this.activeGlowIndex = index;
+          distance = candidate;
+        }
+      }
+    }
+    this.artifacts.forEach((artifact, index) => {
+      artifact.glowLight.visible = index === this.activeGlowIndex;
+    });
   }
 
   private updateDesiredCamera(): void {
