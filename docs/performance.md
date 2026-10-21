@@ -26,13 +26,13 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   activate. Active effects retain their colored lights and fade behavior. Faded
   intensity below 0.001 hides the light. `activeLightsOnly=0` restores the previous
   furniture membership independently of the workshop policy below.
-- One workshop point light follows the selected, hovered, or nearest artifact
-  while all four keep their animated sprites, runes, and emissive materials.
-  The idle house now uses 2 point lights (main warm + one workshop), compared
-  with 5 before this policy and 12 before idle furniture lights were excluded.
-  This reduces simultaneous colored light spill on nearby surfaces.
-  `workshopLights=all` restores the original four workshop lights. Focus changes
-  retain one light slot; nearest selection uses hysteresis to avoid flicker.
+- All four workshop point lights remain enabled by default, preserving colored
+  illumination on every craft. The idle house uses 5 point lights (main warm +
+  four workshop), compared with 12 before idle furniture lights were excluded.
+  The optional `workshopLights=focused` mode retains one workshop light for the
+  selected, hovered, or nearest artifact, reducing the total to 2 and changing
+  simultaneous colored spill. All sprites, runes, and emissive animations remain.
+  Focus changes retain one slot; nearest selection uses hysteresis.
 - Workshop tones use cached mono PCM WAV clips through HTMLAudioElement. This
   removes synchronous AudioContext construction from workshop entry. The same
   sine notes, envelopes, pitch drift, and quiet playback level are retained,
@@ -114,7 +114,8 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&shadows=0` | Shadow cost only |
 | `?perfdiag=1&dpr=1` | Resolution cost only |
 | `?perfdiag=1&decorativeLights=0` | Furniture/workshop light cost; glow sprites remain |
-| `?perfdiag=1&workshopLights=all` | Restore all four workshop point lights; furniture policy is unchanged |
+| `?perfdiag=1&workshopLights=all` | Explicitly keep the default four workshop lights |
+| `?perfdiag=1&workshopLights=focused` | Opt into one focused workshop light; changes illumination on other crafts |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
 | `?perfdiag=1&activeLightsOnly=0` | Include idle zero-power furniture lights; workshop policy is unchanged |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |
@@ -319,14 +320,15 @@ include different camera/interaction sequences and profiler overhead; the
 numbers do not isolate per-light GPU time or guarantee a 50% gain from the new
 one-light policy.
 
-The original four workshop lights stay active even while browsing the rest of
-the room. The new default retains one, prioritizing a selected artifact over
-hover, then the nearest artifact when neither is focused. All four auras, runes,
-artifact animations, and emissive material pulses continue. Furniture effects
-retain their existing real lights. The main visual tradeoff is less simultaneous
-colored spill around the three unfocused crafts. `workshopLights=all` provides
-the exact previous workshop membership for a visual comparison. This policy
-has CPU scene/light-count coverage; GPU visuals and its FPS need local review.
+The initial follow-up made one workshop light the default, prioritizing a
+selected artifact over hover, then the nearest artifact when neither is focused.
+The user screenshot showed the crystal illuminated while the other crafts lost
+their local lighting. All four workshop lights are now restored by default;
+the one-light policy is explicitly optional through `workshopLights=focused`.
+All four auras, runes, artifact animations, and emissive material pulses continue
+in both modes. Furniture effects retain their existing real lights. Scene tests
+cover the restored default and the optional one-light mode. No FPS gain is
+claimed for the default restoration.
 
 Both traces also identify a workshop-entry stall in WorkshopSound.play: about
 295 and 302 ms of self-sample time on its setup line, with the entry interaction
@@ -343,12 +345,16 @@ on the user's Windows system. Tests verify cue duration/pitch, cache bounds,
 global-mute callback, playback rejection handling, and cleanup. The clips contain
 no downloaded audio and introduce no asset or package dependency.
 
-For local review, use `?perfdiag=1&outlines=0`, inspect the four workshop crafts
-and their colored spill, enter/select/close/exit with sound enabled, and check
-the global mute button. Idle diagnostics should show pointLights=2, increasing
-with active furniture effects. The original workshop-light appearance is
-available with `&workshopLights=all`. No additional Chrome trace is required to
-assess the lighting conclusion from this pair.
+For local visual review, use `?perfdiag=1` and inspect lighting and interaction
+outlines. The earlier `outlines=0` URL intentionally disables highlights and is
+only a diagnostic configuration. A full reload at
+`?perfdiag=1&outlines=1&workshopLights=all` restores both features even on the
+previous one-light revision. Remove `lowfx=1` or `decorativeLights=0` if present.
+Idle diagnostics should show pointLights=5, increasing with furniture effects;
+`workshopLights=focused` explicitly opts into the lower-light appearance.
+Enter/select/close/exit with sound enabled and check global mute. The audio fix,
+idle furniture light exclusion, beam batching, and animation work reductions
+remain. No additional Chrome trace is required for this visual correction.
 
 ### Uploaded exterior source audit
 

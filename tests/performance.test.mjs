@@ -46,8 +46,11 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
-  assert.equal(normal.workshopLights, 'focused');
+  assert.equal(normal.workshopLights, 'all');
   assert.equal(getPerformanceOptions('?workshopLights=all', 1).workshopLights, 'all');
+  assert.equal(getPerformanceOptions('?workshopLights=focused', 1).workshopLights, 'focused');
+  assert.equal(getPerformanceOptions('?perfdiag=1', 1).outlines, true);
+  assert.equal(getPerformanceOptions('?perfdiag=1&outlines=1&workshopLights=all', 1).outlines, true);
   assert.equal(getPerformanceOptions('?workshopLights=all', 1).decorativeLights, true);
   assert.equal(getPerformanceOptions('?activeLightsOnly=0', 1).activeLightsOnly, false);
   assert.equal(getPerformanceOptions('?beamBatching=0', 1).beamBatching, false);
@@ -365,7 +368,7 @@ test('only flat workshop and map rings request a single double-sided transparenc
   assert.equal(journey.stops[0].ring.material.side, THREE.DoubleSide);
 });
 
-test('workshop keeps one focused light, all four glows, and stable light count across focus changes', () => {
+test('workshop lights all four crafts by default and limits lights only when explicitly requested', () => {
   const workshop = Object.create(WorkshopExperience.prototype);
   const scene = new THREE.Scene(), house = new THREE.Group();
   house.position.set(10, -30, 3); house.scale.setScalar(2); scene.add(house);
@@ -382,31 +385,36 @@ test('workshop keeps one focused light, all four glows, and stable light count a
   const count = () => { let n = 0; scene.traverseVisible(x => { if (x.isPointLight) n++; }); return n; };
   const visible = () => workshop.artifacts.flatMap((a, i) => a.glowLight.visible ? [i] : []);
   const first = workshop.artifacts[0].glowLight.getWorldPosition(new THREE.Vector3());
-  camera.position.copy(first); workshop.updateTreasureLights();
-  assert.equal(count(), 2); assert.deepEqual(visible(), [0]);
-  camera.position.x = first.x + 4.02; // Just across the midpoint: keep current light.
-  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0]);
-  camera.position.x = first.x + 6;
-  workshop.updateTreasureLights(); assert.deepEqual(visible(), [1]);
-  workshop.state = 'active';
-  for (let index = 0; index < 4; index++) {
-    workshop.selectedIndex = index; workshop.hoveredIndex = (index + 1) % 4;
-    workshop.updateTreasureLights();
-    assert.deepEqual(visible(), [index]); assert.equal(count(), 2);
-  }
-  workshop.selectedIndex = -1; workshop.hoveredIndex = 2;
-  workshop.updateTreasureLights(); assert.deepEqual(visible(), [2]);
-  for (const artifact of workshop.artifacts) {
-    assert.equal(artifact.glowHalo.visible, true);
-    assert.equal(artifact.glowRune.visible, true);
-    assert.equal(artifact.glowLight.castShadow, false);
-  }
+  assert.equal(count(), 5);
+  camera.position.copy(first);
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0, 1, 2, 3]);
+  workshop.state = 'active'; workshop.selectedIndex = 2; workshop.hoveredIndex = 3;
+  workshop.updateTreasureLights(); assert.deepEqual(visible(), [0, 1, 2, 3]);
   const previous = performanceOptions.workshopLights;
   try {
+    performanceOptions.workshopLights = 'focused';
+    workshop.state = 'idle'; workshop.selectedIndex = -1; workshop.hoveredIndex = -1;
+    workshop.updateTreasureLights(); assert.deepEqual(visible(), [0]);
+    workshop.updateTreasureLights(); assert.equal(count(), 2);
+    camera.position.x = first.x + 4.02; // Hysteresis across the midpoint.
+    workshop.updateTreasureLights(); assert.deepEqual(visible(), [0]);
+    camera.position.x = first.x + 6;
+    workshop.updateTreasureLights(); assert.deepEqual(visible(), [1]);
+    workshop.state = 'active';
+    for (let index = 0; index < 4; index++) {
+      workshop.selectedIndex = index; workshop.hoveredIndex = (index + 1) % 4;
+      workshop.updateTreasureLights();
+      assert.deepEqual(visible(), [index]); assert.equal(count(), 2);
+    }
+    workshop.selectedIndex = -1; workshop.hoveredIndex = 2;
+    workshop.updateTreasureLights(); assert.deepEqual(visible(), [2]);
+    for (const artifact of workshop.artifacts) {
+      assert.equal(artifact.glowHalo.visible, true);
+      assert.equal(artifact.glowRune.visible, true);
+      assert.equal(artifact.glowLight.castShadow, false);
+    }
     performanceOptions.workshopLights = 'all';
     workshop.updateTreasureLights(); assert.equal(count(), 5);
-    performanceOptions.workshopLights = 'focused';
-    workshop.updateTreasureLights(); assert.equal(count(), 2);
   } finally { performanceOptions.workshopLights = previous; }
 });
 
