@@ -1,0 +1,302 @@
+{
+  "method": "Isolated EGL/OpenGL ES 3.2 llvmpipe rendering with source world transforms, normals, UVs, vertex colors and albedo texture under consistent diffuse lighting; not full browser/PBR gameplay or a hardware FPS benchmark.",
+  "imageSize": [
+    512,
+    512
+  ],
+  "viewsPerMesh": [
+    0,
+    60,
+    150,
+    240
+  ],
+  "levels": [
+    "medium",
+    "far"
+  ],
+  "distanceCases": [
+    "full structure visible",
+    "far-LOD estimated error 0.7 CSS pixels"
+  ],
+  "sidecarSha256": "67f503a7c4d997795ffd80c6f9e040149583c9daf82490083af04c9667070f9b",
+  "summary": {
+    "comparisons": 32,
+    "minSilhouetteIoU": 0.9999490679433636,
+    "maxSurfaceMAE255": 0.00836285286491619,
+    "pixelsBeyond1pxSilhouette": 0
+  },
+  "comparisons": [
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 0,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004663861975182729,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 0,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.005078191398946116,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 60,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.003104115692217799,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 60,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.00836285286491619,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 150,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004598428518694299,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 150,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.005853504192374624,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 240,
+      "level": 1,
+      "silhouetteIoU": 0.9999637221113731,
+      "surfaceMAE255": 0.0062037440139312144,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 240,
+      "level": 2,
+      "silhouetteIoU": 0.9999637221113731,
+      "surfaceMAE255": 0.0063367677647172636,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 0,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0062907955727934915,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 0,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.007094882224955066,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 60,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.007610759730259126,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 60,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.007879902510504045,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 150,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0027673084105802855,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 150,
+      "level": 2,
+      "silhouetteIoU": 0.9999490679433636,
+      "surfaceMAE255": 0.003395643389531231,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 240,
+      "level": 1,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004627304138697353,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 240,
+      "level": 2,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0077324687580863655,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 0,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.003660955435516543,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 0,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 0.999989449807459,
+      "surfaceMAE255": 0.0052153668692325,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 60,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004612936441074604,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 60,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 0.9999887672002247,
+      "surfaceMAE255": 0.006032081236520489,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 150,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 0.9999892741840336,
+      "surfaceMAE255": 0.002649304959670499,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 150,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 0.9999892741840336,
+      "surfaceMAE255": 0.0031498484068417133,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 240,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0033861770881114606,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone",
+      "yaw": 240,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0039306504965522905,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 0,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0019774364098080846,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 0,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.003189917155821989,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 60,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004874231624995286,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 60,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.006387411849002526,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 150,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.0029388935302866012,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 150,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004141706809819222,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 240,
+      "level": 1,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.003488489426417379,
+      "pixelsBeyond1pxSilhouette": 0
+    },
+    {
+      "mesh": "Damage_Stone001",
+      "yaw": 240,
+      "level": 2,
+      "thresholdDistance": true,
+      "silhouetteIoU": 1.0,
+      "surfaceMAE255": 0.004627293825950325,
+      "pixelsBeyond1pxSilhouette": 0
+    }
+  ]
+}

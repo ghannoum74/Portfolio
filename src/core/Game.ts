@@ -501,7 +501,9 @@ export class Game {
 
     if (showDebug) this.cameraHelper.update();
 
-    this.renderer.render(this.scene, this.getActiveCamera());
+    const camera = this.getActiveCamera();
+    this.world.updateLod(camera, window.innerHeight);
+    this.renderer.render(this.scene, camera);
   };
 
   private onResize = (): void => {

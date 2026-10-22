@@ -172,6 +172,7 @@ export class World {
         console.info("[House physics]", {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
+          houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
         });
         this.physicsTimingStarted = now;
         this.physicsTimingMs = 0;
@@ -191,6 +192,10 @@ export class World {
   setSunDebugVisible(visible: boolean): void {
     this.sunVisual.visible = visible;
     this.sunHelper.visible = visible;
+  }
+
+  updateLod(camera: THREE.Camera, viewportHeight: number): void {
+    this.houseInterior?.updateLod(camera, viewportHeight);
   }
 
   setPhysicsDebugVisible(visible: boolean): void {

@@ -7,12 +7,14 @@ import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { AnimatedBook3D } from "./AnimatedBook3D";
 import { performanceOptions } from "../../core/PerformanceOptions";
 import { batchHouseBeams } from "./batchHouseBeams";
+import { HouseStoneLod, type StoneLodData } from "./HouseStoneLod";
 
 export class HouseInterior {
   public model = new THREE.Group();
   private readonly loader: AssetLoader;
   private loaded = false;
   private loadPromise?: Promise<void>;
+  private stoneLod?: HouseStoneLod;
 
   // Keep the house physically separated from the exterior Rapier world.
   private readonly worldOffset = new THREE.Vector3(0, -30, 0);
@@ -27,7 +29,7 @@ export class HouseInterior {
 
   constructor(
     private readonly scene: THREE.Scene,
-    loadingManager: THREE.LoadingManager,
+    private readonly loadingManager: THREE.LoadingManager,
     private readonly physics: PhysicsWorld,
   ) {
     this.loader = new AssetLoader(loadingManager);
@@ -122,6 +124,19 @@ export class HouseInterior {
     }
 
     this.loaded = true;
+
+    // Optional data never delays house readiness. A missing/stale sidecar keeps
+    // the complete authored meshes, including after future Blender re-exports.
+    if (performanceOptions.stoneLod) {
+      void new THREE.FileLoader(this.loadingManager).setResponseType("json")
+        .loadAsync(ASSETS.houseStoneLods)
+        .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData))
+        .then(lod => {
+          this.stoneLod = lod;
+          if (performanceOptions.perfDiag) console.info("[House stone LOD]", lod.stats);
+        })
+        .catch(error => console.warn("House stone LOD unavailable; using authored geometry:", error));
+    }
 
     console.log("🏠 House interior loaded");
   }
@@ -269,6 +284,14 @@ export class HouseInterior {
 
   get projectBook(): AnimatedBook3D | undefined {
     return this.animatedBook;
+  }
+
+  updateLod(camera: THREE.Camera, viewportHeight: number): void {
+    if (this.model.visible) this.stoneLod?.update(camera, viewportHeight);
+  }
+
+  get stoneLodStats() {
+    return this.stoneLod?.stats;
   }
 
   update(delta: number): void {

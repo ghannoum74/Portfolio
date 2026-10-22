@@ -160,6 +160,7 @@ export class Renderer {
           decorativeLights: this.options.decorativeLights,
           workshopLights: this.options.workshopLights,
           beamBatching: this.options.beamBatching,
+          stoneLod: this.options.stoneLod,
           activeLightsOnly: this.options.activeLightsOnly,
           pointLights,
         });

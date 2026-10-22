@@ -30,6 +30,11 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   preserving all 5,104 triangles, positions, normals, UVs, and material references.
   The mirrored window bar keeps its original rendering. Source object names
   remain available; colliders and interaction objects are excluded.
+- Two dense stone structures keep their full geometry close up and use optional
+  index-only LODs at smaller projected size. Each has 49,832 original triangles,
+  29,898 medium, and 24,046 far. Selection uses estimated CSS-pixel error with
+  hysteresis; textures, vertex colors, normals, hierarchy, and colliders remain.
+  The source GLBs are unchanged. `stoneLod=0` restores original geometry.
 - Independent query switches allow controlled comparisons.
 - Idle furniture point lights leave the visible light list until their effects
   activate. Active effects retain their colored lights and fade behavior. Faded
@@ -77,6 +82,7 @@ material definitions before accepting each output. It restores tiny source
 transforms that the serializer would otherwise omit as near-default values.
 All source files were byte-identical to the three baseline repository assets.
 The separately supplied older world.glb is not used by this revision.
+The GLB size table excludes the optional stone LOD sidecar described below.
 
 Compression reduces transfer size. It does not reduce triangle counts or
 draw calls, and does not prove an FPS improvement.
@@ -99,13 +105,17 @@ objects, and the actual house's 61-to-2 beam batching result. Additional checks
 cover fixed physics/mixer cadence, accumulated animation time/pose, light
 activation and fading, 12-to-5 idle light membership, flat-ring materials, hint
 DOM changes, exterior/NPC restoration, and NPC loading while indoors. There are
-28 tests. The latest checks exercise inspection-only workshop light transitions,
+34 tests. The latest checks exercise inspection-only workshop light transitions,
 shader warm-up restoration on success/failure, one scene submission for the
 border, unchanged surface colors, flat double-sided doors, alpha cutouts,
 world transforms, hidden/detached sources, shared-material isolation/restoration,
 skinning and morph poses, instanced transforms/count changes, CSS-pixel sizing,
 owned-resource cleanup, optional legacy highlights/lights, WAV format/timing/pitch,
-bounded voice reuse, mute/blocked playback, and audio resource cleanup.
+bounded voice reuse, mute/blocked playback, and audio resource cleanup. Stone
+checks cover the real asset and sidecar, near-detail restoration, projected
+size/zoom/world-scale selection, hysteresis, orthographic cameras, shared-buffer
+ownership, stale/corrupt data fallback, external replacement, inactive house
+updates, and preservation of other geometry, materials, transforms and hierarchy.
 
 The new border has isolated pixel validation using actual emitted Three.js
 WebGLProgram shaders on Mesa llvmpipe through a surfaceless EGL OpenGL ES 3.2
@@ -141,6 +151,7 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&workshopLights=all` | Keep all four workshop point lights on, including while walking |
 | `?perfdiag=1&workshopLights=focused` | Opt into one focused workshop light; changes illumination on other crafts |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
+| `?perfdiag=1&stoneLod=0` | Original full-detail stone geometry at every distance |
 | `?perfdiag=1&activeLightsOnly=0` | Include idle zero-power furniture lights; workshop policy is unchanged |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |
 | `?perfdiag=1&gpuStats=1` | Stats including GPU queries |
@@ -176,6 +187,16 @@ directories must differ. Custom locations are supported:
 ```sh
 node scripts/optimize-assets.mjs /path/to/originals /path/to/output
 ```
+
+After replacing/re-encoding the house, regenerate its optional stone LOD data:
+
+```sh
+npm run assets:stone-lods
+```
+
+This reads the current `house.glb` and writes only `house-stone-lods.json`.
+It never rewrites a source GLB. Custom input and output paths can be passed to
+`node scripts/generate-house-stone-lods.mjs input.glb output.json`.
 
 Each output replaces the destination only after its checks pass. Original
 exports also remain available in Git at the baseline commit above. Never use
@@ -462,3 +483,65 @@ comparison reproduces a similar workshop-entry stall in WorkshopSound.play,
 which is addressed above. This does not establish that every historical stall
 had the same cause. Observed FPS changes apply to the supplied traces, not a
 controlled benchmark of each optimization.
+
+### Stone geometry LODs
+
+Only the decoded runtime nodes `Damage_Stone` and `Damage_Stone001` are eligible.
+The latter comes from Blender's `Damage_Stone.001`; GLTFLoader sanitizes its name.
+They are the two 49,832-triangle stone structures in the current house, not
+replacement assets from the separately uploaded older exterior sources.
+
+| Detail | Per structure | Both structures | Reduction on these two meshes |
+| --- | ---: | ---: | ---: |
+| Original, close up | 49,832 | 99,664 | 0% |
+| Medium | 29,898 | 59,796 | 40.0% |
+| Far | 24,046 | 48,092 | 51.7% |
+
+The offline generator runs attribute-aware Meshopt simplification with locked
+borders, using decoded normals, UVs, and both normalized vertex-color streams.
+It welds only identical complete attributes and keeps indices addressing the
+original vertex buffers. Position/normal/UV/color data is never recomputed or
+quantized. The medium relative-error limit is 0.00025 and the far limit is
+0.0005; the algorithm may stop above the requested triangle ratio to respect
+seams, topology and error. It does not force a lower count using a permissive
+or sloppy pass. The decoder round-trip preserves each triangle's winding.
+
+Runtime selection estimates pixel error using the reported local error, maximum
+world scale, camera projection, viewport CSS height, and nearest bounding-sphere
+depth. A coarser level enters below 0.75 estimated CSS pixels and exits above 1;
+close views return the original geometry. This error metric is approximate,
+not a guaranteed image-space bound. Source meshes, names, parents, transforms,
+materials, bounding volumes and collider geometry stay in place. Only the render
+mesh's geometry/index selection changes; no new render objects or draw calls
+are introduced. The LOD vertices share the original GPU attribute buffers.
+
+The optional JSON adds 1,137,481 bytes (local compression estimates: 716,098 gzip,
+497,807 Brotli; actual HTTP encoding depends on hosting). The four decoded extra
+index buffers total 1,294,656 bytes, with that additional GPU index storage if
+all levels are uploaded. This trades some download/index memory for less runtime
+geometry work; it does not reduce the already-compressed GLB download further.
+The sidecar loads after the house is ready and never gates entry. Fingerprinting
+preparation yields between attribute streams. Missing/unsupported data, decode
+errors, a SHA-256 mismatch in source attributes/indices, or invalid indices keep
+the original geometry. Re-exporting a house requires regenerating the sidecar.
+
+All 34 tests pass. Regeneration produced a byte-identical sidecar twice.
+Isolated software-rendered QA compares the original and both LODs for two meshes
+at four angles, both with the complete structure framed and near the far-LOD
+switch threshold: 32 comparisons at 512×512. It uses the source albedo, UVs,
+vertex colors, normals and world transforms under consistent diffuse lighting.
+The observed minimum silhouette intersection-over-union and maximum surface
+RGB error are recorded in [the review results](house-stone-lod-review.json).
+No silhouette discrepancy extended beyond one pixel. The images were visually
+reviewed. This does not verify full browser/PBR gameplay or establish a hardware
+FPS gain. Check close/distant views and camera movement on the user's system.
+
+![Original, medium and far stone structure comparisons](house-stone-lod-review.png)
+
+For A/B captures, compare `?perfdiag=1` with `?perfdiag=1&stoneLod=0` using the
+same camera route, dimensions and warmed assets. Keep border and workshop-light
+settings identical. `[House physics]` includes `houseStoneLod.sourceTriangles`
+and `houseStoneLod.selectedTriangles`; these are the two meshes' chosen index
+counts, not the number of triangles actually visible after frustum culling.
+The independent `stoneLod=0` option skips sidecar loading and selection while
+retaining the other rendering improvements.

@@ -3,6 +3,8 @@ export const ASSETS = {
 
   house: "/assets/models/environment/house.glb",
 
+  houseStoneLods: "/assets/models/environment/house-stone-lods.json",
+
   player: "/assets/models/player/player.glb",
 
   characters: {

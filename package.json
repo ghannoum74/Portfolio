@@ -5,7 +5,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/performance.test.mjs",
-    "assets:optimize": "node scripts/optimize-assets.mjs"
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:stone-lods": "node scripts/generate-house-stone-lods.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.20.0",

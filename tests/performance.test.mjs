@@ -5,6 +5,8 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { MeshoptEncoder } from 'meshoptimizer';
+import { readGeometryGLB } from '../scripts/read-geometry-glb.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Real scene objects and effect code; the renderer is a controlled test double.
@@ -16,6 +18,8 @@ await build({ stdin: {
   contents: `export { getPerformanceOptions, performanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
     export { InteractionHighlight } from './src/core/InteractionHighlight';
+    export { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256 } from './src/world/house/HouseStoneLod';
+    export { HouseInterior } from './src/world/house/HouseInterior';
     export { World } from './src/world/World';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
@@ -28,7 +32,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -46,6 +50,9 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?gpuStats=1', 1).stats, true);
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
+  assert.equal(normal.stoneLod, true);
+  assert.equal(getPerformanceOptions('?stoneLod=0', 1).stoneLod, false);
+  assert.equal(getPerformanceOptions('?stoneLod=0', 1).beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
   assert.equal(normal.workshopLights, 'inspect');
   assert.equal(normal.highlightMode, 'border');
@@ -448,29 +455,7 @@ test('batching excludes gameplay, hidden, mirrored, transparent, morphing and an
 });
 
 test('the current house batches exactly 61 static beams into 2 render meshes', async () => {
-  const bytes = await readFile(new URL('../public/assets/models/environment/house.glb', import.meta.url));
-  const length = bytes.readUInt32LE(12);
-  const json = JSON.parse(bytes.subarray(20, 20 + length));
-  // Texture bytes are verified separately. Omit texture references for this CPU
-  // scene-structure test, which does not have browser image decoding or WebGL.
-  const removeTextureReferences = value => {
-    if (!value || typeof value !== 'object') return;
-    for (const key of Object.keys(value)) {
-      if (key.endsWith('Texture')) delete value[key];
-      else removeTextureReferences(value[key]);
-    }
-  };
-  json.materials.forEach(removeTextureReferences);
-  delete json.images; delete json.textures; delete json.samplers;
-  let encoded = Buffer.from(JSON.stringify(json));
-  encoded = Buffer.concat([encoded, Buffer.alloc((4 - encoded.length % 4) % 4, 0x20)]);
-  const header = Buffer.from(bytes.subarray(0, 20));
-  const tail = bytes.subarray(20 + length);
-  header.writeUInt32LE(20 + encoded.length + tail.length, 8);
-  header.writeUInt32LE(encoded.length, 12);
-  const testBytes = Buffer.concat([header, encoded, tail]);
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.parseAsync(testBytes.buffer.slice(testBytes.byteOffset, testBytes.byteOffset + testBytes.byteLength), '');
+  const gltf = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
   assert.deepEqual(batchHouseBeams(gltf.scene, gltf.animations), { sourceMeshes: 61, batches: 2, triangles: 5104 });
   const colliders = [];
   gltf.scene.traverse(object => { if (object.name.startsWith('COL_')) colliders.push(object); });
@@ -480,6 +465,148 @@ test('the current house batches exactly 61 static beams into 2 render meshes', a
   assert.ok(gltf.scene.getObjectByName('INTERACT_EXIT_DOOR_01').visible);
   assert.ok(gltf.scene.getObjectByName('SEC_WORKSHOP_WeaponStand').visible);
   assert.ok(gltf.scene.getObjectByName('SEC_ALCHEMY_Cauldron').visible);
+});
+
+async function encodedLod(indices, error) {
+  await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
+  const encoded = MeshoptEncoder.encodeIndexBuffer(new Uint8Array(indices.buffer), indices.length, 4);
+  const decoded = new Uint32Array(indices.length);
+  MeshoptDecoder.decodeIndexBuffer(new Uint8Array(decoded.buffer), decoded.length, 4, encoded);
+  return { triangles: indices.length / 3, error, indices: Buffer.from(encoded).toString('base64'),
+    hash: await sha256(new Uint8Array(decoded.buffer)) };
+}
+
+async function stoneFixture() {
+  const root = new THREE.Group(), meshes = [], data = { version: 1, meshes: [] };
+  for (const name of HOUSE_STONE_NAMES) {
+    const geometry = new THREE.PlaneGeometry(2, 2, 4, 4);
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial()); mesh.name = name;
+    meshes.push(mesh); root.add(mesh);
+    const indices = Uint32Array.from(geometry.index.array);
+    data.meshes.push({ name, sourceHash: await geometryHash(geometry), sourceTriangles: indices.length / 3,
+      levels: [await encodedLod(indices.slice(0, indices.length / 2), .01),
+        await encodedLod(indices.slice(0, indices.length / 4), .04)] });
+  }
+  const camera = new THREE.PerspectiveCamera(90, 1, .01, 1000);
+  const lod = await HouseStoneLod.create(root, data);
+  return { root, meshes, data, camera, lod };
+}
+
+test('stone LOD changes only indices and restores close-up detail, materials, transforms and shared attributes', async () => {
+  const { root, meshes, camera, lod } = await stoneFixture();
+  const originals = meshes.map(m => m.geometry), materials = meshes.map(m => m.material);
+  const indexBytes = originals.map(g => g.index.array.slice());
+  camera.position.z = 5; lod.update(camera, 100);
+  assert.deepEqual(lod.stats, { meshes: 2, sourceTriangles: 64, selectedTriangles: 16 });
+  for (let i = 0; i < meshes.length; i++) {
+    const mesh = meshes[i]; assert.notEqual(mesh.geometry, originals[i]);
+    assert.equal(mesh.parent, root); assert.equal(mesh.name, HOUSE_STONE_NAMES[i]);
+    assert.equal(mesh.material, materials[i]); assert.deepEqual(mesh.position.toArray(), [0, 0, 0]);
+    for (const name of Object.keys(originals[i].attributes)) assert.equal(mesh.geometry.attributes[name], originals[i].attributes[name]);
+    assert.deepEqual(originals[i].index.array, indexBytes[i]);
+  }
+  camera.position.z = 1.8; lod.update(camera, 100);
+  meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+  lod.dispose();
+});
+
+test('stone LOD uses viewport, projection, world scale and hysteresis to avoid detail flicker', async () => {
+  const { root, meshes, camera, lod } = await stoneFixture();
+  camera.position.z = 4; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 16);
+  camera.position.z = 5; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  camera.position.z = 4; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  camera.position.z = 3; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 16);
+  camera.position.z = 5; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  lod.update(camera, 200); assert.equal(meshes[0].geometry.index.count / 3, 16);
+  camera.zoom = 3; camera.updateProjectionMatrix(); lod.update(camera, 100);
+  assert.equal(meshes[0].geometry.index.count / 3, 16);
+  camera.zoom = 1; camera.updateProjectionMatrix(); root.scale.set(2, 3, 1); lod.update(camera, 100);
+  assert.equal(meshes[0].geometry.index.count / 3, 32);
+  root.scale.setScalar(1); root.position.z = -30; camera.position.z = -25;
+  lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  lod.dispose();
+});
+
+test('orthographic stone LOD follows zoom and preserves source buffers during disposal', async () => {
+  const { meshes, lod } = await stoneFixture();
+  const camera = new THREE.OrthographicCamera(-5, 5, 5, -5, .01, 1000); camera.position.z = 20;
+  const original = meshes[0].geometry; let sourceDisposals = 0, ownedDisposals = 0;
+  original.addEventListener('dispose', () => { sourceDisposals++; });
+  for (const entry of lod.entries) for (const level of entry.levels.slice(1)) {
+    level.geometry.addEventListener('dispose', () => {
+      ownedDisposals++; assert.equal(Object.keys(level.geometry.attributes).length, 0);
+    });
+  }
+  lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  camera.position.z = 100; lod.update(camera, 100); assert.equal(meshes[0].geometry.index.count / 3, 8);
+  camera.zoom = 3; camera.updateProjectionMatrix(); lod.update(camera, 100);
+  assert.equal(meshes[0].geometry.index.count / 3, 16);
+  lod.dispose(); lod.dispose();
+  assert.equal(meshes[0].geometry, original); assert.equal(sourceDisposals, 0); assert.equal(ownedDisposals, 4);
+  assert.equal(original.attributes.position.count, 25);
+});
+
+test('stale, malformed and corrupt LOD data leaves original house geometry usable', async () => {
+  const { root, meshes, data, lod } = await stoneFixture(); lod.dispose();
+  const originals = meshes.map(m => m.geometry);
+  const invalid = [];
+  let d = structuredClone(data); d.version = 2; invalid.push(d);
+  d = structuredClone(data); d.meshes[1].name = 'INTERACT_EXIT_DOOR_01'; invalid.push(d);
+  d = structuredClone(data); d.meshes[1].sourceHash = 'stale'; invalid.push(d);
+  d = structuredClone(data); d.meshes[1].levels[0].hash = 'corrupt'; invalid.push(d);
+  d = structuredClone(data); d.meshes[1].levels[0].error = NaN; invalid.push(d);
+  d = structuredClone(data); d.meshes[1].levels[1].triangles = 1000000000; invalid.push(d);
+  d = structuredClone(data);
+  const indices = Uint32Array.from(meshes[1].geometry.index.array).slice(0, 48); indices[0] = 999;
+  d.meshes[1].levels[0] = await encodedLod(indices, .01); invalid.push(d);
+  for (const bad of invalid) {
+    await assert.rejects(HouseStoneLod.create(root, bad));
+    meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+  }
+  const movedUV = meshes[1].geometry.attributes.uv; movedUV.setX(0, movedUV.getX(0) + .25);
+  await assert.rejects(HouseStoneLod.create(root, data), /source changed/);
+  meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+});
+
+test('house LOD pauses outside, accepts optional-data failure, and respects external geometry replacement', async () => {
+  const { root, meshes, camera, lod } = await stoneFixture();
+  const interior = Object.create(HouseInterior.prototype); interior.model = root; interior.stoneLod = lod;
+  const world = Object.create(World.prototype); world.houseInterior = interior;
+  const original = meshes[0].geometry; root.visible = false; camera.position.z = 5;
+  world.updateLod(camera, 100); assert.equal(meshes[0].geometry, original);
+  root.visible = true; world.updateLod(camera, 100); assert.notEqual(meshes[0].geometry, original);
+  const replacement = new THREE.BoxGeometry(); meshes[0].geometry = replacement;
+  camera.position.z = 1.8; world.updateLod(camera, 100); assert.equal(meshes[0].geometry, replacement);
+  lod.dispose(); assert.equal(meshes[0].geometry, replacement);
+  interior.stoneLod = undefined; assert.doesNotThrow(() => world.updateLod(camera, 100));
+});
+
+test('the real house uses verified stone LOD indices and keeps all other gameplay meshes intact', async () => {
+  const gltf = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const data = JSON.parse(await readFile(new URL('../public/assets/models/environment/house-stone-lods.json', import.meta.url), 'utf8'));
+  const before = new Map(); gltf.scene.traverse(o => before.set(o, { parent: o.parent, name: o.name,
+    geometry: o.geometry, material: o.material, matrix: o.matrix.clone(), visible: o.visible }));
+  const lod = await HouseStoneLod.create(gltf.scene, data), camera = new THREE.PerspectiveCamera(45, 1, .1, 1000);
+  camera.position.set(0, 0, 100); lod.update(camera, 1080);
+  assert.deepEqual(lod.stats, { meshes: 2, sourceTriangles: 99664, selectedTriangles: 48092 });
+  for (const [object, state] of before) {
+    assert.equal(object.parent, state.parent); assert.equal(object.name, state.name);
+    assert.equal(object.material, state.material); assert.equal(object.visible, state.visible);
+    assert.deepEqual(object.matrix, state.matrix);
+    if (!HOUSE_STONE_NAMES.includes(object.name)) assert.equal(object.geometry, state.geometry);
+  }
+  for (const entry of lod.entries) {
+    const original = before.get(entry.mesh).geometry;
+    for (const level of entry.levels.slice(1)) {
+      assert.ok(level.geometry.index.array.every(index => index < original.attributes.position.count));
+      for (const name of Object.keys(original.attributes)) assert.equal(level.geometry.attributes[name], original.attributes[name]);
+    }
+  }
+  const entry = lod.entries[0], center = entry.center.clone().applyMatrix4(entry.mesh.matrixWorld);
+  camera.position.copy(center).add(new THREE.Vector3(0, 0, entry.radius * entry.mesh.matrixWorld.getMaxScaleOnAxis() + .01));
+  camera.lookAt(center); lod.update(camera, 1080);
+  assert.equal(entry.mesh.geometry, before.get(entry.mesh).geometry);
+  lod.dispose(); for (const [object, state] of before) assert.equal(object.geometry, state.geometry);
 });
 
 test('fixed physics steps run at 60 Hz while animation advances once for the accumulated time', () => {
