@@ -14,7 +14,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     lowFx,
     perfDiag: enabled("perfdiag"),
     outlines: !lowFx && params.get("outlines") !== "0",
-    highlightMode: params.get("highlight") === "outline" ? "outline" : "material",
+    highlightMode: params.get("highlight") === "outline" ? "outline" : "border",
     shadows: !lowFx && params.get("shadows") !== "0",
     decorativeLights: params.get("decorativeLights") !== "0",
     workshopLights: params.get("workshopLights") === "all" ? "all"

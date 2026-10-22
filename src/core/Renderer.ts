@@ -16,7 +16,7 @@ export class Renderer {
   private renderPass?: RenderPass;
   private outlinePass?: OutlinePass;
   private hasInteractionOutline = false;
-  private readonly materialHighlight = new InteractionHighlight();
+  private readonly borderHighlight = new InteractionHighlight();
 
   private readonly options = performanceOptions;
   private outlinedObject: THREE.Object3D | null = null;
@@ -28,11 +28,13 @@ export class Renderer {
     this.instance = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
+      stencil: true,
     });
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
     this.instance.setPixelRatio(this.options.pixelRatio);
+    this.borderHighlight.setSize(window.innerWidth, window.innerHeight, this.options.pixelRatio);
 
     this.instance.shadowMap.enabled = this.options.shadows;
     // Count every render pass, including OutlinePass and its final output.
@@ -81,9 +83,9 @@ export class Renderer {
     if (object === this.outlinedObject) return;
     this.outlinedObject = object;
 
-    if (this.options.highlightMode === "material") {
-      this.materialHighlight.setTarget(object);
-      this.hasInteractionOutline = this.materialHighlight.active;
+    if (this.options.highlightMode === "border") {
+      this.borderHighlight.setTarget(object);
+      this.hasInteractionOutline = this.borderHighlight.active;
       return;
     }
     if (!this.outlinePass) return;
@@ -104,7 +106,7 @@ export class Renderer {
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     const renderStarted = this.options.perfDiag ? performance.now() : 0;
     this.instance.info.reset();
-    this.materialHighlight.update();
+    this.borderHighlight.update();
     this.stats?.begin();
 
     if (
@@ -148,7 +150,8 @@ export class Renderer {
           gpuGeometries: info.memory.geometries,
           highlightActive: this.hasInteractionOutline && this.options.outlines,
           highlightMode: this.options.highlightMode,
-          outlineActive: this.hasInteractionOutline && this.options.outlines && this.options.highlightMode === "outline",
+          outlineActive: this.hasInteractionOutline && this.options.outlines,
+          postprocessOutlineActive: this.hasInteractionOutline && this.options.outlines && this.options.highlightMode === "outline",
           lowFx: this.options.lowFx,
           shadows: this.options.shadows,
           pixelRatio: this.instance.getPixelRatio(),
@@ -173,6 +176,7 @@ export class Renderer {
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
     this.instance.setPixelRatio(pixelRatio);
+    this.borderHighlight.setSize(window.innerWidth, window.innerHeight, pixelRatio);
 
     this.composer?.setSize(window.innerWidth, window.innerHeight);
 

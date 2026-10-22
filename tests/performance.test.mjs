@@ -48,7 +48,7 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(normal.beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
   assert.equal(normal.workshopLights, 'inspect');
-  assert.equal(normal.highlightMode, 'material');
+  assert.equal(normal.highlightMode, 'border');
   assert.equal(getPerformanceOptions('?highlight=outline', 1).highlightMode, 'outline');
   assert.equal(getPerformanceOptions('?workshopLights=all', 1).workshopLights, 'all');
   assert.equal(getPerformanceOptions('?workshopLights=focused', 1).workshopLights, 'focused');
@@ -79,7 +79,7 @@ function rendererFixture(outlines = true, highlightMode = 'outline') {
   const draw = () => { info.render.calls++; info.render.triangles += 100; };
   Object.assign(renderer, {
     options: { outlines, highlightMode, perfDiag: false }, outlinedObject: null,
-    materialHighlight: new InteractionHighlight(),
+    borderHighlight: new InteractionHighlight(),
     instance: { info, render: draw }, outlinePass: { selectedObjects: [] },
     renderPass: {}, composer: { render() { draw(); draw(); draw(); } },
     hasInteractionOutline: false,
@@ -109,66 +109,180 @@ test('disabled outlines use direct rendering even if a target is supplied', () =
   assert.equal(renderer.instance.info.render.calls, 1);
 });
 
-test('default material highlight uses a single scene render without allocating a composer', () => {
-  const renderer = rendererFixture(true, 'material');
+test('default border uses one scene submission without a composer or surface tint', () => {
+  const renderer = rendererFixture(true, 'border');
   renderer.composer = undefined; renderer.outlinePass = undefined; renderer.renderPass = undefined;
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
-  const material = new THREE.MeshStandardMaterial();
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material); scene.add(mesh);
+  const material = new THREE.MeshStandardMaterial({ color: 0x625031, emissive: 0x101010 });
+  // The reported regression is a flat door: normals cannot expand its silhouette.
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material); scene.add(mesh);
   renderer.setupInteractionOutline(scene, camera);
   assert.equal(renderer.composer, undefined);
   renderer.setInteractionOutline(mesh);
-  assert.equal(renderer.materialHighlight.active, true);
-  assert.notEqual(mesh.material, material);
+  assert.equal(renderer.borderHighlight.active, true);
+  assert.deepEqual(mesh.material.color, material.color);
+  assert.deepEqual(mesh.material.emissive, material.emissive);
+  const root = scene.getObjectByName('INTERACTION_BORDER');
+  assert.equal(root.children.length, 1);
+  const rim = root.children[0];
+  assert.ok(rim instanceof THREE.InstancedMesh);
+  assert.equal(rim.count, 8); assert.equal(rim.geometry, mesh.geometry);
+  assert.equal(mesh.material.stencilZPass, THREE.ReplaceStencilOp);
+  assert.equal(rim.material.stencilFunc, THREE.NotEqualStencilFunc);
+  assert.equal(rim.material.stencilRef, mesh.material.stencilRef);
+  assert.equal(rim.material.stencilWriteMask, 0);
+  assert.equal(rim.material.depthTest, true); assert.equal(rim.material.depthWrite, false);
+  assert.equal(rim.material.blending, THREE.NoBlending);
+  assert.equal(rim.castShadow, false); assert.equal(rim.frustumCulled, false);
+  assert.equal(root.renderOrder, Number.MAX_SAFE_INTEGER);
+  const hits = []; rim.raycast(null, hits); assert.deepEqual(hits, []);
   renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
   renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
-  assert.equal(scene.children.length, 1);
   renderer.setInteractionOutline(null);
-  renderer.render(scene, camera); assert.equal(renderer.instance.info.render.calls, 1);
-  assert.equal(mesh.material, material);
+  assert.equal(scene.children.length, 1); assert.equal(mesh.material, material);
 });
 
-test('material highlighting isolates shared materials, preserves textures/geometry, and follows authored color', () => {
-  const highlight = new InteractionHighlight(), group = new THREE.Group();
+test('border masks isolate shared materials, follow authored colors, and release only owned resources', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene(), group = new THREE.Group();
+  scene.add(group);
   const texture = new THREE.Texture();
   const material = new THREE.MeshStandardMaterial({ color: 0x625031, emissive: 0x101010, map: texture });
-  const hook = () => {}; material.onBeforeCompile = hook;
   const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(a.geometry, material);
-  const outside = new THREE.Mesh(a.geometry, material); group.add(a, b);
-  const geometry = a.geometry, originalColor = material.color.clone(), originalEmission = material.emissive.clone();
+  const outside = new THREE.Mesh(a.geometry, material); group.add(a, b); scene.add(outside);
+  const originalColor = material.color.clone(), originalEmission = material.emissive.clone();
   highlight.setTarget(group);
   const clone = a.material;
   assert.notEqual(clone, material); assert.equal(b.material, clone);
-  assert.equal(outside.material, material); assert.equal(a.geometry, geometry);
-  assert.equal(clone.map, texture); assert.equal(clone.onBeforeCompile, hook);
-  assert.deepEqual(material.color, originalColor); assert.deepEqual(material.emissive, originalEmission);
+  assert.equal(outside.material, material); assert.equal(material.stencilWrite, false);
+  assert.equal(clone.map, texture);
+  assert.deepEqual(clone.color, originalColor); assert.deepEqual(clone.emissive, originalEmission);
+  material.color.set(0x203040); material.emissive.set(0x010203);
   material.opacity = 0.6; material.emissiveIntensity = 1.7;
-  highlight.update(); assert.equal(clone.opacity, 0.6); assert.equal(clone.emissiveIntensity, 1.7);
-  let disposed = 0, textureDisposals = 0;
+  highlight.update();
+  assert.deepEqual(clone.color, material.color); assert.deepEqual(clone.emissive, material.emissive);
+  assert.equal(clone.opacity, 0.6); assert.equal(clone.emissiveIntensity, 1.7);
+  let disposed = 0, textureDisposals = 0, geometryDisposals = 0, rimDisposals = 0;
   clone.addEventListener('dispose', () => { disposed++; });
   texture.addEventListener('dispose', () => { textureDisposals++; });
+  a.geometry.addEventListener('dispose', () => { geometryDisposals++; });
+  const root = scene.getObjectByName('INTERACTION_BORDER');
+  for (const proxy of root.children) proxy.material.addEventListener('dispose', () => { rimDisposals++; });
   highlight.setTarget(group); assert.equal(a.material, clone);
   highlight.clear(); highlight.clear();
   assert.equal(a.material, material); assert.equal(b.material, material);
-  assert.equal(disposed, 1); assert.equal(textureDisposals, 0); assert.equal(highlight.active, false);
+  assert.equal(disposed, 1); assert.equal(rimDisposals, 2);
+  assert.equal(textureDisposals, 0); assert.equal(geometryDisposals, 0);
+  assert.equal(root.parent, null); assert.equal(root.children.length, 0); assert.equal(highlight.active, false);
 });
 
-test('material highlight restores arrays, skips invisible helpers, and preserves external material replacement', () => {
-  const highlight = new InteractionHighlight(), group = new THREE.Group();
+test('border restores arrays, skips invisible/custom helpers, and respects external replacement', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene(), group = new THREE.Group(); scene.add(group);
   const basic = new THREE.MeshBasicMaterial({ color: 0x334455 });
   const shader = new THREE.ShaderMaterial();
   const originals = [basic, shader];
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(), originals); group.add(mesh);
   const hidden = new THREE.Mesh(mesh.geometry, basic); hidden.visible = false; group.add(hidden);
   const hit = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ colorWrite: false })); group.add(hit);
+  const custom = new THREE.Mesh(mesh.geometry, basic.clone()); custom.material.onBeforeCompile = () => {}; group.add(custom);
   highlight.setTarget(group);
   assert.notEqual(mesh.material, originals); assert.notEqual(mesh.material[0], basic);
   assert.equal(mesh.material[1], shader); assert.equal(hidden.material, basic);
-  assert.equal(hit.material.colorWrite, false);
+  assert.equal(hit.material.stencilWrite, false); assert.equal(custom.material.stencilWrite, false);
+  const proxy = scene.getObjectByName('INTERACTION_BORDER').children[0];
+  assert.equal(proxy.material[0].visible, true); assert.equal(proxy.material[1].visible, false);
+  group.visible = false; highlight.update(); assert.equal(proxy.visible, false);
+  group.visible = true; highlight.update(); assert.equal(proxy.visible, true);
   highlight.clear(); assert.equal(mesh.material, originals);
   highlight.setTarget(group);
   const replacement = new THREE.MeshStandardMaterial(); mesh.material = replacement;
+  highlight.update(); assert.equal(scene.getObjectByName('INTERACTION_BORDER').children[0].visible, false);
   highlight.clear(); assert.equal(mesh.material, replacement);
+});
+
+test('border follows world transforms, flat double-sided alpha cutouts, and CSS-pixel sizing', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene(), parent = new THREE.Group(); scene.add(parent);
+  parent.position.set(2, 3, 4); parent.rotation.y = 0.7; parent.scale.set(1, 2, 3);
+  const texture = new THREE.Texture(), alphaMap = new THREE.Texture();
+  const material = new THREE.MeshBasicMaterial({ map: texture, alphaMap, alphaTest: 0.5, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material); parent.add(mesh);
+  highlight.setSize(800, 600, 2); highlight.setTarget(mesh);
+  const proxy = scene.getObjectByName('INTERACTION_BORDER').children[0];
+  scene.updateMatrixWorld(true); proxy.onBeforeRender();
+  assert.deepEqual(proxy.matrixWorld, mesh.matrixWorld);
+  mesh.position.x = 3; scene.updateMatrixWorld(true); proxy.onBeforeRender();
+  assert.deepEqual(proxy.matrixWorld, mesh.matrixWorld);
+  const rim = proxy.material;
+  assert.equal(rim.map, texture); assert.equal(rim.alphaMap, alphaMap); assert.equal(rim.alphaTest, 0.5);
+  assert.equal(rim.side, THREE.DoubleSide); assert.equal(rim.forceSinglePass, true);
+  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+  rim.onBeforeCompile(shader);
+  assert.deepEqual(shader.uniforms.borderViewport.value.toArray(), [1600, 1200]);
+  assert.equal(shader.uniforms.borderWidth.value, 4);
+  assert.ok(shader.vertexShader.includes('gl_InstanceID % 8'));
+  assert.ok(shader.vertexShader.indexOf('gl_Position.xy +=') > shader.vertexShader.indexOf('#include <project_vertex>'));
+  assert.ok(shader.fragmentShader.indexOf('diffuseColor.rgb = diffuse') > shader.fragmentShader.indexOf('#include <alphatest_fragment>'));
+  highlight.setSize(1200, 900, 1);
+  assert.deepEqual(shader.uniforms.borderViewport.value.toArray(), [1200, 900]);
+  assert.equal(shader.uniforms.borderWidth.value, 2);
+  parent.remove(mesh); highlight.update(); assert.equal(proxy.visible, false);
+  highlight.clear();
+});
+
+test('rigid morph borders upload current weights only when they change and dispose their morph texture', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene();
+  const geometry = new THREE.PlaneGeometry();
+  geometry.morphAttributes.position = [geometry.attributes.position.clone()];
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); scene.add(mesh);
+  mesh.morphTargetInfluences[0] = 0.25;
+  highlight.setTarget(mesh);
+  const proxy = scene.getObjectByName('INTERACTION_BORDER').children[0];
+  const texture = proxy.morphTexture;
+  for (let i = 0; i < 8; i++) assert.equal(texture.image.data[i * 2 + 1], 0.25);
+  const version = texture.version; highlight.update(); assert.equal(texture.version, version);
+  mesh.morphTargetInfluences[0] = 0.75; highlight.update();
+  for (let i = 0; i < 8; i++) assert.equal(texture.image.data[i * 2 + 1], 0.75);
+  let disposed = 0; texture.addEventListener('dispose', () => { disposed++; });
+  highlight.clear(); assert.equal(disposed, 1); assert.equal(proxy.morphTexture, null);
+});
+
+test('border keeps native skinning and morph poses without cloning or disposing skeletons', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene();
+  const geometry = new THREE.PlaneGeometry();
+  geometry.morphAttributes.position = [geometry.attributes.position.clone()];
+  const mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial());
+  const bone = new THREE.Bone(); mesh.add(bone); mesh.bind(new THREE.Skeleton([bone])); scene.add(mesh);
+  highlight.setTarget(mesh);
+  const proxies = scene.getObjectByName('INTERACTION_BORDER').children;
+  assert.equal(proxies.length, 8);
+  mesh.position.set(3, 4, 5); scene.updateMatrixWorld(true);
+  mesh.morphTargetInfluences[0] = 0.4;
+  for (const proxy of proxies) {
+    assert.ok(proxy instanceof THREE.SkinnedMesh); proxy.onBeforeRender();
+    assert.equal(proxy.skeleton, mesh.skeleton); assert.equal(proxy.geometry, mesh.geometry);
+    assert.equal(proxy.morphTargetInfluences, mesh.morphTargetInfluences);
+    assert.deepEqual(proxy.matrixWorld, mesh.matrixWorld);
+    assert.deepEqual(proxy.bindMatrixInverse, mesh.bindMatrixInverse);
+  }
+  assert.equal(new Set(proxies.map(p => p.material)).size, 8);
+  highlight.clear(); assert.equal(mesh.skeleton.bones[0], bone);
+});
+
+test('instanced borders preserve instance transforms and handle count changes without world copies', () => {
+  const highlight = new InteractionHighlight(), scene = new THREE.Scene();
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 3);
+  mesh.count = 1; scene.add(mesh);
+  const matrix = new THREE.Matrix4().makeTranslation(2, 3, 4); mesh.setMatrixAt(0, matrix);
+  highlight.setTarget(mesh);
+  const proxy = scene.getObjectByName('INTERACTION_BORDER').children[0], actual = new THREE.Matrix4();
+  assert.equal(proxy.count, 8);
+  for (let i = 0; i < 8; i++) { proxy.getMatrixAt(i, actual); assert.deepEqual(actual, matrix); }
+  matrix.makeTranslation(-2, -3, -4); mesh.setMatrixAt(1, matrix); mesh.count = 2;
+  highlight.update(); assert.equal(proxy.count, 16);
+  for (let i = 8; i < 16; i++) { proxy.getMatrixAt(i, actual); assert.deepEqual(actual, matrix); }
+  const version = proxy.instanceMatrix.version; highlight.update(); assert.equal(proxy.instanceMatrix.version, version);
+  matrix.makeTranslation(1, 1, 1); mesh.setMatrixAt(1, matrix); mesh.instanceMatrix.needsUpdate = true;
+  highlight.update(); proxy.getMatrixAt(8, actual); assert.deepEqual(actual, matrix);
+  highlight.clear();
 });
 
 test('hidden bubbles do not upload matrices; activation and deactivation remain functional', () => {

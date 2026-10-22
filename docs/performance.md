@@ -9,10 +9,15 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
 - Renderer counters reset once per frame and accumulate the scene, outline,
   and output passes. Triangle totals include repeated passes and are not a
   count of unique geometry.
-- Default interaction feedback is a warm material glow/tint in the existing
-  scene draw. It creates no composer, render targets, extra meshes, or extra
-  render passes. Only target materials are cloned; originals are restored on
-  focus change. `highlight=outline` opts into the previous blurred border.
+- Default interaction feedback is a warm, two-CSS-pixel silhouette border.
+  The ordinary target draw writes its interior into the stencil buffer without
+  changing its surface color. Only the selected geometry is drawn again with
+  small screen offsets, rejecting interior pixels and testing scene depth.
+  Rigid meshes batch eight offsets into one extra instanced draw per material
+  group; skinned meshes use eight native skinning draws per group. There is no
+  composer, full-scene redraw, blur, or offscreen render target in this mode.
+  Original materials return on focus change. `highlight=outline` opts into the
+  previous blurred border and its full postprocessing cost.
 - Workshop, furniture, journey, and awards updates pause outside the house.
   On exit the house model detaches from the scene, avoiding hidden transform
   updates. Re-entry reattaches it with the same interaction state.
@@ -94,17 +99,28 @@ objects, and the actual house's 61-to-2 beam batching result. Additional checks
 cover fixed physics/mixer cadence, accumulated animation time/pose, light
 activation and fading, 12-to-5 idle light membership, flat-ring materials, hint
 DOM changes, exterior/NPC restoration, and NPC loading while indoors. There are
-24 tests. The latest checks exercise inspection-only workshop light transitions,
-shader warm-up restoration on success/failure, single-render material feedback,
-shared material isolation/restoration, texture/geometry preservation, optional
-legacy highlights/lights, WAV format/timing/pitch, bounded voice reuse, mute and
-blocked playback, and audio resource cleanup.
+28 tests. The latest checks exercise inspection-only workshop light transitions,
+shader warm-up restoration on success/failure, one scene submission for the
+border, unchanged surface colors, flat double-sided doors, alpha cutouts,
+world transforms, hidden/detached sources, shared-material isolation/restoration,
+skinning and morph poses, instanced transforms/count changes, CSS-pixel sizing,
+owned-resource cleanup, optional legacy highlights/lights, WAV format/timing/pitch,
+bounded voice reuse, mute/blocked playback, and audio resource cleanup.
 
-GPU rendering and gameplay have not been visually verified in the remote
-environment, which could not create a WebGL context during the earlier tests.
+The new border has isolated pixel validation using actual emitted Three.js
+WebGLProgram shaders on Mesa llvmpipe through a surfaceless EGL OpenGL ES 3.2
+context. Surface, rigid border, alpha-cutout surface/border, skinning, and morph
+shader variants compile/link. A 256×256 flat-door fixture preserves every interior
+pixel, draws the expected two-pixel exterior rim (1,004 changed rim pixels with
+a foreground strip), respects foreground depth, leaves cutout openings open,
+and clears cleanly after deselection. The rendered fixture was visually reviewed.
+This is software-rendered shader/state validation, not full browser gameplay or
+a hardware performance benchmark. Earlier browser tests could not create WebGL.
 Walk around outside, enter and exit twice, open/turn the project book both ways,
 use workshop/map/awards, and toggle the furniture effects on your computer.
-The existing Vite warning about a large JS bundle remains.
+The existing Vite warning about a large JS bundle remains. This partial local
+checkout also reports an unresolved `/assets/edge-mask.webp` URL at build time;
+that public asset exists in the remote branch and is preserved by this change.
 
 ## Controlled captures
 
@@ -115,7 +131,7 @@ captures to avoid measuring their overhead.
 
 | URL query | Purpose |
 | --- | --- |
-| `?perfdiag=1` | Current defaults: material highlight, inspection-only workshop lights, stats off |
+| `?perfdiag=1` | Current defaults: stencil border, inspection-only workshop lights, stats off |
 | `?perfdiag=1&outlines=0` | Disable interaction highlighting (legacy switch name) |
 | `?perfdiag=1&highlight=outline` | Original multi-pass blurred border highlight; higher rendering cost |
 | `?perfdiag=1&shadows=0` | Shadow cost only |
@@ -350,7 +366,7 @@ on the user's Windows system. Tests verify cue duration/pitch, cache bounds,
 global-mute callback, playback rejection handling, and cleanup. The clips contain
 no downloaded audio and introduce no asset or package dependency.
 
-### Material highlighting and inspection-only workshop lights
+### Silhouette border and inspection-only workshop lights
 
 Source inspection confirms that the legacy OutlinePass renders a non-selected
 depth scene and a selected-object mask, then runs edge detection, blur, and
@@ -358,14 +374,31 @@ compositing in addition to the normal scene/output passes. Re-enabling that path
 can therefore restore substantial rendering work. This is an identified source
 cost, not a new GPU timing measurement.
 
-Default highlighting now adds warm emission/tint to the target's existing
-materials and keeps the direct scene render. There are no full-screen passes or
-additional geometry. Clones are shared within the selected target, never with
-unselected objects, and the original material/array references return on focus
-change. Textures, geometry, skinning, morph data, and shader hooks are preserved;
-authored color, emissive intensity, and opacity changes are followed. Unsupported
-custom shaders and invisible hit helpers are left alone. The visual difference
-is an illuminated/tinted surface instead of the old blurred silhouette border.
+Default highlighting is a crisp warm silhouette border rather than a surface
+color change. The existing scene draw keeps the original appearance and writes
+stencil bit 1 for visible target pixels. Late, unlit copies of only that target's
+geometry shift by two CSS pixels in eight directions. The stencil test rejects
+the interior; the depth test keeps foreground objects in front of the rim.
+Screen-space offsets also work for flat/open door planes, unlike expansion
+along normals alone. Width follows DPR and resize. Texture alpha cutouts remain.
+
+Rigid geometry uses one eight-instance draw per material group. Native source
+instances repeat their transforms for each offset, uploading only on transform
+or count changes. Skinned meshes use eight draws per group and share the source
+skeleton and morph pose. Rigid morph weights use Three's native instanced morph
+texture and upload only on changes. These are additional selected-object draws
+and vertex work; there is no claim of zero overhead or a measured FPS gain.
+There are no extra full-scene passes, blur textures, or default composer.
+
+Only selected materials are cloned for stencil writes, leaving shared materials
+outside the target untouched. Surface color, emission, textures, and authored
+material animation remain; original material/array references return on focus
+change. Proxies follow world transforms, skip hidden/detached sources, cannot
+be raycast targets, and release their own materials/buffers/morph textures on
+clear without disposing source geometry, maps, or skeletons. Invisible hit
+helpers, custom vertex/shader materials, BatchedMesh, and source InstancedMesh
+with per-instance morph textures are excluded. Full transparency is a crisp
+silhouette rather than a translucent glow; no through-wall hidden edge is drawn.
 
 The workshop's default `inspect` policy has no real point lights while walking,
 entering, in the overview, hovering without selection, or leaving. E/Enter,
@@ -378,13 +411,14 @@ even if compilation fails.
 For local review, open `?perfdiag=1` after pulling. Remove previous overrides
 such as `workshopLights=all`, `workshopLights=focused`, `highlight=outline`,
 `outlines=0`, `lowfx=1`, and `decorativeLights=0`. Check that nearby interactables
-receive material feedback, original materials return when moving away, workshop
-overview has no point light, and selecting/closing/leaving correctly switches
+receive a thin exterior rim with their surface colors intact, the rim disappears
+when moving away, workshop overview has no point light, and selecting/closing/leaving correctly switches
 the individual craft light. Idle diagnostics should read pointLights=1, rising
 to 2 for workshop inspection, plus active furniture lights. In default mode,
-highlightActive can be true while outlineActive is false: highlightMode=material
-uses no OutlinePass. `highlight=outline` explicitly restores the legacy border
-and its cost. Appearance, post-change FPS, and Windows audio playback still need
+highlightMode=border and outlineActive=true while a target is selected;
+postprocessOutlineActive=false confirms the old OutlinePass is bypassed.
+`highlight=outline` explicitly restores the legacy blurred border and its cost.
+Full-game appearance, post-change FPS, and Windows audio playback still need
 local review; no new measured FPS gain is claimed.
 
 ### Uploaded exterior source audit
