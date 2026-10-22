@@ -141,7 +141,7 @@ export class Renderer {
         const info = this.instance.info;
         let pointLights = 0;
         scene.traverseVisible(object => { if (object instanceof THREE.PointLight) pointLights++; });
-        console.info("[House perf]", {
+        const sample = {
           fpsApprox: Math.round(this.perfFrames / seconds),
           rendererCpuMsApprox: +(this.perfRenderMs / this.perfFrames).toFixed(2),
           drawCallsLastFrame: info.render.calls,
@@ -163,7 +163,9 @@ export class Renderer {
           stoneLod: this.options.stoneLod,
           activeLightsOnly: this.options.activeLightsOnly,
           pointLights,
-        });
+        };
+        // Keep the object for existing collectors and text for browser log bridges.
+        console.info("[House perf]", sample, JSON.stringify(sample));
         this.perfFrames = 0;
         this.perfRenderMs = 0;
         this.perfStarted = now;

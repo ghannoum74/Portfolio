@@ -133,7 +133,10 @@ export class HouseInterior {
         .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData))
         .then(lod => {
           this.stoneLod = lod;
-          if (performanceOptions.perfDiag) console.info("[House stone LOD]", lod.stats);
+          if (performanceOptions.perfDiag) {
+            const sample = lod.stats;
+            console.info("[House stone LOD]", sample, JSON.stringify(sample));
+          }
         })
         .catch(error => console.warn("House stone LOD unavailable; using authored geometry:", error));
     }

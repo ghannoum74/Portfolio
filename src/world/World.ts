@@ -169,11 +169,12 @@ export class World {
       this.physicsStepCount += steps;
       const now = performance.now();
       if (now - this.physicsTimingStarted >= 3000) {
-        console.info("[House physics]", {
+        const sample = {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
           houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
-        });
+        };
+        console.info("[House physics]", sample, JSON.stringify(sample));
         this.physicsTimingStarted = now;
         this.physicsTimingMs = 0;
         this.physicsTimingFrames = 0;
