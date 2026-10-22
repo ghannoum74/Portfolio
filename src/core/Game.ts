@@ -484,6 +484,7 @@ export class Game {
     }
 
     if (this.debugMode) this.syncCameraDebugMesh();
+    else this.cameraDebugMesh.visible = false;
 
     this.controls.enabled = gameplayActive && this.debugMode;
 
