@@ -84,17 +84,76 @@ improvements must be measured rather than inferred from a lower triangle count.
 If CPU/GPU numbers leave a large unexplained callback gap, use a fresh Chrome
 Performance trace to investigate scheduling, other work and presentation.
 
-The live GPU and new full-frame measurements still require verification on the
-updated Windows branch. No new GPU milliseconds or FPS benefit is claimed by
-this implementation. First-load/entry latency remains unmeasured.
+The live GPU and callback measurements were subsequently verified in the workshop
+approach view below. First-load/entry latency remains unmeasured.
 
 Validation: 74 automated tests, TypeScript checking and the production build pass.
-The GPU tests use a controlled WebGL test double; they do not substitute for a
-driver measurement on the user's Intel GPU. Existing bundle-size and the partial
-checkout's unresolved edge-mask build warnings remain.
+The automated GPU tests use a controlled WebGL test double; the following live
+comparison additionally verifies successful asynchronous timing in the connected
+Chrome app. Existing bundle-size and partial-checkout edge-mask warnings remain.
+
+## Live CPU/GPU comparison on 2026-10-23
+
+The updated diagnostic controls and their log fields were present. One portfolio
+tab was open, the document was visible, and the workshop approach camera remained
+fixed. The viewport was 1745 × 828, with a baseline framebuffer of 1919 × 910 at
+DPR 1.1, as read after baseline A3; dimensions were not read separately for every
+run. The later restored-settings screenshot is 1745 × 777. Preview hour was held
+at 19.2933. One house point light was visible and
+workshop inspection lights were inactive. The player idle animation continued.
+The exact Windows checkout SHA was not independently read.
+
+Each condition resets readings, excludes two seconds of warm-up, and collects
+five roughly three-second windows. Values below are medians across those window
+summaries; GPU ms uses each window's mean sampled GPU duration. These are
+sequential comparisons, not pooled per-frame percentiles.
+
+| Condition | Median FPS | Callback CPU ms | Sampled GPU ms | Callback interval ms |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline A: border/shadows on, DPR 1.1 | 29 | 7.25 | 16.52 | 34.08 |
+| Border off | 29 | 6.57 | 16.03 | 34.08 |
+| Baseline A2 restored | 29 | 5.91 | 16.54 | 34.27 |
+| Shadows off | 29 | 6.34 | 16.57 | 34.09 |
+| DPR 0.55, border/shadows on | 29 | 6.14 | 5.29 | 34.47 |
+| Baseline A3 restored | 29 | 6.82 | 16.63 | 34.08 |
+| GPU timing disabled, original quality | 29 | 6.66 | — | 34.67 |
+
+The six GPU-enabled conditions yielded 254 completed samples, all reported
+`ready`, with no disjoint events and at most one pending query in the captured
+reporting windows. Disabling timing produced null GPU durations and zero pending
+queries. No error-level browser logs were observed. Startup warnings included
+unmatched finger animation tracks and unrelated extension locator warnings.
+
+Disabling the border removed one submitted draw and 16,672 submitted triangles
+(72 → 71 calls, 46,886 → 30,214 triangles). Its roughly 0.5 ms GPU difference
+against adjacent baselines did not change median FPS. Shadow disabling did not
+improve GPU time or FPS in this particular view/hour; this does not establish the
+cost of other shadowed scenes. The lower-resolution comparison cut sampled GPU
+time by about 68%, while median FPS remained 29. Original DPR, border, shadows,
+other quality switches and real time were restored; GPU timing was turned off.
+
+These results make callback pacing or work outside the measured callback the
+next investigation. They do not prove a browser frame cap, a 30 Hz display,
+Energy Saver activation, GPU utilization or a specific driver/OS cause. The
+inspected Game/VisibleAnimationLoop path forwards visible frames to Three.js
+`setAnimationLoop` without an application 30 FPS limiter. A fresh Chrome
+Performance trace and the user's display/power configuration are still needed.
+Browser control and diagnostic logging were active throughout these tests;
+there was no uninstrumented comparison. Occasional 19–20 FPS windows are retained
+in the raw readings rather than removed.
+
+Chrome documents that Energy Saver can reduce animation frame rate. Its state on
+this machine remains unverified: browser security blocked internal settings
+navigation. No workaround or settings change was attempted. The user can check
+Chrome Settings → Performance → Energy Saver before the next comparison.
+
+See [raw CPU/GPU readings](runtime-gpu-profile-2026-10-23.json) and
+[the restored quality settings](runtime-gpu-profile-2026-10-23-restored.jpg).
 
 ## References
 
 - [Khronos elapsed-time query specification](https://registry.khronos.org/webgl/extensions/EXT_disjoint_timer_query_webgl2/)
 - [MDN WebGLQuery](https://developer.mozilla.org/en-US/docs/Web/API/WebGLQuery)
 - [MDN requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
+- [Chrome Memory and Energy Saver behavior](https://developer.chrome.com/blog/memory-and-energy-saver-mode)
+- [Chrome performance settings](https://support.google.com/chrome/answer/12929150)
