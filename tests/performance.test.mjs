@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
 import { mkdtemp, rm, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { Document, NodeIO } from '@gltf-transform/core';
@@ -931,19 +932,52 @@ test('surface culling preserves cutouts, transmission, animation, partial draws 
 });
 
 test('the real house culls only verified surfaces and keeps stone LOD, layout and gameplay identity intact', async () => {
-  const gltf = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const housePath = new URL('../public/assets/models/environment/house.glb', import.meta.url);
+  const bytes = await readFile(housePath);
+  const assetSha = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  // Explicit reviewed export snapshots: never accept arbitrary new counts just
+  // because the runtime returned them. The newer counts come from the owner's
+  // Windows run with the b0239d4 house export.
+  const snapshots = new Map([
+    ['6b65043ea9b4ec6377187e920657860f85b74685', { enabled: true, meshes: 132, triangles: 108050, materials: 50 }],
+    ['ba860d7d9becc0abceba9866fed3cff1c4f4ca66', { enabled: true, meshes: 134, triangles: 108122, materials: 51 }],
+  ]);
+  const expected = snapshots.get(assetSha);
+  assert.ok(expected, `Unreviewed house export ${assetSha}: review its culling snapshot before updating this test`);
+  const gltf = await readGeometryGLB(housePath);
   const root = gltf.scene; root.getObjectByName('SEC_PROJECTS_ProjectBook')?.traverse(object => object.visible = false);
   batchHouseBeams(root, gltf.animations);
   const before = new Map();
   root.traverse(object => before.set(object, { parent: object.parent, name: object.name,
     geometry: object.geometry, material: object.material, visible: object.visible, matrix: object.matrix.clone() }));
   const culling = await ClosedSurfaceCulling.create(root, true, gltf.animations);
-  assert.deepEqual(culling.stats, { enabled: true, meshes: 132, triangles: 108050, materials: 50 });
+  assert.deepEqual(culling.stats, expected);
+  const checkedGeometry = new Set(), clonedMaterials = new Set();
+  let changedMeshes = 0, changedTriangles = 0;
   for (const [object, state] of before) {
     assert.equal(object.geometry, state.geometry); assert.equal(object.parent, state.parent);
     assert.equal(object.name, state.name); assert.equal(object.visible, state.visible); assert.deepEqual(object.matrix, state.matrix);
-    if (object.material !== state.material) assert.equal(object.material.side, THREE.FrontSide);
+    if (object.material !== state.material) {
+      assert.equal(object.isMesh, true);
+      if (!checkedGeometry.has(object.geometry)) {
+        assert.equal(await isClosedOutwardSurface(object.geometry), true, `Unsafe culled surface: ${object.name}`);
+        checkedGeometry.add(object.geometry);
+      }
+      changedMeshes++;
+      changedTriangles += (object.geometry.index?.count ?? object.geometry.getAttribute('position').count) / 3;
+      const original = Array.isArray(state.material) ? state.material : [state.material];
+      const prepared = Array.isArray(object.material) ? object.material : [object.material];
+      assert.equal(prepared.length, original.length);
+      original.forEach((material, index) => {
+        if (material.side === THREE.DoubleSide) {
+          assert.notEqual(prepared[index], material);
+          assert.equal(prepared[index].side, THREE.FrontSide);
+          clonedMaterials.add(prepared[index]);
+        } else assert.equal(prepared[index], material);
+      });
+    }
   }
+  assert.deepEqual({ enabled: true, meshes: changedMeshes, triangles: changedTriangles, materials: clonedMaterials.size }, expected);
   // The stones contain mixed-orientation components, so the conservative surface
   // audit leaves their authored material alone while their existing LOD still works.
   for (const name of HOUSE_STONE_NAMES) assert.equal(root.getObjectByName(name).material, before.get(root.getObjectByName(name)).material);

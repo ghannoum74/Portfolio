@@ -70,6 +70,16 @@ rejects the binary house download, so local asset-dependent tests use the prior
 house. The complete suite against the newer house remains pending. The two
 day/night regressions do not depend on any house asset.
 
+The owner's subsequent Windows run passed 92 of 93 tests. The remaining failure
+was this real-house culling snapshot: the new export reports 134 meshes, 108,122
+triangles and 51 cloned materials, compared with 132 / 108,050 / 50 in the old
+export. The follow-up test fix keys these explicit expectations by each GLB's Git
+blob hash. It also verifies each changed geometry is closed/outward, checks the
+actual changed mesh/triangle/material totals, and retains the hierarchy,
+material restoration and stone-LOD assertions. Unknown exports fail explicitly.
+The revised suite passes 93 tests locally with the prior house; a rerun with the
+new house is still needed. No production code or asset changes in this fix.
+
 Two new
 regressions verify zero-sunlight skipping, near-boundary dawn/dusk restoration,
 return to real time, retention of an existing map without disposal, continued
