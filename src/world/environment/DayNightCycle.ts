@@ -12,6 +12,7 @@ export class DayNightCycle {
   private readonly sunRadius: number;
   private readonly updateInterval: number;
   private readonly timeFormatter: Intl.DateTimeFormat;
+  private readonly sunShadowsEnabled: boolean;
   private elapsed = Infinity;
 
   // for debbuging purposes
@@ -40,6 +41,7 @@ export class DayNightCycle {
     private readonly ambientLight: THREE.AmbientLight,
     options: DayNightCycleOptions = {},
   ) {
+    this.sunShadowsEnabled = this.sun.castShadow;
     this.sunRadius = options.sunRadius ?? 35;
 
     this.updateInterval = options.updateInterval ?? 1;
@@ -149,6 +151,9 @@ export class DayNightCycle {
      */
 
     this.sun.intensity = THREE.MathUtils.lerp(0, 3, daylight);
+    // A zero-intensity sun contributes no light, but Three.js still renders its
+    // shadow map. Keep the map for reuse and restore authored shadows at dawn.
+    this.sun.castShadow = this.sunShadowsEnabled && daylight > 0;
 
     this.sun.color
       .copy(this.horizonSunColor)

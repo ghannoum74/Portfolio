@@ -103,6 +103,14 @@ cold-load impact were not measured.
 
 ## Existing common optimizations retained
 
+The later [sun shadow review](sun-shadow-benchmark-2026-10-23.md) skips only the
+sun's shadow pass at exactly zero sunlight, restoring authored shadows at dawn.
+Its fixed-view night on/off/on comparison isolates four draws and 8,050 shadow
+triangles, without establishing an FPS/GPU-time gain. The latest code passes 93
+local tests with the prior house asset. The owner's newer house export is
+preserved; full tests against that binary and a live check of the automatic
+policy after pulling remain pending.
+
 - Spatial mesh merging and frozen authored local transforms.
 - Projected-error stone LOD with full close-up geometry and safe sidecar fallback.
 - Three.js frustum culling and verified closed-surface backface culling.

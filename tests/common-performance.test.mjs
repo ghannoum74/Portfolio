@@ -19,12 +19,13 @@ await build({ stdin: {
     export { World } from './src/world/World';
     export { Water } from './src/world/environment/Water';
     export { Player } from './src/world/player/Player';
+    export { DayNightCycle } from './src/world/environment/DayNightCycle';
     export { ProjectPageTextures } from './src/world/house/book/ProjectPageTexture';
     export { PROJECTS } from './src/data/projects';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
 const { StaticMeshBatches, StaticMeshInstances, PhysicsWorld, WorldColliders, CameraCollision,
-  AssetLoader, ASSETS, World, Water, Player, ProjectPageTextures, PROJECTS } = await import(pathToFileURL(bundle));
+  AssetLoader, ASSETS, World, Water, Player, DayNightCycle, ProjectPageTextures, PROJECTS } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 function copies(count = 3) {
@@ -39,6 +40,34 @@ function copies(count = 3) {
   });
   return { root, meshes, material };
 }
+
+test('sun shadows stop only at zero sunlight and return at dawn without releasing their map', () => {
+  const sun = new THREE.DirectionalLight(); sun.castShadow = true;
+  const map = new THREE.WebGLRenderTarget(16, 16); sun.shadow.map = map;
+  let disposals = 0; map.addEventListener('dispose', () => disposals++);
+  const cycle = new DayNightCycle(new THREE.Scene(), new THREE.Group(), sun, new THREE.AmbientLight(), { timeZone: 'UTC' });
+  for (const [hour, lit] of [[0, false], [5.42, false], [5.43, true], [6, true], [12, true], [18, true], [18.57, true], [18.58, false], [23.99, false], [12, true]]) {
+    cycle.setTimeOverride(hour);
+    assert.equal(sun.intensity > 0, lit, `sunlight at ${hour}`);
+    assert.equal(sun.castShadow, lit, `shadow at ${hour}`);
+    assert.equal(sun.visible, true); assert.equal(sun.shadow.autoUpdate, true);
+    assert.equal(sun.shadow.map, map); assert.equal(disposals, 0);
+  }
+  cycle.setTimeOverride(0); cycle.setTimeOverride(null);
+  assert.equal(cycle.isUsingRealTime(), true);
+  assert.equal(sun.castShadow, sun.intensity > 0);
+  map.dispose();
+});
+
+test('daylight never enables sun shadows that were disabled in the authored configuration', () => {
+  const sun = new THREE.DirectionalLight(); sun.castShadow = false;
+  const cycle = new DayNightCycle(new THREE.Scene(), new THREE.Group(), sun, new THREE.AmbientLight());
+  for (const hour of [12, 0, 5.43, 13, 23]) {
+    cycle.setTimeOverride(hour); cycle.update(2);
+    assert.equal(sun.castShadow, false);
+  }
+  cycle.setTimeOverride(12); assert.equal(sun.intensity, 3);
+});
 
 test('static instances retain every vertex/UV/material and follow moved roots without copying geometry', () => {
   const { root, meshes, material } = copies();
