@@ -374,6 +374,8 @@ export class AnimatedBook3D {
   // =======================================================
 
   update(delta: number): void {
+    // Clamped actions retain their final pose without reapplying every morph.
+    if (this.state !== "opening" && this.state !== "turning") return;
     this.mixer.update(Math.min(delta, 0.05));
   }
 

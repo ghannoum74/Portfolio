@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import Stats from "stats-gl";
+import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
+import { InteractionHighlight } from "./InteractionHighlight";
 
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -8,44 +10,48 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 export class Renderer {
   instance: THREE.WebGLRenderer;
-  stats: Stats;
+  stats?: Stats;
 
   private composer?: EffectComposer;
   private renderPass?: RenderPass;
   private outlinePass?: OutlinePass;
   private hasInteractionOutline = false;
+  private readonly borderHighlight = new InteractionHighlight();
 
-  // HOUSE_PERFORMANCE_V1: append ?lowfx=1 for a temporary A/B GPU test.
-  // The normal render quality is unchanged unless that query param is present.
-  private readonly lowFx = new URLSearchParams(window.location.search).has("lowfx");
-  // Append ?perfdiag=1 and inspect the browser console every ~3 seconds.
-  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private readonly options = performanceOptions;
+  private outlinedObject: THREE.Object3D | null = null;
   private perfStarted = performance.now();
   private perfFrames = 0;
   private perfRenderMs = 0;
+  private perfWarmupUntil = 0;
+  private pixelRatioOverride?: number;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
+      stencil: true,
     });
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
-    this.instance.setPixelRatio(this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.instance.setPixelRatio(this.options.pixelRatio);
+    this.borderHighlight.setSize(window.innerWidth, window.innerHeight, this.options.pixelRatio);
 
-    this.instance.shadowMap.enabled = !this.lowFx;
+    this.instance.shadowMap.enabled = this.options.shadows;
+    // Count every render pass, including OutlinePass and its final output.
+    this.instance.info.autoReset = false;
 
-    // PERFORMANCE STATS
-    this.stats = new Stats({
-      trackGPU: !this.lowFx,
-    });
-
-    this.stats.init(this.instance);
-
-    document.body.appendChild(this.stats.dom);
+    // GPU queries and graph drawing are opt-in during normal gameplay.
+    if (this.options.stats) {
+      this.stats = new Stats({ trackGPU: this.options.gpuStats });
+      // Pass the context so stats-gl does not also wrap every render pass.
+      void this.stats.init(this.instance.getContext());
+      document.body.appendChild(this.stats.dom);
+    }
   }
   setupInteractionOutline(scene: THREE.Scene, camera: THREE.Camera): void {
+    if (!this.options.outlines || this.options.highlightMode !== "outline") return;
     this.composer = new EffectComposer(this.instance);
 
     this.renderPass = new RenderPass(scene, camera);
@@ -75,10 +81,16 @@ export class Renderer {
   }
 
   setInteractionOutline(object: THREE.Object3D | null): void {
-    if (!this.outlinePass) {
-      console.error("OutlinePass not initialized");
+    if (!this.options.outlines) return;
+    if (object === this.outlinedObject) return;
+    this.outlinedObject = object;
+
+    if (this.options.highlightMode === "border") {
+      this.borderHighlight.setTarget(object);
+      this.hasInteractionOutline = this.borderHighlight.active;
       return;
     }
+    if (!this.outlinePass) return;
 
     const meshes: THREE.Object3D[] = [];
 
@@ -94,11 +106,14 @@ export class Renderer {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera): void {
-    const renderStarted = this.perfDiag ? performance.now() : 0;
-    this.stats.begin();
+    const renderStarted = this.options.perfDiag ? performance.now() : 0;
+    this.instance.info.reset();
+    this.borderHighlight.update();
+    this.stats?.begin();
 
     if (
-      !this.lowFx &&
+      this.options.outlines &&
+      this.options.highlightMode === "outline" &&
       this.hasInteractionOutline &&
       this.composer &&
       this.renderPass &&
@@ -116,26 +131,48 @@ export class Renderer {
       this.instance.render(scene, camera);
     }
 
-    this.stats.end();
-    this.stats.update();
+    this.stats?.end();
+    this.stats?.update();
 
-    if (this.perfDiag) {
+    if (this.options.perfDiag) {
+      if (performance.now() < this.perfWarmupUntil) {
+        this.perfStarted = performance.now();
+        return;
+      }
       this.perfFrames++;
       this.perfRenderMs += performance.now() - renderStarted;
       const now = performance.now();
       const seconds = (now - this.perfStarted) / 1000;
       if (seconds >= 3) {
         const info = this.instance.info;
-        console.info("[House perf]", {
+        let pointLights = 0;
+        scene.traverseVisible(object => { if (object instanceof THREE.PointLight) pointLights++; });
+        const sample = {
           fpsApprox: Math.round(this.perfFrames / seconds),
           rendererCpuMsApprox: +(this.perfRenderMs / this.perfFrames).toFixed(2),
           drawCallsLastFrame: info.render.calls,
           trianglesLastFrame: info.render.triangles,
           gpuTextures: info.memory.textures,
           gpuGeometries: info.memory.geometries,
-          outlineActive: this.hasInteractionOutline && !this.lowFx,
-          lowFx: this.lowFx,
-        });
+          highlightActive: this.hasInteractionOutline && this.options.outlines,
+          highlightMode: this.options.highlightMode,
+          outlineActive: this.hasInteractionOutline && this.options.outlines,
+          postprocessOutlineActive: this.hasInteractionOutline && this.options.outlines && this.options.highlightMode === "outline",
+          lowFx: this.options.lowFx,
+          shadows: this.options.shadows,
+          pixelRatio: this.instance.getPixelRatio(),
+          stats: this.options.stats,
+          gpuStats: this.options.gpuStats,
+          decorativeLights: this.options.decorativeLights,
+          workshopLights: this.options.workshopLights,
+          beamBatching: this.options.beamBatching,
+          stoneLod: this.options.stoneLod,
+          surfaceCulling: this.options.surfaceCulling,
+          activeLightsOnly: this.options.activeLightsOnly,
+          pointLights,
+        };
+        // Keep the object for existing collectors and text for browser log bridges.
+        console.info("[House perf]", sample, JSON.stringify(sample));
         this.perfFrames = 0;
         this.perfRenderMs = 0;
         this.perfStarted = now;
@@ -143,15 +180,33 @@ export class Renderer {
     }
   }
 
+  resetPerformanceSamples(): void {
+    this.perfStarted = performance.now();
+    this.perfFrames = 0;
+    this.perfRenderMs = 0;
+    // Exclude the shader/resize warm-up immediately after a diagnostic switch.
+    this.perfWarmupUntil = this.perfStarted + 2000;
+  }
+
+  setPixelRatio(pixelRatio: number): void {
+    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) return;
+    const maximum = getPerformanceOptions("", window.devicePixelRatio).pixelRatio;
+    this.pixelRatioOverride = Math.min(maximum, Math.max(Math.min(0.5, maximum), pixelRatio));
+    this.resize();
+  }
+
   resize() {
-    const pixelRatio = this.lowFx ? 1 : Math.min(window.devicePixelRatio, 2);
+    const requested = this.pixelRatioOverride ?? getPerformanceOptions(window.location.search, window.devicePixelRatio).pixelRatio;
+    const pixelRatio = Math.min(requested, getPerformanceOptions("", window.devicePixelRatio).pixelRatio);
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
     this.instance.setPixelRatio(pixelRatio);
+    this.borderHighlight.setSize(window.innerWidth, window.innerHeight, pixelRatio);
 
     this.composer?.setSize(window.innerWidth, window.innerHeight);
 
     this.composer?.setPixelRatio(pixelRatio);
+    this.resetPerformanceSamples();
   }
 }

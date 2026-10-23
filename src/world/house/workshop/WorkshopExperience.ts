@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { performanceOptions } from "../../../core/PerformanceOptions";
 import { WORKSHOP_SKILLS, type WorkshopSkill } from "../../../data/skills";
 import "../../../ui/WorkshopExperience/WorkshopExperience.css";
 import { WorkshopSound } from "./WorkshopSound";
@@ -65,6 +66,9 @@ export class WorkshopExperience {
   private pointerY = 0;
   private hoveredIndex = -1;
   private selectedIndex = -1;
+  private activeGlowIndex = 0;
+  private readonly lightCameraPosition = new THREE.Vector3();
+  private readonly lightPosition = new THREE.Vector3();
   private previousCursor = "";
   private exitCallback: (() => void) | null = null;
   private cameraDistance = 3.0;
@@ -120,8 +124,10 @@ export class WorkshopExperience {
     const glowLight = new THREE.PointLight(tint, 0.28, 1.65, 2);
     glowLight.name = `WORKSHOP_TREASURE_LIGHT_${index + 1}`;
     glowLight.castShadow = false;
+    glowLight.visible = performanceOptions.workshopLights === "all" ||
+      (performanceOptions.workshopLights === "focused" && index === 0);
     glowLight.position.set(0, 0.04, 0.02);
-    floating.add(glowLight);
+    if (performanceOptions.decorativeLights) floating.add(glowLight);
 
     const glowRune = new THREE.Mesh(
       new THREE.RingGeometry(0.26, 0.335, 40),
@@ -130,6 +136,7 @@ export class WorkshopExperience {
         transparent: true,
         opacity: 0.05,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
@@ -490,6 +497,7 @@ export class WorkshopExperience {
     this.updateDesiredCamera();
     this.beginTransition(this.desiredPosition, this.desiredQuaternion, 0.95);
     this.state = "entering";
+    this.updateTreasureLights();
     this.sound.play("enter");
     return true;
   }
@@ -497,6 +505,7 @@ export class WorkshopExperience {
   leave(onComplete: () => void): void {
     if (this.state === "idle" || this.state === "leaving") return;
     this.state = "leaving";
+    this.updateTreasureLights();
     this.selectedIndex = -1;
     this.hoveredIndex = -1;
     this.setCursor(false);
@@ -525,6 +534,7 @@ export class WorkshopExperience {
     ) {
       const previous = this.selectedIndex;
       this.selectedIndex = -1;
+      this.updateTreasureLights();
       this.panel.classList.remove("is-visible");
       this.sound.play("close", previous);
       this.updateControlHint();
@@ -566,6 +576,7 @@ export class WorkshopExperience {
         { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" },
       );
     }
+    this.updateTreasureLights();
     this.updateControlHint();
   }
 
@@ -616,6 +627,7 @@ export class WorkshopExperience {
   }
 
   update(delta: number): void {
+    if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.clock += dt;
 
@@ -762,6 +774,8 @@ export class WorkshopExperience {
       );
     });
 
+    this.updateTreasureLights();
+
     if (this.state === "idle") return;
     if (this.state === "entering" || this.state === "leaving") {
       this.elapsed = Math.min(this.duration, this.elapsed + dt);
@@ -820,6 +834,59 @@ export class WorkshopExperience {
     const alpha = 1 - Math.exp(-2.7 * dt);
     this.camera.position.lerp(this.desiredPosition, alpha);
     this.camera.quaternion.slerp(this.desiredQuaternion, alpha);
+  }
+
+  /** Warm the zero/one-workshop-light variants under the house-entry cover. */
+  async prepareLightingVariants(compile: () => Promise<unknown>): Promise<void> {
+    if (!performanceOptions.decorativeLights || performanceOptions.workshopLights !== "inspect" ||
+        !this.artifacts.length) return;
+    const light = this.artifacts[0].glowLight;
+    const visible = light.visible;
+    try {
+      light.visible = true;
+      await compile();
+    } finally {
+      light.visible = visible;
+    }
+  }
+
+  /** Walking/overview has no workshop light; inspection lights only that craft. */
+  private updateTreasureLights(): void {
+    if (!performanceOptions.decorativeLights) return;
+    if (performanceOptions.workshopLights === "inspect") {
+      const inspected = this.state === "active" ? this.selectedIndex : -1;
+      this.artifacts.forEach((artifact, index) => {
+        artifact.glowLight.visible = index === inspected;
+      });
+      return;
+    }
+    if (performanceOptions.workshopLights === "all") {
+      for (const artifact of this.artifacts) artifact.glowLight.visible = true;
+      return;
+    }
+    const focused = this.state === "active"
+      ? this.selectedIndex >= 0 ? this.selectedIndex : this.hoveredIndex
+      : -1;
+    if (focused >= 0 && focused < this.artifacts.length) {
+      this.activeGlowIndex = focused;
+    } else if (this.artifacts.length) {
+      this.camera.getWorldPosition(this.lightCameraPosition);
+      this.activeGlowIndex = Math.min(this.activeGlowIndex, this.artifacts.length - 1);
+      let distance = this.artifacts[this.activeGlowIndex].glowLight
+        .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
+      for (let index = 0; index < this.artifacts.length; index++) {
+        const candidate = this.artifacts[index].glowLight
+          .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
+        // Hysteresis prevents spill flicker near the midpoint of two artifacts.
+        if (candidate < distance * 0.8) {
+          this.activeGlowIndex = index;
+          distance = candidate;
+        }
+      }
+    }
+    this.artifacts.forEach((artifact, index) => {
+      artifact.glowLight.visible = index === this.activeGlowIndex;
+    });
   }
 
   private updateDesiredCamera(): void {

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "house.glb",
+    "originalBytes": 19611060,
+    "optimizedBytes": 12459804,
+    "reductionPercent": 36.5,
+    "verified": true
+  },
+  {
+    "name": "world.glb",
+    "originalBytes": 8741240,
+    "optimizedBytes": 5362764,
+    "reductionPercent": 38.6,
+    "verified": true
+  },
+  {
+    "name": "book.glb",
+    "originalBytes": 2031792,
+    "optimizedBytes": 892140,
+    "reductionPercent": 56.1,
+    "verified": true
+  }
+]

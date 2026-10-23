@@ -13,6 +13,7 @@ import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
+import { performanceOptions } from "../core/PerformanceOptions";
 
 export class World {
   model!: THREE.Group;
@@ -32,7 +33,7 @@ export class World {
   private physicsAccumulator = 0;
   private readonly fixedPhysicsStep = 1 / 60;
   private readonly maxPhysicsSteps = 5;
-  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private readonly perfDiag = performanceOptions.perfDiag;
   private physicsTimingStarted = performance.now();
   private physicsTimingMs = 0;
   private physicsTimingFrames = 0;
@@ -150,7 +151,7 @@ export class World {
     let steps = 0;
     while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsSteps) {
       this.physics.beginFrame(this.fixedPhysicsStep);
-      this.player.update(this.fixedPhysicsStep);
+      this.player.updatePhysics(this.fixedPhysicsStep);
       this.physics.step();
       this.physicsAccumulator -= this.fixedPhysicsStep;
       steps++;
@@ -169,16 +170,23 @@ export class World {
       this.physicsStepCount += steps;
       const now = performance.now();
       if (now - this.physicsTimingStarted >= 3000) {
-        console.info("[House physics]", {
+        const sample = {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
-        });
+          houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
+          houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
+        };
+        console.info("[House physics]", sample, JSON.stringify(sample));
         this.physicsTimingStarted = now;
         this.physicsTimingMs = 0;
         this.physicsTimingFrames = 0;
         this.physicsStepCount = 0;
       }
     }
+
+    // Evaluate the skeleton once per displayed frame, preserving the total
+    // elapsed simulation time instead of repeating it in every physics step.
+    if (steps > 0) this.player.updateAnimation(steps * this.fixedPhysicsStep);
 
     this.physicsDebugRenderer.update();
     if (exteriorActive) this.sunHelper?.update();
@@ -187,6 +195,25 @@ export class World {
   setSunDebugVisible(visible: boolean): void {
     this.sunVisual.visible = visible;
     this.sunHelper.visible = visible;
+  }
+
+  updateLod(camera: THREE.Camera, viewportHeight: number): void {
+    this.houseInterior?.updateLod(camera, viewportHeight);
+  }
+
+  setHouseStoneLodEnabled(enabled: boolean): void {
+    this.houseInterior?.setStoneLodEnabled(enabled);
+  }
+
+  setHouseSurfaceCullingEnabled(enabled: boolean): void {
+    this.houseInterior?.setSurfaceCullingEnabled(enabled);
+  }
+
+  resetPerformanceSamples(): void {
+    this.physicsTimingStarted = performance.now();
+    this.physicsTimingMs = 0;
+    this.physicsTimingFrames = 0;
+    this.physicsStepCount = 0;
   }
 
   setPhysicsDebugVisible(visible: boolean): void {
@@ -254,6 +281,10 @@ export class World {
 
   setExteriorVisible(visible: boolean): void {
     this.model.visible = visible;
+    // Scene matrix updates also visit invisible descendants. Detach the
+    // exterior while indoors, keeping its colliders and world transforms.
+    if (visible) this.scene.add(this.model);
+    else this.scene.remove(this.model);
 
     this.npcManager.setVisible(visible);
   }

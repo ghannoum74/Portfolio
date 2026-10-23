@@ -236,6 +236,7 @@ export class AwardsExperience {
   }
 
   update(delta: number): void {
+    if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.ambienceElapsed += dt;
     for (let i = 0; i < this.exhibits.length; i++) {

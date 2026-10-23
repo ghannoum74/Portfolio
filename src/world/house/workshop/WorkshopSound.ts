@@ -1,61 +1,60 @@
-/** Small procedural feedback sounds, triggered by user interaction only.
- * Respects the portfolio's existing global mute button through a callback.
- */
-type Cue = "enter" | "select" | "close" | "exit";
+import { createWorkshopCue, WORKSHOP_CUE_VOLUME, type WorkshopCue } from "./WorkshopCue";
 
+type Clip = { url: string; voices: HTMLAudioElement[]; nextVoice: number };
+
+/** Cached procedural feedback, triggered by user interaction only. */
 export class WorkshopSound {
-  private context: AudioContext | null = null;
-  private readonly notes = [392, 330, 294, 440];
+  private readonly clips = new Map<string, Clip>();
+  private destroyed = false;
 
   constructor(private readonly isEnabled: () => boolean) {}
 
-  play(cue: Cue, index = 0): void {
-    if (!this.isEnabled() || typeof window.AudioContext === "undefined") return;
+  play(cue: WorkshopCue, index = 0): void {
+    if (this.destroyed || !this.isEnabled() || typeof Audio === "undefined") return;
 
     try {
-      this.context ??= new AudioContext({ latencyHint: "interactive" });
-      const context = this.context;
-      if (context.state === "suspended") void context.resume();
-
-      const base = this.notes[Math.max(0, Math.min(3, index))];
-      const start = context.currentTime + 0.012;
-
-      if (cue === "enter") {
-        this.note(base / 2, start, 0.22, 0.010);
-        this.note(base, start + 0.09, 0.23, 0.008);
-      } else if (cue === "select") {
-        this.note(base, start, 0.17, 0.010);
-        this.note(base * 1.5, start + 0.085, 0.23, 0.007);
-      } else if (cue === "close") {
-        this.note(base * 0.75, start, 0.13, 0.006);
-      } else {
-        this.note(base / 2, start, 0.18, 0.006);
+      const noteIndex = Number.isFinite(index) ? Math.max(0, Math.min(3, Math.trunc(index))) : 0;
+      const key = `${cue}:${noteIndex}`;
+      let clip = this.clips.get(key);
+      if (!clip) {
+        const url = URL.createObjectURL(new Blob([createWorkshopCue(cue, noteIndex)], { type: "audio/wav" }));
+        const voices: HTMLAudioElement[] = [];
+        try {
+          // Allow two quick overlapping clicks without allocating more players.
+          for (let voice = 0; voice < 2; voice++) {
+            const audio = new Audio(url);
+            voices.push(audio);
+            audio.preload = "auto";
+            audio.volume = WORKSHOP_CUE_VOLUME;
+          }
+        } catch (error) {
+          for (const audio of voices) audio.pause();
+          URL.revokeObjectURL(url);
+          throw error;
+        }
+        clip = { url, voices, nextVoice: 0 };
+        this.clips.set(key, clip);
       }
+      const audio = clip.voices[clip.nextVoice];
+      clip.nextVoice = (clip.nextVoice + 1) % clip.voices.length;
+      audio.pause();
+      if (audio.currentTime !== 0) audio.currentTime = 0;
+      void audio.play().catch(() => {});
     } catch {
       // Audio is enhancement only; never block an interaction.
     }
   }
 
-  private note(frequency: number, start: number, length: number, volume: number): void {
-    const context = this.context;
-    if (!context) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, start);
-    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.996, start + length);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
-    oscillator.start(start);
-    oscillator.stop(start + length + 0.008);
-  }
-
   destroy(): void {
-    if (this.context && this.context.state !== "closed") void this.context.close();
-    this.context = null;
+    this.destroyed = true;
+    for (const clip of this.clips.values()) {
+      for (const audio of clip.voices) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      URL.revokeObjectURL(clip.url);
+    }
+    this.clips.clear();
   }
 }

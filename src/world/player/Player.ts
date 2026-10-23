@@ -132,8 +132,11 @@ export class Player {
     // );
   }
 
-  update(delta: number) {
+  updatePhysics(delta: number): void {
     this.controller?.update(delta);
+  }
+
+  updateAnimation(delta: number): void {
     this.mixer?.update(delta);
   }
 

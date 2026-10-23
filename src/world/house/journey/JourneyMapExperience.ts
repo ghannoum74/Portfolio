@@ -228,6 +228,7 @@ export class JourneyMapExperience {
   }
 
   update(delta: number): void {
+    if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.seconds += dt;
     this.routeProgress = THREE.MathUtils.damp(this.routeProgress, this.state === "idle" ? 0 : 1, 2.8, dt);
@@ -283,7 +284,7 @@ export class JourneyMapExperience {
     this.root.add(group);
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.085, 0.12, 28),
-      new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.35, side: THREE.DoubleSide, forceSinglePass: true, depthWrite: false }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.012;

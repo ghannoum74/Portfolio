@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
 import { Renderer } from "./Renderer";
+import { performanceOptions } from "./PerformanceOptions";
+import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 
@@ -83,6 +85,13 @@ export class Game {
   private debugUiElapsed = 0;
 
   private timer = new THREE.Timer();
+  private animationLoop: VisibleAnimationLoop;
+  private readonly performanceDebugState = {
+    stoneLod: performanceOptions.stoneLod,
+    surfaceCulling: performanceOptions.surfaceCulling,
+    pixelRatio: performanceOptions.pixelRatio,
+    restartReadings: () => this.resetPerformanceSamples(),
+  };
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
   private clickedWorldPoint: THREE.Vector3 | null = null;
@@ -320,7 +329,10 @@ export class Game {
 
     window.addEventListener("resize", this.onResize);
 
-    this.renderer.instance.setAnimationLoop(this.update);
+    this.timer.connect(document);
+    this.animationLoop = new VisibleAnimationLoop(document,
+      callback => this.renderer.instance.setAnimationLoop(callback), this.update,
+      () => { this.timer.reset(); this.resetPerformanceSamples(); });
 
     void this.init();
   }
@@ -451,10 +463,13 @@ export class Game {
       this.thirdPersonCamera?.update(delta);
     }
 
-    this.workshop?.update(delta);
-    this.furniture?.update(delta);
-    this.journey?.update(delta);
-    this.awards?.update(delta);
+    // House systems retain their state, but do no frame work outside.
+    if (this.insideHouse) {
+      this.workshop?.update(delta);
+      this.furniture?.update(delta);
+      this.journey?.update(delta);
+      this.awards?.update(delta);
+    }
 
     this.projectWebsitePreview.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
@@ -480,7 +495,8 @@ export class Game {
       this.interactionSystem.update(this.world.player.model.position);
     }
 
-    this.syncCameraDebugMesh();
+    if (this.debugMode) this.syncCameraDebugMesh();
+    else this.cameraDebugMesh.visible = false;
 
     this.controls.enabled = gameplayActive && this.debugMode;
 
@@ -496,9 +512,11 @@ export class Game {
 
     this.world.setPhysicsDebugVisible(showDebug);
 
-    this.cameraHelper.update();
+    if (showDebug) this.cameraHelper.update();
 
-    this.renderer.render(this.scene, this.getActiveCamera());
+    const camera = this.getActiveCamera();
+    this.world.updateLod(camera, window.innerHeight);
+    this.renderer.render(this.scene, camera);
   };
 
   private onResize = (): void => {
@@ -513,6 +531,8 @@ export class Game {
     this.debugCamera.updateProjectionMatrix();
 
     this.renderer.resize();
+    this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+    this.updateOverlay();
   };
 
   private onCanvasClick = (event: MouseEvent): void => {
@@ -592,13 +612,11 @@ export class Game {
   private hideDebugUI(): void {
     this.gui.domElement.style.display = "none";
 
-    this.renderer.stats.dom.style.display = "none";
   }
 
   private showDebugUI(): void {
     this.gui.domElement.style.display = "";
 
-    this.renderer.stats.dom.style.display = "";
   }
 
   private createCameraDebugMesh(): THREE.Group {
@@ -704,7 +722,35 @@ export class Game {
 
     environmentFolder.open();
 
+    if (performanceOptions.perfDiag) {
+      const performanceFolder = gui.addFolder("Performance");
+      performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
+        performanceOptions.stoneLod = enabled;
+        this.world.setHouseStoneLodEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      performanceFolder.add(this.performanceDebugState, "surfaceCulling").name("Backface culling").onChange((enabled: boolean) => {
+        performanceOptions.surfaceCulling = enabled;
+        this.world.setHouseSurfaceCullingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      const maximumRatio = Math.min(window.devicePixelRatio || 1, 2);
+      performanceFolder.add(this.performanceDebugState, "pixelRatio", Math.min(0.5, maximumRatio), maximumRatio, 0.05)
+        .name("Pixel ratio").onFinishChange((ratio: number) => {
+          this.renderer.setPixelRatio(ratio);
+          this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+          this.world.resetPerformanceSamples();
+        });
+      performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
+      performanceFolder.open();
+    }
+
     return gui;
+  }
+
+  private resetPerformanceSamples(): void {
+    this.renderer.resetPerformanceSamples();
+    this.world.resetPerformanceSamples();
   }
 
   private updateOverlay(): void {
@@ -1014,6 +1060,9 @@ export class Game {
        * so there is no visible hitch.
        */
       await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      await this.workshop?.prepareLightingVariants(() =>
+        this.renderer.instance.compileAsync(this.scene, this.playerCamera),
+      );
 
       this.insideHouse = true;
 

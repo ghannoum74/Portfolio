@@ -4,6 +4,8 @@ import "./InteractionHint.css";
 export class InteractionHint {
   private readonly root: HTMLElement;
   private readonly label: HTMLElement;
+  private visible = false;
+  private currentLabel: string | null = null;
 
   constructor() {
     const uiRoot = document.getElementById("ui-root");
@@ -37,12 +39,20 @@ export class InteractionHint {
   }
 
   show(label: string): void {
-    this.label.textContent = label;
+    if (label !== this.currentLabel) {
+      this.label.textContent = label;
+      this.currentLabel = label;
+    }
 
-    this.root.classList.add("interaction-hint_visible");
+    if (!this.visible) {
+      this.root.classList.add("interaction-hint_visible");
+      this.visible = true;
+    }
   }
 
   hide(): void {
+    if (!this.visible) return;
     this.root.classList.remove("interaction-hint_visible");
+    this.visible = false;
   }
 }

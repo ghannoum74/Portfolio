@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { performanceOptions } from "../../../core/PerformanceOptions";
 import type { Interactable } from "../../../interactions/Interactable";
 
 /**
@@ -281,14 +282,16 @@ export class HouseFurnitureInteractions {
     };
     if (["cauldron", "potion", "flame", "sink"].includes(def.kind)) {
       node.light = new THREE.PointLight(def.color, 0, def.kind === "cauldron" ? 1.9 : 1.1, 2);
+      node.light.visible = !performanceOptions.activeLightsOnly;
       node.light.castShadow = false;
-      anchor.add(node.light);
+      if (performanceOptions.decorativeLights) anchor.add(node.light);
     }
     if (def.kind === "cauldron") {
       node.bubbleGeometry = new THREE.SphereGeometry(0.043, 7, 5);
       const mat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.75, depthWrite: false });
       node.bubbles = new THREE.InstancedMesh(node.bubbleGeometry, mat, 11);
       node.bubbles.frustumCulled = false;
+      node.bubbles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       anchor.add(node.bubbles);
     }
     if (def.kind === "sink") {
@@ -313,10 +316,15 @@ export class HouseFurnitureInteractions {
     node.burst = Math.max(0, node.burst - dt * 1.4);
     const pulse = 0.7 + 0.3 * Math.sin(this.elapsed * 2 + node.phase);
     const power = node.progress + node.burst * 0.35;
+    node.aura.visible = power > 0.001;
     node.auraMaterial.opacity = Math.min(0.34, power * 0.18 * pulse);
     const halo = Math.max(0.3, node.effectSize * 3.2) * (1 + node.burst * 0.2 + node.progress * 0.06);
     node.aura.scale.set(halo, halo, 1);
-    if (node.light) node.light.intensity = Math.max(0, power * (k === "cauldron" ? 0.8 : 0.43) * pulse);
+    if (node.light) {
+      node.light.intensity = Math.max(0, power * (k === "cauldron" ? 0.8 : 0.43) * pulse);
+      // Zero-power lights otherwise still occupy shader light slots/uniforms.
+      node.light.visible = !performanceOptions.activeLightsOnly || node.light.intensity > 0.001;
+    }
 
     if (k === "potion") {
       // Bottles only: a tiny physical lift, restored when set down.
@@ -352,6 +360,9 @@ export class HouseFurnitureInteractions {
       node.stream.scale.y = 0.9 + Math.sin(this.elapsed * 11) * 0.06;
     }
     if (node.bubbles) {
+      node.bubbles.visible = node.progress > 0.035;
+      // Hidden bubbles need neither matrix math nor a GPU buffer upload.
+      if (!node.bubbles.visible) return;
       for (let i = 0; i < node.bubbles.count; i++) {
         const t = this.elapsed * (0.6 + i % 3 * 0.19) + i * 0.82;
         const lift = t % 1.8;
@@ -366,7 +377,6 @@ export class HouseFurnitureInteractions {
         node.bubbles.setMatrixAt(i, this.bubbleMatrix);
       }
       node.bubbles.instanceMatrix.needsUpdate = true;
-      node.bubbles.visible = node.progress > 0.035;
     }
   }
 

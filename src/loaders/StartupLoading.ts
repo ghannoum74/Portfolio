@@ -56,7 +56,7 @@ export class StartupLoading {
     // before beginning the fade-out.
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(resolve);
+        requestAnimationFrame(() => resolve());
       });
     });
 
