@@ -8,6 +8,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { MeshoptEncoder } from 'meshoptimizer';
 import { readGeometryGLB } from '../scripts/read-geometry-glb.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Real scene objects and effect code; the renderer is a controlled test double.
 // This suite does not require a GPU or claim to measure frame rate.
@@ -20,6 +21,9 @@ await build({ stdin: {
     export { InteractionHighlight } from './src/core/InteractionHighlight';
     export { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256 } from './src/world/house/HouseStoneLod';
     export { HouseInterior } from './src/world/house/HouseInterior';
+    export { ClosedSurfaceCulling, isClosedOutwardSurface } from './src/world/house/ClosedSurfaceCulling';
+    export { VisibleAnimationLoop } from './src/core/VisibleAnimationLoop';
+    export { Keyboard } from './src/input/Keyboard';
     export { World } from './src/world/World';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
@@ -32,7 +36,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -51,6 +55,9 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
   assert.equal(normal.stoneLod, true);
+  assert.equal(normal.surfaceCulling, true);
+  assert.equal(getPerformanceOptions('?surfaceCulling=0', 1).surfaceCulling, false);
+  assert.equal(getPerformanceOptions('?surfaceCulling=0', 1).stoneLod, true);
   assert.equal(getPerformanceOptions('?stoneLod=0', 1).stoneLod, false);
   assert.equal(getPerformanceOptions('?stoneLod=0', 1).beamBatching, true);
   assert.equal(normal.activeLightsOnly, true);
@@ -607,6 +614,198 @@ test('the real house uses verified stone LOD indices and keeps all other gamepla
   camera.lookAt(center); lod.update(camera, 1080);
   assert.equal(entry.mesh.geometry, before.get(entry.mesh).geometry);
   lod.dispose(); for (const [object, state] of before) assert.equal(object.geometry, state.geometry);
+});
+
+test('live LOD switching restores authored detail without moving meshes or the camera', async () => {
+  const { meshes, camera, lod } = await stoneFixture();
+  const originals = meshes.map(mesh => mesh.geometry);
+  camera.position.z = 5; camera.updateMatrixWorld();
+  const pose = camera.matrixWorld.clone();
+  lod.update(camera, 100); assert.equal(lod.stats.selectedTriangles, 16);
+  lod.setEnabled(false); lod.update(camera, 100);
+  assert.equal(lod.stats.selectedTriangles, 64);
+  meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+  assert.deepEqual(camera.matrixWorld, pose);
+  lod.setEnabled(true); lod.update(camera, 100);
+  assert.equal(lod.stats.selectedTriangles, 16);
+  const external = new THREE.BoxGeometry(); meshes[0].geometry = external;
+  lod.setEnabled(false); assert.equal(meshes[0].geometry, external);
+  lod.dispose();
+});
+
+test('closed-surface validation welds UV seams and rejects open, non-manifold and inward shells', async () => {
+  const cube = new THREE.BoxGeometry();
+  assert.equal(await isClosedOutwardSurface(cube), true);
+  assert.equal(await isClosedOutwardSurface(cube.toNonIndexed()), true);
+  assert.equal(await isClosedOutwardSurface(new THREE.PlaneGeometry()), false);
+  const opened = cube.clone(); opened.setIndex(Array.from(opened.index.array).slice(3));
+  assert.equal(await isClosedOutwardSurface(opened), false);
+  const duplicate = cube.clone(); duplicate.setIndex([...duplicate.index.array, ...duplicate.index.array.slice(0, 3)]);
+  assert.equal(await isClosedOutwardSurface(duplicate), false);
+  const inward = new THREE.BoxGeometry(.5, .5, .5).scale(-1, 1, 1).translate(2, 0, 0);
+  assert.equal(await isClosedOutwardSurface(inward), false);
+  assert.equal(await isClosedOutwardSurface(mergeGeometries([cube, inward])), false);
+  const malformed = cube.clone(); malformed.attributes.position.setX(0, NaN);
+  assert.equal(await isClosedOutwardSurface(malformed), false);
+  const groupedRoot = new THREE.Group(), material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+  const grouped = new THREE.Mesh(cube, Array(6).fill(material)); groupedRoot.add(grouped);
+  const missingGroup = new THREE.Mesh(cube.clone(), Array(6).fill(material)); missingGroup.geometry.groups.pop(); groupedRoot.add(missingGroup);
+  const groupedCulling = await ClosedSurfaceCulling.create(groupedRoot, true);
+  assert.equal(groupedCulling.stats.meshes, 1); assert.equal(missingGroup.material[0], material);
+  groupedCulling.dispose();
+});
+
+test('surface culling isolates shared materials, preserves surfaces and supports an in-place comparison', async () => {
+  const root = new THREE.Group(); root.visible = false;
+  const texture = new THREE.Texture();
+  const authored = new THREE.MeshPhysicalMaterial({ side: THREE.DoubleSide, color: 0x806030,
+    roughness: .85, specularIntensity: .36, map: texture });
+  const solid = new THREE.Mesh(new THREE.BoxGeometry(), authored);
+  const second = new THREE.Mesh(solid.geometry, authored);
+  const sheet = new THREE.Mesh(new THREE.PlaneGeometry(), authored);
+  root.add(solid, second, sheet); solid.position.set(1, 2, 3);
+  const geometry = solid.geometry, positionBytes = geometry.attributes.position.array.slice();
+  const indexBytes = geometry.index.array.slice(), transform = solid.position.clone();
+  const culling = await ClosedSurfaceCulling.create(root, true);
+  assert.deepEqual(culling.stats, { enabled: true, meshes: 2, triangles: 24, materials: 1 });
+  assert.equal(authored.side, THREE.DoubleSide); assert.equal(sheet.material, authored);
+  assert.equal(solid.material.side, THREE.FrontSide); assert.equal(second.material, solid.material);
+  assert.equal(solid.material.map, texture); assert.equal(solid.material.specularIntensity, .36);
+  assert.equal(solid.material.roughness, authored.roughness); assert.deepEqual(solid.material.color, authored.color);
+  assert.equal(solid.geometry, geometry); assert.deepEqual(solid.position, transform);
+  assert.deepEqual(geometry.attributes.position.array, positionBytes); assert.deepEqual(geometry.index.array, indexBytes);
+  const prepared = solid.material; prepared.emissive.set(0x123456);
+  culling.setEnabled(false); assert.equal(solid.material, prepared); assert.equal(prepared.side, THREE.DoubleSide);
+  culling.setEnabled(true); assert.equal(prepared.side, THREE.FrontSide); assert.equal(prepared.emissive.getHex(), 0x123456);
+  let originalDisposals = 0, cloneDisposals = 0;
+  authored.addEventListener('dispose', () => originalDisposals++); prepared.addEventListener('dispose', () => cloneDisposals++);
+  culling.dispose(); assert.equal(solid.material, authored); assert.equal(second.material, authored);
+  assert.equal(originalDisposals, 0); assert.equal(cloneDisposals, 1);
+});
+
+test('surface culling preserves cutouts, transmission, animation, partial draws and external replacements', async () => {
+  const root = new THREE.Group(), cube = new THREE.BoxGeometry();
+  const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+  const eligible = new THREE.Mesh(cube, material); root.add(eligible);
+  const excluded = [];
+  for (const settings of [{ transparent: true }, { alphaTest: .1 }, { alphaHash: true }, { wireframe: true }, { opacity: .9 },
+    { depthTest: false }, { depthWrite: false }, { colorWrite: false }, { stencilWrite: true }, { polygonOffset: true }]) {
+    const mesh = new THREE.Mesh(cube, new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, ...settings }));
+    root.add(mesh); excluded.push(mesh);
+  }
+  const glass = new THREE.Mesh(cube, new THREE.MeshPhysicalMaterial({ side: THREE.DoubleSide, transmission: .7 }));
+  const animated = new THREE.Mesh(cube, material); animated.name = 'animated';
+  const hidden = new THREE.Mesh(cube, material); hidden.visible = false;
+  const collider = new THREE.Mesh(cube, material); collider.name = 'COL_BOX_TEST';
+  const partialGeometry = cube.clone(); partialGeometry.setDrawRange(0, 6);
+  const partial = new THREE.Mesh(partialGeometry, material);
+  const morphGeometry = cube.clone(); morphGeometry.morphAttributes.position = [cube.attributes.position];
+  const morph = new THREE.Mesh(morphGeometry, material);
+  root.add(glass, animated, hidden, collider, partial, morph); excluded.push(glass, animated, hidden, collider, partial, morph);
+  const originals = excluded.map(mesh => mesh.material);
+  const clip = new THREE.AnimationClip('move', 1, [new THREE.NumberKeyframeTrack('animated.position[x]', [0, 1], [0, 1])]);
+  const culling = await ClosedSurfaceCulling.create(root, true, [clip]);
+  assert.equal(culling.stats.meshes, 1); excluded.forEach((mesh, i) => assert.equal(mesh.material, originals[i]));
+  const replacement = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }); eligible.material = replacement;
+  culling.setEnabled(false); culling.setEnabled(true); assert.equal(replacement.side, THREE.DoubleSide);
+  culling.dispose(); assert.equal(eligible.material, replacement);
+  root.name = 'root';
+  const rootClip = new THREE.AnimationClip('move', 1, [new THREE.NumberKeyframeTrack('root.position[x]', [0, 1], [0, 1])]);
+  const rootCulling = await ClosedSurfaceCulling.create(root, true, [rootClip]);
+  assert.equal(rootCulling.stats.meshes, 0); rootCulling.dispose();
+});
+
+test('the real house culls only verified surfaces and keeps stone LOD, layout and gameplay identity intact', async () => {
+  const gltf = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const root = gltf.scene; root.getObjectByName('SEC_PROJECTS_ProjectBook')?.traverse(object => object.visible = false);
+  batchHouseBeams(root, gltf.animations);
+  const before = new Map();
+  root.traverse(object => before.set(object, { parent: object.parent, name: object.name,
+    geometry: object.geometry, material: object.material, visible: object.visible, matrix: object.matrix.clone() }));
+  const culling = await ClosedSurfaceCulling.create(root, true, gltf.animations);
+  assert.deepEqual(culling.stats, { enabled: true, meshes: 132, triangles: 108050, materials: 50 });
+  for (const [object, state] of before) {
+    assert.equal(object.geometry, state.geometry); assert.equal(object.parent, state.parent);
+    assert.equal(object.name, state.name); assert.equal(object.visible, state.visible); assert.deepEqual(object.matrix, state.matrix);
+    if (object.material !== state.material) assert.equal(object.material.side, THREE.FrontSide);
+  }
+  // The stones contain mixed-orientation components, so the conservative surface
+  // audit leaves their authored material alone while their existing LOD still works.
+  for (const name of HOUSE_STONE_NAMES) assert.equal(root.getObjectByName(name).material, before.get(root.getObjectByName(name)).material);
+  const data = JSON.parse(await readFile(new URL('../public/assets/models/environment/house-stone-lods.json', import.meta.url), 'utf8'));
+  const lod = await HouseStoneLod.create(root, data), camera = new THREE.PerspectiveCamera(45, 1, .1, 1000);
+  camera.position.set(0, 0, 100); lod.update(camera, 1080); assert.equal(lod.stats.selectedTriangles, 48092);
+  culling.setEnabled(false); culling.setEnabled(true); assert.equal(lod.stats.selectedTriangles, 48092);
+  lod.dispose(); culling.dispose();
+  for (const [object, state] of before) { assert.equal(object.geometry, state.geometry); assert.equal(object.material, state.material); }
+});
+
+test('surface culling toggles remain compatible with a selected border and clean deselection', async () => {
+  const scene = new THREE.Scene(), mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }));
+  scene.add(mesh); const culling = await ClosedSurfaceCulling.create(scene, true);
+  const prepared = mesh.material, border = new InteractionHighlight(); border.setTarget(mesh);
+  assert.notEqual(mesh.material, prepared);
+  culling.setEnabled(false); border.update(); assert.equal(mesh.material.side, THREE.DoubleSide);
+  culling.setEnabled(true); border.update(); assert.equal(mesh.material.side, THREE.FrontSide);
+  border.setTarget(null); assert.equal(mesh.material, prepared); assert.equal(mesh.material.side, THREE.FrontSide);
+  culling.dispose();
+});
+
+test('hidden pages stop the frame loop and resume from a new timing window without duplicate listeners', () => {
+  const visibility = new EventTarget(); visibility.hidden = false;
+  const events = [], tick = () => events.push('tick');
+  const loop = new VisibleAnimationLoop(visibility, callback => events.push(callback ? 'start' : 'stop'), tick, () => events.push('reset'));
+  assert.deepEqual(events, ['reset', 'start']);
+  visibility.dispatchEvent(new Event('visibilitychange')); assert.equal(events.length, 2);
+  visibility.hidden = true; visibility.dispatchEvent(new Event('visibilitychange'));
+  assert.deepEqual(events, ['reset', 'start', 'stop']);
+  visibility.hidden = false; visibility.dispatchEvent(new Event('visibilitychange'));
+  assert.deepEqual(events, ['reset', 'start', 'stop', 'reset', 'start']);
+  loop.dispose(); const count = events.length;
+  visibility.hidden = true; visibility.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(events.length, count);
+  const hiddenInitially = new EventTarget(); hiddenInitially.hidden = true; const hiddenEvents = [];
+  const hiddenLoop = new VisibleAnimationLoop(hiddenInitially, callback => hiddenEvents.push(callback ? 'start' : 'stop'), tick, () => hiddenEvents.push('reset'));
+  assert.deepEqual(hiddenEvents, ['stop']);
+  hiddenInitially.hidden = false; hiddenInitially.dispatchEvent(new Event('visibilitychange'));
+  assert.deepEqual(hiddenEvents, ['stop', 'reset', 'start']); hiddenLoop.dispose();
+});
+
+test('visibility changes clear held movement and queued jumps without enabling disabled gameplay input', () => {
+  const previousDocument = globalThis.document, previousListener = window.addEventListener;
+  const events = new EventTarget();
+  globalThis.document = events; window.addEventListener = () => {};
+  try {
+    const keyboard = new Keyboard();
+    keyboard.forward = true; keyboard.left = true; keyboard.run = true; keyboard.jumpQueued = true;
+    events.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(keyboard.forward, false); assert.equal(keyboard.left, false); assert.equal(keyboard.run, false);
+    assert.equal(keyboard.consumeJump(), false);
+    keyboard.setEnabled(false); events.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(keyboard.enabled, false);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousListener === undefined) delete window.addEventListener; else window.addEventListener = previousListener;
+  }
+});
+
+test('live resolution respects native DPR, updates the border/composer and survives a resize', () => {
+  const previous = { width: window.innerWidth, height: window.innerHeight, ratio: window.devicePixelRatio };
+  window.innerWidth = 1000; window.innerHeight = 600; window.devicePixelRatio = 1.5;
+  const renderer = rendererFixture(true, 'border'), updates = [];
+  renderer.instance.setSize = (w, h) => updates.push(['size', w, h]);
+  renderer.instance.setPixelRatio = ratio => updates.push(['ratio', ratio]);
+  renderer.borderHighlight.setSize = (...values) => updates.push(['border', ...values]);
+  renderer.composer.setSize = () => {}; renderer.composer.setPixelRatio = ratio => updates.push(['composer', ratio]);
+  renderer.setPixelRatio(.75); renderer.resize();
+  assert.equal(renderer.pixelRatioOverride, .75);
+  assert.deepEqual(updates.filter(update => update[0] === 'ratio'), [['ratio', .75], ['ratio', .75]]);
+  assert.ok(updates.some(update => update[0] === 'border' && update[3] === .75));
+  assert.ok(updates.some(update => update[0] === 'composer' && update[1] === .75));
+  renderer.setPixelRatio(10); assert.equal(renderer.pixelRatioOverride, 1.5);
+  renderer.setPixelRatio(.01); assert.equal(renderer.pixelRatioOverride, .5);
+  renderer.setPixelRatio(NaN); assert.equal(renderer.pixelRatioOverride, .5);
+  window.innerWidth = previous.width; window.innerHeight = previous.height; window.devicePixelRatio = previous.ratio;
 });
 
 test('fixed physics steps run at 60 Hz while animation advances once for the accumulated time', () => {

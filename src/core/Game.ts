@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
 import { Renderer } from "./Renderer";
+import { performanceOptions } from "./PerformanceOptions";
+import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 
@@ -83,6 +85,13 @@ export class Game {
   private debugUiElapsed = 0;
 
   private timer = new THREE.Timer();
+  private animationLoop: VisibleAnimationLoop;
+  private readonly performanceDebugState = {
+    stoneLod: performanceOptions.stoneLod,
+    surfaceCulling: performanceOptions.surfaceCulling,
+    pixelRatio: performanceOptions.pixelRatio,
+    restartReadings: () => this.resetPerformanceSamples(),
+  };
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
   private clickedWorldPoint: THREE.Vector3 | null = null;
@@ -320,7 +329,10 @@ export class Game {
 
     window.addEventListener("resize", this.onResize);
 
-    this.renderer.instance.setAnimationLoop(this.update);
+    this.timer.connect(document);
+    this.animationLoop = new VisibleAnimationLoop(document,
+      callback => this.renderer.instance.setAnimationLoop(callback), this.update,
+      () => { this.timer.reset(); this.resetPerformanceSamples(); });
 
     void this.init();
   }
@@ -519,6 +531,8 @@ export class Game {
     this.debugCamera.updateProjectionMatrix();
 
     this.renderer.resize();
+    this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+    this.updateOverlay();
   };
 
   private onCanvasClick = (event: MouseEvent): void => {
@@ -708,7 +722,35 @@ export class Game {
 
     environmentFolder.open();
 
+    if (performanceOptions.perfDiag) {
+      const performanceFolder = gui.addFolder("Performance");
+      performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
+        performanceOptions.stoneLod = enabled;
+        this.world.setHouseStoneLodEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      performanceFolder.add(this.performanceDebugState, "surfaceCulling").name("Backface culling").onChange((enabled: boolean) => {
+        performanceOptions.surfaceCulling = enabled;
+        this.world.setHouseSurfaceCullingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      const maximumRatio = Math.min(window.devicePixelRatio || 1, 2);
+      performanceFolder.add(this.performanceDebugState, "pixelRatio", Math.min(0.5, maximumRatio), maximumRatio, 0.05)
+        .name("Pixel ratio").onFinishChange((ratio: number) => {
+          this.renderer.setPixelRatio(ratio);
+          this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+          this.world.resetPerformanceSamples();
+        });
+      performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
+      performanceFolder.open();
+    }
+
     return gui;
+  }
+
+  private resetPerformanceSamples(): void {
+    this.renderer.resetPerformanceSamples();
+    this.world.resetPerformanceSamples();
   }
 
   private updateOverlay(): void {

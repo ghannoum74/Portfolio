@@ -13,6 +13,7 @@ import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
+import { performanceOptions } from "../core/PerformanceOptions";
 
 export class World {
   model!: THREE.Group;
@@ -32,7 +33,7 @@ export class World {
   private physicsAccumulator = 0;
   private readonly fixedPhysicsStep = 1 / 60;
   private readonly maxPhysicsSteps = 5;
-  private readonly perfDiag = new URLSearchParams(window.location.search).has("perfdiag");
+  private readonly perfDiag = performanceOptions.perfDiag;
   private physicsTimingStarted = performance.now();
   private physicsTimingMs = 0;
   private physicsTimingFrames = 0;
@@ -173,6 +174,7 @@ export class World {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
           houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
+          houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
         };
         console.info("[House physics]", sample, JSON.stringify(sample));
         this.physicsTimingStarted = now;
@@ -197,6 +199,21 @@ export class World {
 
   updateLod(camera: THREE.Camera, viewportHeight: number): void {
     this.houseInterior?.updateLod(camera, viewportHeight);
+  }
+
+  setHouseStoneLodEnabled(enabled: boolean): void {
+    this.houseInterior?.setStoneLodEnabled(enabled);
+  }
+
+  setHouseSurfaceCullingEnabled(enabled: boolean): void {
+    this.houseInterior?.setSurfaceCullingEnabled(enabled);
+  }
+
+  resetPerformanceSamples(): void {
+    this.physicsTimingStarted = performance.now();
+    this.physicsTimingMs = 0;
+    this.physicsTimingFrames = 0;
+    this.physicsStepCount = 0;
   }
 
   setPhysicsDebugVisible(visible: boolean): void {

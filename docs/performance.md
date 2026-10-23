@@ -36,6 +36,16 @@ Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
   hysteresis; textures, vertex colors, normals, hierarchy, and colliders remain.
   The source GLBs are unchanged. `stoneLod=0` restores original geometry.
 - Independent query switches allow controlled comparisons.
+- Closed, outward-facing opaque house meshes use backface culling after an exact
+  topology check. Open sheets, cutouts, glass, animation/morph geometry and custom
+  render states retain their authored material. Shared materials are cloned only
+  for eligible meshes, retaining textures and surface properties. The one-time
+  audit runs during preload in short yielding slices, before entry shader warm-up.
+- Hidden pages stop the 3D frame loop. Returning resets the clock and diagnostic
+  windows instead of simulating the hidden interval; movement input also clears.
+- `perfdiag=1` adds live LOD, backface-culling and pixel-ratio controls. The camera
+  stays in place, avoiding URL reload/reposition differences. Normal visits keep
+  their existing resolution; quality is not reduced automatically.
 - Idle furniture point lights leave the visible light list until their effects
   activate. Active effects retain their colored lights and fade behavior. Faded
   intensity below 0.001 hides the light. `activeLightsOnly=0` restores the previous
@@ -525,7 +535,7 @@ preparation yields between attribute streams. Missing/unsupported data, decode
 errors, a SHA-256 mismatch in source attributes/indices, or invalid indices keep
 the original geometry. Re-exporting a house requires regenerating the sidecar.
 
-All 34 tests pass. Regeneration produced a byte-identical sidecar twice.
+All 43 tests currently pass. Regeneration produced a byte-identical sidecar twice.
 Isolated software-rendered QA compares the original and both LODs for two meshes
 at four angles, both with the complete structure framed and near the far-LOD
 switch threshold: 32 comparisons at 512×512. It uses the source albedo, UVs,
@@ -545,3 +555,52 @@ and `houseStoneLod.selectedTriangles`; these are the two meshes' chosen index
 counts, not the number of triangles actually visible after frustum culling.
 The independent `stoneLod=0` option skips sidecar loading and selection while
 retaining the other rendering improvements.
+
+### Same-camera controls and solid-surface culling (2026-10-23)
+
+The local Chrome captures on 2026-10-22 confirmed stone LOD selection (53,944 of
+99,664 source triangles in one fireplace view). Both warmed captures were around
+28 FPS, but camera placement and browser load differed. They do not establish an
+isolated FPS gain. Further comparisons can now use a single diagnostic tab:
+
+1. Open `?perfdiag=1`, enter the house, and choose a stationary view.
+2. Under **Performance**, use **Stone LOD** and **Backface culling** independently.
+   Turning LOD off restores authored indices immediately; re-enabling it reuses
+   the validated data, or loads it once if the page started with `stoneLod=0`.
+3. Use **Restart readings** after positioning, then allow approximately five
+   seconds for the two-second warm-up exclusion and the next three-second sample.
+4. Compare the same settings with a lower **Pixel ratio** if investigating pixel
+   shading cost. It is capped at the lower of native DPR and 2, survives resizing, and keeps the
+   border at the same CSS-pixel width. Changes commit when editing/dragging ends.
+
+Live switches reset diagnostic windows and log their current state; they do not
+rewrite the URL. `surfaceCulling=0` independently disables solid-surface culling.
+`[House physics]` also reports `houseSurfaceCulling` and the selected stone counts.
+
+Every material in the repository house initially has `DoubleSide`. The new
+preparation checks exact decoded positions and directed triangle-edge pairs,
+welding UV/normal seam duplicates without changing any geometry. Each edge must
+have exactly two opposite uses, and every disconnected shell must have positive
+signed volume. Inward cavities, ambiguous topology, alpha/transmission effects,
+partial draws, animation and custom render/depth states are left alone.
+
+In this repository export, **132 eligible meshes / 108,050 submitted triangles**
+use front-face materials with 50 shared material clones. The last captured local
+house export independently qualifies 134 meshes / 108,122 triangles. This reduces
+backface rasterization; it does **not** reduce draw calls, submitted triangle
+counters, downloads or collider geometry. The mixed-orientation stone structures
+retain their original material and their existing index-only LOD behavior.
+
+The audit inspects the actual loaded export, so no additional sidecar can become
+stale after Blender re-export. It took about 0.8 seconds in isolated CPU tooling
+here, in yielding slices during preload. This is a one-time preparation cost,
+not a frame cost; device timings will differ. Existing GLB and Blender bytes are
+unchanged. The supplied `portfolio.blend1` is the earlier exterior source, not
+the current house asset, so no Blender re-export was needed for this pass.
+
+The [surface review](house-surface-culling-review.json) records 792 isolated
+256×256 software-rendered comparisons: 132 meshes × six exterior views. All
+have identical silhouette coverage; small shading differences remain (maximum
+whole-image mean channel error 0.156/255). This verifies geometry coverage in
+those views, not full browser/PBR gameplay or hardware performance. A local
+visual/FPS review remains required before claiming a speed gain.

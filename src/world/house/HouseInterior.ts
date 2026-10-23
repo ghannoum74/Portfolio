@@ -8,6 +8,7 @@ import { AnimatedBook3D } from "./AnimatedBook3D";
 import { performanceOptions } from "../../core/PerformanceOptions";
 import { batchHouseBeams } from "./batchHouseBeams";
 import { HouseStoneLod, type StoneLodData } from "./HouseStoneLod";
+import { ClosedSurfaceCulling } from "./ClosedSurfaceCulling";
 
 export class HouseInterior {
   public model = new THREE.Group();
@@ -15,6 +16,10 @@ export class HouseInterior {
   private loaded = false;
   private loadPromise?: Promise<void>;
   private stoneLod?: HouseStoneLod;
+  private stoneLodPromise?: Promise<void>;
+  private stoneLodEnabled = performanceOptions.stoneLod;
+  private surfaceCulling?: ClosedSurfaceCulling;
+  private surfaceCullingEnabled = performanceOptions.surfaceCulling;
 
   // Keep the house physically separated from the exterior Rapier world.
   private readonly worldOffset = new THREE.Vector3(0, -30, 0);
@@ -123,25 +128,43 @@ export class HouseInterior {
       if (performanceOptions.perfDiag) console.info("[House beams]", batches);
     }
 
+    // Validate while preloading/behind the entry cover, before shader warm-up.
+    // The current export is inspected directly; no Blender-side manifest can go stale.
+    try {
+      this.surfaceCulling = await ClosedSurfaceCulling.create(this.model, this.surfaceCullingEnabled, house.animations);
+      this.surfaceCulling.setEnabled(this.surfaceCullingEnabled);
+      if (performanceOptions.perfDiag) {
+        const sample = this.surfaceCulling.stats;
+        console.info("[House surface culling]", sample, JSON.stringify(sample));
+      }
+    } catch (error) {
+      console.warn("House surface culling unavailable; keeping authored materials:", error);
+    }
+
     this.loaded = true;
 
     // Optional data never delays house readiness. A missing/stale sidecar keeps
     // the complete authored meshes, including after future Blender re-exports.
-    if (performanceOptions.stoneLod) {
-      void new THREE.FileLoader(this.loadingManager).setResponseType("json")
-        .loadAsync(ASSETS.houseStoneLods)
-        .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData))
-        .then(lod => {
-          this.stoneLod = lod;
-          if (performanceOptions.perfDiag) {
-            const sample = lod.stats;
-            console.info("[House stone LOD]", sample, JSON.stringify(sample));
-          }
-        })
-        .catch(error => console.warn("House stone LOD unavailable; using authored geometry:", error));
-    }
+    if (this.stoneLodEnabled) this.loadStoneLods();
 
     console.log("🏠 House interior loaded");
+  }
+
+  private loadStoneLods(): void {
+    if (this.stoneLod || this.stoneLodPromise) return;
+    this.stoneLodPromise = new THREE.FileLoader(this.loadingManager).setResponseType("json")
+      .loadAsync(ASSETS.houseStoneLods)
+      .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData))
+      .then(lod => {
+        this.stoneLod = lod;
+        lod.setEnabled(this.stoneLodEnabled);
+        if (performanceOptions.perfDiag) {
+          const sample = lod.stats;
+          console.info("[House stone LOD]", sample, JSON.stringify(sample));
+        }
+      })
+      .catch(error => console.warn("House stone LOD unavailable; using authored geometry:", error))
+      .finally(() => { this.stoneLodPromise = undefined; });
   }
 
   private createInteriorLighting(): void {
@@ -295,6 +318,21 @@ export class HouseInterior {
 
   get stoneLodStats() {
     return this.stoneLod?.stats;
+  }
+
+  setStoneLodEnabled(enabled: boolean): void {
+    this.stoneLodEnabled = enabled;
+    this.stoneLod?.setEnabled(enabled);
+    if (enabled && this.loaded) this.loadStoneLods();
+  }
+
+  setSurfaceCullingEnabled(enabled: boolean): void {
+    this.surfaceCullingEnabled = enabled;
+    this.surfaceCulling?.setEnabled(enabled);
+  }
+
+  get surfaceCullingStats() {
+    return this.surfaceCulling?.stats;
   }
 
   update(delta: number): void {

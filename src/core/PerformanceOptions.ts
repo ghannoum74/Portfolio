@@ -21,6 +21,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
       : params.get("workshopLights") === "focused" ? "focused" : "inspect",
     beamBatching: params.get("beamBatching") !== "0",
     stoneLod: params.get("stoneLod") !== "0",
+    surfaceCulling: params.get("surfaceCulling") !== "0",
     activeLightsOnly: params.get("activeLightsOnly") !== "0",
     pixelRatio,
     stats: enabled("stats") || gpuStats,

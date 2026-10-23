@@ -13,6 +13,7 @@ export class Keyboard {
 
     // Prevent stuck movement if the visitor switches browser tabs or windows.
     window.addEventListener("blur", this.reset);
+    document.addEventListener("visibilitychange", this.reset);
   }
 
   /**

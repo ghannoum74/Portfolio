@@ -62,6 +62,7 @@ type Entry = {
 export class HouseStoneLod {
   private readonly entries: Entry[] = [];
   private readonly center = new THREE.Vector3();
+  private enabled = true;
 
   static async create(root: THREE.Object3D, data: StoneLodData): Promise<HouseStoneLod> {
     const lod = new HouseStoneLod();
@@ -122,7 +123,7 @@ export class HouseStoneLod {
   }
 
   update(camera: THREE.Camera, viewportHeight: number): void {
-    if (!(viewportHeight > 0)) return;
+    if (!this.enabled || !(viewportHeight > 0)) return;
     camera.updateWorldMatrix(true, false);
     const focalPixels = Math.abs(camera.projectionMatrix.elements[5]) * viewportHeight / 2;
     const perspective = (camera as THREE.PerspectiveCamera).isPerspectiveCamera;
@@ -141,6 +142,17 @@ export class HouseStoneLod {
       while (selected + 1 < entry.levels.length && entry.levels[selected + 1].error * pixelsPerLocalUnit < 0.75) selected++;
       entry.selected = selected;
       entry.mesh.geometry = entry.levels[selected].geometry;
+    }
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    if (enabled) return;
+    for (const entry of this.entries) {
+      if (entry.levels.some(level => level.geometry === entry.mesh.geometry)) {
+        entry.mesh.geometry = entry.levels[0].geometry;
+        entry.selected = 0;
+      }
     }
   }
 

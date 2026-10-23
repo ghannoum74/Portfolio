@@ -23,6 +23,8 @@ export class Renderer {
   private perfStarted = performance.now();
   private perfFrames = 0;
   private perfRenderMs = 0;
+  private perfWarmupUntil = 0;
+  private pixelRatioOverride?: number;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
@@ -133,6 +135,10 @@ export class Renderer {
     this.stats?.update();
 
     if (this.options.perfDiag) {
+      if (performance.now() < this.perfWarmupUntil) {
+        this.perfStarted = performance.now();
+        return;
+      }
       this.perfFrames++;
       this.perfRenderMs += performance.now() - renderStarted;
       const now = performance.now();
@@ -161,6 +167,7 @@ export class Renderer {
           workshopLights: this.options.workshopLights,
           beamBatching: this.options.beamBatching,
           stoneLod: this.options.stoneLod,
+          surfaceCulling: this.options.surfaceCulling,
           activeLightsOnly: this.options.activeLightsOnly,
           pointLights,
         };
@@ -173,8 +180,24 @@ export class Renderer {
     }
   }
 
+  resetPerformanceSamples(): void {
+    this.perfStarted = performance.now();
+    this.perfFrames = 0;
+    this.perfRenderMs = 0;
+    // Exclude the shader/resize warm-up immediately after a diagnostic switch.
+    this.perfWarmupUntil = this.perfStarted + 2000;
+  }
+
+  setPixelRatio(pixelRatio: number): void {
+    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) return;
+    const maximum = getPerformanceOptions("", window.devicePixelRatio).pixelRatio;
+    this.pixelRatioOverride = Math.min(maximum, Math.max(Math.min(0.5, maximum), pixelRatio));
+    this.resize();
+  }
+
   resize() {
-    const pixelRatio = getPerformanceOptions(window.location.search, window.devicePixelRatio).pixelRatio;
+    const requested = this.pixelRatioOverride ?? getPerformanceOptions(window.location.search, window.devicePixelRatio).pixelRatio;
+    const pixelRatio = Math.min(requested, getPerformanceOptions("", window.devicePixelRatio).pixelRatio);
 
     this.instance.setSize(window.innerWidth, window.innerHeight);
 
@@ -184,5 +207,6 @@ export class Renderer {
     this.composer?.setSize(window.innerWidth, window.innerHeight);
 
     this.composer?.setPixelRatio(pixelRatio);
+    this.resetPerformanceSamples();
   }
 }
