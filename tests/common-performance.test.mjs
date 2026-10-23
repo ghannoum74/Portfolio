@@ -18,11 +18,13 @@ await build({ stdin: {
     export { ASSETS } from './src/loaders/AssetManifest';
     export { World } from './src/world/World';
     export { Water } from './src/world/environment/Water';
-    export { Player } from './src/world/player/Player';`,
+    export { Player } from './src/world/player/Player';
+    export { ProjectPageTextures } from './src/world/house/book/ProjectPageTexture';
+    export { PROJECTS } from './src/data/projects';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external' });
 const { StaticMeshBatches, StaticMeshInstances, PhysicsWorld, WorldColliders, CameraCollision,
-  AssetLoader, ASSETS, World, Water, Player } = await import(pathToFileURL(bundle));
+  AssetLoader, ASSETS, World, Water, Player, ProjectPageTextures, PROJECTS } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 function copies(count = 3) {
@@ -212,4 +214,58 @@ test('physics WASM backend stays outside the synchronous gameplay dependency gra
   Object.keys(outputs).filter(path => ['src/physics/PhysicsWorld.ts', 'src/world/player/PlayerBody.ts'].includes(outputs[path].entryPoint)).forEach(visit);
   assert.ok(![...inputs].some(input => input.includes('@dimforge/rapier3d-compat')));
   assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.includes('@dimforge/rapier3d-compat'))));
+});
+
+test('book detail roles share full-resolution textures while projects and disposal remain independent', () => {
+  const hadDocument = Object.hasOwn(globalThis, 'document');
+  const previousDocument = globalThis.document;
+  let canvases = 0;
+  globalThis.document = {
+    createElement(tag) {
+      assert.equal(tag, 'canvas');
+      canvases++;
+      const context = new Proxy({
+        measureText: text => ({ width: String(text).length * 12 }),
+        createLinearGradient: () => ({ addColorStop() {} }),
+      }, {
+        get(target, key) { return key in target ? target[key] : () => {}; },
+      });
+      return { width: 0, height: 0, getContext: () => context };
+    },
+  };
+  const pages = new ProjectPageTextures();
+  const textures = [];
+  let disposals = 0;
+  try {
+    assert.ok(PROJECTS.length > 1);
+    for (const project of PROJECTS) {
+      const resting = pages.details(project);
+      assert.equal(pages.details(project, false), resting);
+      assert.equal(pages.details(project, true), resting);
+      assert.equal(resting.image.width, 1024);
+      assert.equal(resting.image.height, 1536);
+      assert.equal(resting.colorSpace, THREE.SRGBColorSpace);
+      assert.equal(resting.flipY, false);
+      assert.deepEqual(resting.repeat.toArray(), [-1, 1]);
+      assert.deepEqual(resting.offset.toArray(), [1, 0]);
+      assert.deepEqual(resting.center.toArray(), [0, 0]);
+      assert.equal(resting.rotation, 0);
+      assert.equal(resting.anisotropy, 8);
+      assert.equal(resting.generateMipmaps, true);
+      assert.equal(resting.minFilter, THREE.LinearMipmapLinearFilter);
+      resting.addEventListener('dispose', () => disposals++);
+      textures.push(resting);
+    }
+    assert.equal(canvases, PROJECTS.length);
+    assert.equal(new Set(textures).size, PROJECTS.length);
+    assert.equal(new Set(textures.map(texture => texture.image)).size, PROJECTS.length);
+    pages.dispose();
+    assert.equal(disposals, PROJECTS.length);
+    pages.dispose();
+    assert.equal(disposals, PROJECTS.length);
+  } finally {
+    pages.dispose();
+    if (hadDocument) globalThis.document = previousDocument;
+    else delete globalThis.document;
+  }
 });

@@ -81,6 +81,15 @@ A real Rapier regression test repeats 120 idle frames with one cast, then checks
 new casts for target/desired movement, imported walls and removed fixed colliders.
 Blocked-camera positioning, padding and zero-distance behavior are retained.
 
+## Share identical book detail textures
+
+Resting and turning detail pages now share one full-resolution CanvasTexture per
+project. The drawing code and sampling/UV settings are unchanged. Visiting all
+four projects can avoid three duplicate page textures, an estimated 24 MiB of
+RGBA8 allocation including mipmaps. This is not measured VRAM or an FPS claim.
+The [texture-memory audit](texture-memory-audit.md) records the prepared change,
+asset findings and pending validation.
+
 ## Existing common optimizations retained
 
 - Spatial mesh merging and frozen authored local transforms.
@@ -98,8 +107,11 @@ The earlier 29-FPS comparison predates this pass and is not its benchmark.
 
 ## Validation
 
-`npm test` passes **84 tests**. Type checking, the production build and whitespace
-checks pass. The new tests exercise exact instance data, transformed vertices,
+Before the later shared-book-texture change, `npm test` passed **84 tests**, and
+type checking, the production build and whitespace checks passed. The latest
+book texture-cache change adds one regression test; executing the suite,
+typecheck, build and browser comparison is **pending** because the workspace is
+unavailable. See the [texture-memory audit](texture-memory-audit.md). The new tests exercise exact instance data, transformed vertices,
 exclusions/bounds/resource ownership, the real exterior, actual Rapier movement
 queries, initialization sharing, startup overlap and production dependency edges.
 The test command lists both suites explicitly for Windows shell compatibility.
