@@ -11,6 +11,10 @@ The [frame/GPU profiling notes](runtime-profiling.md) record the subsequent loca
 visual/transition checks, the controlled DPR/LOD comparison, and the opt-in GPU
 timer plus live border/shadow comparisons used to investigate remaining cost.
 
+The [common performance pass](common-performance.md) adds exact exterior GPU
+instancing, a separate physics chunk, parallel startup loading and unchanged
+camera collision-query reuse. It records the current 84-test validation.
+
 ## Changes
 
 - Stats graphs and GPU timestamp queries are opt-in. When enabled, one explicit

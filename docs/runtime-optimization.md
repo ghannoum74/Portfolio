@@ -3,6 +3,9 @@
 Branch: `perf/quality-preserving-runtime-2026-10-23`.
 Base: `perf/house-runtime-2026-10-21` at `5f6bebec8f0c5484e9d611ebf0aa3f4a16042b68`.
 
+The later [common performance pass](common-performance.md) adds exact exterior
+instancing, asynchronous physics loading, startup overlap and camera-query reuse.
+
 ## Result
 
 The additional rendering pass batches nearby, non-overlapping opaque decorations,
@@ -127,7 +130,7 @@ warm-up, then collect frame timings. Review outside movement, house entry/exit,
 each E interaction, book turns, furniture effects and the unchanged thin border.
 Check cold/warm entry latency, long frames and memory as well as average FPS.
 
-The 62-test suite covers source geometry/material ownership, exclusions, root
+The original 62-test suite covers source geometry/material ownership, exclusions, root
 movement, local bounds, live toggles and late-created effects; culling/LOD
 compatibility; cache reuse/eviction; preparation cleanup; bounded loading and
 retry; real character decoding/fingerprints; skinned/morph/animated packing; and
@@ -135,3 +138,6 @@ optional-module chunk separation. Local browser checks and their limits are in
 the [profiling notes](runtime-profiling.md); the fixed living-room comparison did
 not establish an FPS gain. Existing bundle-size and partial-checkout
 `edge-mask.webp` build warnings remain.
+
+The current combined test command runs 84 tests; see the common pass for the
+additional checks and updated build sizes.

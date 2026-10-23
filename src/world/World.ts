@@ -14,7 +14,7 @@ import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
-import { StaticMeshBatches, StaticTransforms } from "../optimization/StaticScene";
+import { StaticMeshBatches, StaticMeshInstances, StaticTransforms } from "../optimization/StaticScene";
 
 export class World {
   model!: THREE.Group;
@@ -46,6 +46,7 @@ export class World {
   private water!: Water;
   private houseInterior?: HouseInterior;
   private staticBatches?: StaticMeshBatches;
+  private staticInstances?: StaticMeshInstances;
   private staticTransforms?: StaticTransforms;
   private staticBatchingEnabled = performanceOptions.staticBatching;
   private staticTransformsEnabled = performanceOptions.staticTransforms;
@@ -70,7 +71,11 @@ export class World {
     this.npcManager = new NpcManager(this.scene, this.loadingManager);
   }
   async init(): Promise<void> {
-    await this.physics.init();
+    // Independent network/decoder work starts together behind the loading screen.
+    const [, asset] = await Promise.all([
+      this.physics.init(),
+      new AssetLoader(this.loadingManager, this.onAssetReady).loadGLB(ASSETS.world),
+    ]);
 
     // Rapier exists now, so debug renderer can safely use it.
     this.physicsDebugRenderer = new PhysicsDebugRenderer(
@@ -81,10 +86,6 @@ export class World {
     /*
      *load the world and create colliders for it.
      */
-    const asset = await new AssetLoader(
-      this.loadingManager,
-      this.onAssetReady,
-    ).loadGLB(ASSETS.world);
     this.model = asset.scene;
     this.environmentAnimations = asset.animations;
 
@@ -113,9 +114,11 @@ export class World {
     this.stairDetector = new StairDetector(this.model);
 
     if (this.staticBatchingEnabled) this.staticBatches = new StaticMeshBatches(this.model, asset.animations, this.staticObjects);
+    if (this.staticBatchingEnabled) this.staticInstances = new StaticMeshInstances(this.model, asset.animations, this.staticObjects);
     if (this.staticTransformsEnabled) this.staticTransforms = new StaticTransforms(this.model, asset.animations, this.staticObjects);
     if (performanceOptions.perfDiag) console.info("[World static scene]", {
-      batching: this.staticBatches?.stats, frozenLocalTransforms: this.staticTransforms?.count ?? 0,
+      batching: this.staticBatches?.stats, instancing: this.staticInstances?.stats,
+      frozenLocalTransforms: this.staticTransforms?.count ?? 0,
     });
 
     this.player = new Player(
@@ -219,7 +222,9 @@ export class World {
   setStaticBatchingEnabled(enabled: boolean): void {
     this.staticBatchingEnabled = enabled;
     if (enabled && this.model && !this.staticBatches) this.staticBatches = new StaticMeshBatches(this.model, this.environmentAnimations, this.staticObjects);
+    if (enabled && this.model && !this.staticInstances) this.staticInstances = new StaticMeshInstances(this.model, this.environmentAnimations, this.staticObjects);
     this.staticBatches?.setEnabled(enabled);
+    this.staticInstances?.setEnabled(enabled);
     this.houseInterior?.setStaticBatchingEnabled(enabled);
   }
 

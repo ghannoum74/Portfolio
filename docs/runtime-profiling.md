@@ -142,10 +142,11 @@ Browser control and diagnostic logging were active throughout these tests;
 there was no uninstrumented comparison. Occasional 19–20 FPS windows are retained
 in the raw readings rather than removed.
 
-Chrome documents that Energy Saver can reduce animation frame rate. Its state on
-this machine remains unverified: browser security blocked internal settings
-navigation. No workaround or settings change was attempted. The user can check
-Chrome Settings → Performance → Energy Saver before the next comparison.
+Chrome documents that Energy Saver can reduce animation frame rate. Browser
+security blocked internal settings navigation during the capture. The user later
+reported that Energy Saver is off. No settings change was attempted. Subsequent
+work applies the [common performance techniques](common-performance.md); the
+measurements above predate that implementation.
 
 See [raw CPU/GPU readings](runtime-gpu-profile-2026-10-23.json) and
 [the restored quality settings](runtime-gpu-profile-2026-10-23-restored.jpg).

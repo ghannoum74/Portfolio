@@ -1,4 +1,4 @@
-import {
+import type {
   Collider,
   KinematicCharacterController,
   RigidBody,
