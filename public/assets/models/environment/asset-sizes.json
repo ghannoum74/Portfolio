@@ -9,9 +9,11 @@
   {
     "name": "world.glb",
     "originalBytes": 8741240,
-    "optimizedBytes": 5362764,
-    "reductionPercent": 38.6,
-    "verified": true
+    "optimizedBytes": 5044436,
+    "reductionPercent": 42.3,
+    "verified": true,
+    "meshoptBytes": 5362764,
+    "losslessTextureBytesSaved": 318328
   },
   {
     "name": "book.glb",

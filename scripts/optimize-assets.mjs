@@ -7,10 +7,12 @@ import { mkdir, mkdtemp, readdir, stat, readFile, writeFile, rename, rm } from '
 import { resolve, dirname, basename, join, relative, isAbsolute, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
+import { packGLBTextures } from './pack-lossless-textures.mjs';
 
-// Usage: node scripts/optimize-assets.mjs [source-dir] [output-dir] [--recursive]
+// Usage: node scripts/optimize-assets.mjs [source-dir] [output-dir] [--recursive] [--lossless-textures]
 // Default: house.glb, world.glb, book.glb. Recursive mode mirrors all GLB subpaths.
-// No simplification, quantization, flattening, joining, pruning, or texture changes.
+// No simplification, quantization, flattening, joining or pruning. Texture bytes
+// stay unchanged unless --lossless-textures adds pixel-verified WebP packing.
 await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
   'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder,
@@ -105,7 +107,7 @@ async function glbPaths(directory, prefix = '') {
   return names;
 }
 
-export async function optimizeAssets(sourceDirectory, outputDirectory, { recursive = false } = {}) {
+export async function optimizeAssets(sourceDirectory, outputDirectory, { recursive = false, losslessTextures = false } = {}) {
   const source = resolve(sourceDirectory), output = resolve(outputDirectory);
   const inside = (child, parent) => {
     const path = relative(parent, child);
@@ -133,11 +135,21 @@ export async function optimizeAssets(sourceDirectory, outputDirectory, { recursi
     await mkdir(dirname(outputPath), { recursive: true });
     const temporaryDirectory = await mkdtemp(resolve(dirname(outputPath), '.meshopt-'));
     const temporary = resolve(temporaryDirectory, basename(name));
+    let finalSnapshot = before, texturePacking;
     try {
       await io.write(temporary, document);
       await preserveTransforms(inputPath, temporary);
       const decoded = await io.read(temporary);
       assert.deepEqual(snapshot(decoded), before, `${name}: decoded model changed`);
+      if (losslessTextures) {
+        const meshoptBytes = await readFile(temporary);
+        const packed = await packGLBTextures(meshoptBytes);
+        await writeFile(temporary, packed.bytes);
+        finalSnapshot = snapshot(await io.read(temporary));
+        assert.deepEqual({ ...finalSnapshot, textures: before.textures }, before, `${name}: non-texture data changed`);
+        texturePacking = { meshoptBytes: meshoptBytes.length,
+          savedBytes: meshoptBytes.length - packed.bytes.length, images: packed.images };
+      }
       await rename(temporary, outputPath);
     } finally {
       await rm(temporaryDirectory, { recursive: true, force: true });
@@ -146,7 +158,8 @@ export async function optimizeAssets(sourceDirectory, outputDirectory, { recursi
     report.push({ name, originalBytes: originalBytes.length, optimizedBytes,
       reductionPercent: +(100 * (1 - optimizedBytes / originalBytes.length)).toFixed(1), verified: true,
       sourceGitSha: createHash('sha1').update(`blob ${originalBytes.length}\0`).update(originalBytes).digest('hex'),
-      decodedSha256: createHash('sha256').update(JSON.stringify(before)).digest('hex'),
+      decodedSha256: createHash('sha256').update(JSON.stringify(finalSnapshot)).digest('hex'),
+      ...(texturePacking ? { texturePacking } : {}),
     });
   }
   await writeFile(resolve(output, 'asset-sizes.json'), JSON.stringify(report, null, 2) + '\n');
@@ -154,9 +167,9 @@ export async function optimizeAssets(sourceDirectory, outputDirectory, { recursi
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const args = process.argv.slice(2).filter(argument => argument !== '--recursive');
+  const args = process.argv.slice(2).filter(argument => !['--recursive', '--lossless-textures'].includes(argument));
   const report = await optimizeAssets(args[0] ?? 'asset-sources', args[1] ?? 'public/assets/models/environment',
-    { recursive: process.argv.includes('--recursive') });
+    { recursive: process.argv.includes('--recursive'), losslessTextures: process.argv.includes('--lossless-textures') });
   console.table(report.map(({ name, originalBytes, optimizedBytes, reductionPercent, verified }) =>
     ({ name, originalBytes, optimizedBytes, reductionPercent, verified })));
 }

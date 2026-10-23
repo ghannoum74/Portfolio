@@ -4,10 +4,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/performance.test.mjs tests/common-performance.test.mjs",
+    "test": "node --test tests/performance.test.mjs tests/common-performance.test.mjs tests/texture-packing.test.mjs",
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "assets:optimize-all": "node scripts/optimize-assets.mjs asset-sources/models public/assets/models --recursive",
-    "assets:stone-lods": "node scripts/generate-house-stone-lods.mjs"
+    "assets:stone-lods": "node scripts/generate-house-stone-lods.mjs",
+    "assets:textures": "node scripts/pack-lossless-textures.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.20.0",
@@ -25,6 +26,7 @@
     "dat.gui": "^0.7.9",
     "esbuild": "^0.27.7",
     "meshoptimizer": "^1.1.1",
+    "sharp": "0.35.5",
     "typescript": "^7.0.2",
     "vite": "^7.0.0"
   }

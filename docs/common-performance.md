@@ -3,7 +3,7 @@
 Branch: `perf/quality-preserving-runtime-2026-10-23`.
 
 This pass adds standard rendering, loading and update-reuse techniques to the
-existing optimization stack. Existing model detail, textures, surface materials,
+existing optimization stack. Existing model detail, texture pixels, surface materials,
 lighting policy, border appearance and resolution defaults are retained.
 
 ## Additional GPU instancing
@@ -87,8 +87,19 @@ Resting and turning detail pages now share one full-resolution CanvasTexture per
 project. The drawing code and sampling/UV settings are unchanged. Visiting all
 four projects can avoid three duplicate page textures, an estimated 24 MiB of
 RGBA8 allocation including mipmaps. This is not measured VRAM or an FPS claim.
-The [texture-memory audit](texture-memory-audit.md) records the prepared change,
-asset findings and pending validation.
+The [texture-memory audit](texture-memory-audit.md) records the validated cache
+change, exported texture inventory and pending live review.
+
+## Pack texture delivery losslessly
+
+The world's embedded PNGs and two project screenshot URLs now use pixel-verified
+lossless WebP at their original dimensions. The world is 318,328 bytes smaller,
+and each screenshot is 315,724 bytes smaller: 949,776 bytes across the three URLs.
+The packer preserves model data, texture sampling and distinct project paths.
+`npm run assets:optimize -- --lossless-textures` reapplies Meshopt and texture
+packing after Blender exports. See [the delivery review](lossless-texture-packing.md).
+This reduces encoded bytes. Decoded GPU texture storage is unchanged; its FPS and
+cold-load impact were not measured.
 
 ## Existing common optimizations retained
 
@@ -107,11 +118,10 @@ The earlier 29-FPS comparison predates this pass and is not its benchmark.
 
 ## Validation
 
-Before the later shared-book-texture change, `npm test` passed **84 tests**, and
-type checking, the production build and whitespace checks passed. The latest
-book texture-cache change adds one regression test; executing the suite,
-typecheck, build and browser comparison is **pending** because the workspace is
-unavailable. See the [texture-memory audit](texture-memory-audit.md). The new tests exercise exact instance data, transformed vertices,
+The final code passed **91 tests**, type checking, production build and whitespace checks,
+including book texture sharing and six lossless-packing regressions. Live browser
+review remains pending for these latest changes.
+See the [texture-memory audit](texture-memory-audit.md). The new tests exercise exact instance data, transformed vertices,
 exclusions/bounds/resource ownership, the real exterior, actual Rapier movement
 queries, initialization sharing, startup overlap and production dependency edges.
 The test command lists both suites explicitly for Windows shell compatibility.

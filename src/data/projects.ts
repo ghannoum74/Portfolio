@@ -20,7 +20,7 @@ export const PROJECTS: PortfolioProject[] = [
       "Replace this with what you built, what problem it solves, and your contribution.",
     highlights: ["Key feature one", "Key feature two", "Something you learned"],
     technologies: ["TypeScript", "Three.js"],
-    screenshot: "/assets/projects/project-one.png",
+    screenshot: "/assets/projects/project-one.webp",
     projectUrl: "https://galaxymilkyway.netlify.app",
     // githubUrl: 'https://github.com/...',
     // demoUrl: 'https://...',
@@ -33,7 +33,7 @@ export const PROJECTS: PortfolioProject[] = [
       "Replace this sample entry with information about another real project.",
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
-    screenshot: "/assets/projects/project-two.png",
+    screenshot: "/assets/projects/project-two.webp",
     projectUrl: "https://sudoku-mern.netlify.app",
   },
   {
@@ -44,7 +44,7 @@ export const PROJECTS: PortfolioProject[] = [
       "Replace this sample entry with information about another real project.",
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
-    screenshot: "/assets/projects/project-two.png",
+    screenshot: "/assets/projects/project-two.webp",
     projectUrl: "https://universityprojectofficial.netlify.app",
   },
   {
@@ -55,7 +55,7 @@ export const PROJECTS: PortfolioProject[] = [
       "Replace this sample entry with information about another real project.",
     highlights: ["Core challenge", "Interesting solution"],
     technologies: ["React", "Node.js"],
-    screenshot: "/assets/projects/project-two.png",
+    screenshot: "/assets/projects/project-two.webp",
     projectUrl: "https://universityprojectofficial.netlify.app",
   },
 ];
