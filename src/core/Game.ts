@@ -89,6 +89,7 @@ export class Game {
   private animationLoop: VisibleAnimationLoop;
   private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
   private readonly performanceDebugState = {
+    exteriorLod: performanceOptions.exteriorLod,
     stoneLod: performanceOptions.stoneLod,
     surfaceCulling: performanceOptions.surfaceCulling,
     staticBatching: performanceOptions.staticBatching,
@@ -763,6 +764,11 @@ export class Game {
         this.resetPerformanceSamples();
       });
       if (performanceOptions.gpuStats) gpuTimingController.disable();
+      performanceFolder.add(this.performanceDebugState, "exteriorLod").name("Exterior LOD").onChange((enabled: boolean) => {
+        performanceOptions.exteriorLod = enabled;
+        this.world.setExteriorLodEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
       performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
         performanceOptions.stoneLod = enabled;
         this.world.setHouseStoneLodEnabled(enabled);

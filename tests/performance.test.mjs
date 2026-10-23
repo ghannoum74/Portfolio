@@ -1762,3 +1762,45 @@ test('optional exterior LOD preserves authored close-up meshes and rejects stale
   assert.equal(getPerformanceOptions('?exteriorLod=1', 1).exteriorLod, true);
   assert.equal(getPerformanceOptions('?exteriorLod=0', 1).exteriorLod, false);
 });
+
+test('live exterior LOD toggles deduplicate loading, honor late disable and retry failures', async () => {
+  const { scene: root } = await readGeometryGLB(new URL('../public/assets/models/environment/world.glb', import.meta.url));
+  root.scale.setScalar(.25); new THREE.Scene().add(root); root.updateMatrixWorld(true);
+  const data = JSON.parse(await readFile(new URL('../public/assets/models/environment/exterior-lods.json', import.meta.url), 'utf8'));
+  const meshes = EXTERIOR_LOD_NAMES.map(name => root.getObjectByName(name));
+  const originals = meshes.map(mesh => mesh.geometry);
+  const world = Object.create(World.prototype);
+  Object.assign(world, { initialized: true, model: root, exteriorLodEnabled: false, perfDiag: false });
+  const load = THREE.FileLoader.prototype.loadAsync, warn = console.warn;
+  let requests = 0, resolveLoad, rejectLoad, warnings = 0;
+  THREE.FileLoader.prototype.loadAsync = function(url) {
+    assert.equal(url, '/assets/models/environment/exterior-lods.json'); requests++;
+    return new Promise((resolve, reject) => { resolveLoad = resolve; rejectLoad = reject; });
+  };
+  console.warn = () => warnings++;
+  try {
+    world.setExteriorLodEnabled(false); assert.equal(requests, 0);
+    world.setExteriorLodEnabled(true); world.setExteriorLodEnabled(true);
+    assert.equal(requests, 1);
+    const failed = world.exteriorLodPromise; rejectLoad(new Error('offline')); await failed;
+    assert.equal(warnings, 1); assert.equal(world.exteriorLod, undefined);
+    meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+    world.setExteriorLodEnabled(true); assert.equal(requests, 2);
+    const pending = world.exteriorLodPromise;
+    world.setExteriorLodEnabled(false); resolveLoad(data); await pending;
+    assert.equal(world.exteriorLodPromise, undefined);
+    const center = new THREE.Box3().setFromObject(meshes[0]).getCenter(new THREE.Vector3());
+    const camera = new THREE.PerspectiveCamera(45, 1, .01, 10000);
+    camera.position.copy(center).add(new THREE.Vector3(0, 0, 100)); camera.lookAt(center);
+    world.updateLod(camera, 1080);
+    meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+    world.setExteriorLodEnabled(true); world.updateLod(camera, 1080);
+    assert.equal(world.exteriorLod.stats.selectedTriangles, 87960);
+    assert.equal(requests, 2, 'reuse verified levels after first successful load');
+    world.setExteriorLodEnabled(false); world.updateLod(camera, 1080);
+    meshes.forEach((mesh, i) => assert.equal(mesh.geometry, originals[i]));
+  } finally {
+    THREE.FileLoader.prototype.loadAsync = load; console.warn = warn;
+    world.exteriorLod?.dispose();
+  }
+});
