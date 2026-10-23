@@ -105,9 +105,12 @@ queries, initialization sharing, startup overlap and production dependency edges
 The test command lists both suites explicitly for Windows shell compatibility.
 
 Existing large-chunk and partial-checkout `edge-mask.webp` build warnings remain.
-New live browser appearance, cold-load latency and frame timings still need review
-after pulling this code. No hardware FPS improvement is claimed from draw-count
-or bundle-size reductions alone.
+The [live browser check](common-performance-live-2026-10-23.md) now covers the
+exterior batching appearance switch, all four workshop details, inspection-only
+lighting, thin stand borders, return to the house and basic camera input. Door
+exit/reentry, book/other furniture and full wall-collision traversal remain pending
+for this pass. Cold-load latency and frame timings have not been remeasured. No
+hardware FPS improvement is claimed from draw-count or bundle-size reductions.
 
 ## Primary references
 
