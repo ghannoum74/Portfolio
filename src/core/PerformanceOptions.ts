@@ -10,9 +10,10 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     ? Math.min(nativeRatio, Math.max(0.5, Math.min(requestedRatio, 2)))
     : lowFx ? 1 : Math.min(nativeRatio, 2);
   const gpuStats = !lowFx && enabled("gpuStats");
+  const perfDiag = enabled("perfdiag");
   return {
     lowFx,
-    perfDiag: enabled("perfdiag"),
+    perfDiag,
     outlines: !lowFx && params.get("outlines") !== "0",
     highlightMode: params.get("highlight") === "outline" ? "outline" : "border",
     shadows: !lowFx && params.get("shadows") !== "0",
@@ -28,6 +29,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     pixelRatio,
     stats: enabled("stats") || gpuStats,
     gpuStats,
+    gpuTiming: perfDiag && !gpuStats && enabled("gpuTiming"),
   };
 }
 

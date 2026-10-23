@@ -21,6 +21,8 @@ const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: {
   contents: `export { getPerformanceOptions, performanceOptions } from './src/core/PerformanceOptions';
     export { Renderer } from './src/core/Renderer';
+    export { FrameProfiler, summarizeTimings } from './src/core/FrameProfiler';
+    export { GpuTimer } from './src/core/GpuTimer';
     export { InteractionHighlight } from './src/core/InteractionHighlight';
     export { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256 } from './src/world/house/HouseStoneLod';
     export { HouseInterior } from './src/world/house/HouseInterior';
@@ -43,7 +45,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -97,6 +99,158 @@ test('DPR rejects invalid values and lowfx overrides expensive effects', () => {
   assert.equal(getPerformanceOptions('?lowfx=0', 2).outlines, true);
 });
 
+test('GPU timing is independent and opt-in within diagnostics, without competing with GPU stats', () => {
+  assert.equal(getPerformanceOptions('', 1).gpuTiming, false);
+  assert.equal(getPerformanceOptions('?gpuTiming=1', 1).gpuTiming, false);
+  assert.equal(getPerformanceOptions('?perfdiag=1&gpuTiming=1', 1).gpuTiming, true);
+  assert.equal(getPerformanceOptions('?perfdiag=1&gpuTiming=1&gpuStats=1', 1).gpuTiming, false);
+  assert.equal(getPerformanceOptions('?perfdiag=1&gpuTiming=1', 1).stats, false);
+});
+
+test('frame profiling separates callback work and intervals, excludes warm-up and resets after a pause', () => {
+  let now = 0;
+  const profiler = new FrameProfiler(() => now, 20, 10);
+  profiler.begin(); assert.equal(profiler.finish('house'), undefined);
+  now = 5; profiler.begin(); assert.equal(profiler.finish('house'), undefined);
+  const frame = at => {
+    now = at; profiler.begin();
+    now++; profiler.mark('setup');
+    now += 2; profiler.mark('world');
+    now++; profiler.mark('render');
+    return profiler.finish('house');
+  };
+  assert.equal(frame(20), undefined);
+  const sample = frame(36);
+  assert.equal(sample.frames, 2);
+  assert.deepEqual(sample.callbackCpuMs, { samples: 2, mean: 4, p50: 4, p95: 4 });
+  assert.deepEqual(sample.callbackIntervalMs, { samples: 1, mean: 16, p50: 16, p95: 16 });
+  assert.equal(sample.stagesCpuMsMean.world, 2);
+  assert.equal(sample.stagesCpuMsMean.render, 1);
+  now = 50; profiler.skip();
+  assert.equal(frame(55), undefined);
+  assert.equal(frame(100), undefined);
+  const resumed = frame(121);
+  assert.equal(resumed.callbackIntervalMs.p95, 21);
+  assert.equal(resumed.frames, 2);
+});
+
+test('frame profiling does not mix scenes and bounds storage at very high refresh rates', () => {
+  let now = 0;
+  const profiler = new FrameProfiler(() => now, 20, 0);
+  profiler.begin(); profiler.finish('house');
+  now = 5; profiler.begin(); now = 7; profiler.mark('world'); profiler.finish('house');
+  now = 10; profiler.begin(); profiler.finish('exterior');
+  now = 15; profiler.begin(); now = 16; profiler.mark('world'); profiler.finish('exterior');
+  now = 35; profiler.begin(); now = 36; profiler.mark('world');
+  const report = profiler.finish('exterior');
+  assert.equal(report.scene, 'exterior'); assert.equal(report.frames, 2);
+  assert.equal(report.stagesCpuMsMean.world, 1);
+  const bounded = new FrameProfiler(() => 0, 3000, 0);
+  bounded.begin(); bounded.finish('house');
+  let capped;
+  for (let index = 0; index < 600; index++) { bounded.begin(); capped = bounded.finish('house'); }
+  assert.equal(capped.frames, 600);
+  assert.deepEqual(summarizeTimings([]), { samples: 0, mean: null, p50: null, p95: null });
+});
+
+function gpuFixture({ supported = true, counterBits = 64 } = {}) {
+  const ext = { TIME_ELAPSED_EXT: 1, GPU_DISJOINT_EXT: 2, QUERY_COUNTER_BITS_EXT: 3 };
+  const state = { calls: [], queries: [], active: null, external: null, disjoint: false, lost: false, available: false, nanoseconds: 6e6 };
+  const gl = {
+    QUERY_RESULT_AVAILABLE: 4, QUERY_RESULT: 5, CURRENT_QUERY: 6,
+    isContextLost() { state.calls.push('isContextLost'); return state.lost; },
+    getExtension() { state.calls.push('getExtension'); return supported ? ext : null; },
+    getParameter() { state.calls.push('getParameter'); return state.disjoint; },
+    getQuery(target, parameter) { return parameter === ext.QUERY_COUNTER_BITS_EXT ? counterBits : state.external || state.active; },
+    createQuery() { const query = { id: state.queries.length }; state.queries.push(query); state.calls.push(['create', query]); return query; },
+    beginQuery(target, query) { assert.equal(state.active, null); state.active = query; state.calls.push(['begin', query]); },
+    endQuery() { assert.ok(state.active); state.calls.push(['end', state.active]); state.active = null; },
+    getQueryParameter(query, parameter) {
+      if (parameter === gl.QUERY_RESULT_AVAILABLE) return state.available;
+      assert.equal(state.available, true, 'must not read unavailable results');
+      state.calls.push(['result', query]); return state.nanoseconds;
+    },
+    deleteQuery(query) { state.calls.push(['delete', query]); },
+  };
+  return { state, gl, timer: new GpuTimer(gl, 1, 2) };
+}
+
+test('disabled and unsupported GPU timers return no measurements and do not submit queries', () => {
+  const disabled = gpuFixture(); disabled.timer.begin(); disabled.timer.end();
+  assert.equal(disabled.state.calls.length, 0);
+  assert.equal(disabled.timer.takeSample().gpuRenderMsMean, null);
+  for (const options of [{ supported: false }, { counterBits: 0 }]) {
+    const { timer, state } = gpuFixture(options);
+    timer.setEnabled(true); timer.begin(); timer.end();
+    assert.equal(timer.takeSample().gpuTimingStatus, 'unsupported');
+    assert.equal(state.queries.length, 0);
+  }
+});
+
+test('GPU timing reads only available later-frame results, preserves 64-bit values and releases ownership', () => {
+  const { timer, state } = gpuFixture(); timer.setEnabled(true);
+  timer.begin(); timer.end();
+  assert.equal(timer.takeSample().gpuTimingSamples, 0);
+  state.available = true; state.nanoseconds = 5_000_000_001;
+  timer.begin(); timer.end();
+  const sample = timer.takeSample();
+  assert.equal(sample.gpuTimingSamples, 1); assert.equal(sample.gpuRenderMsMean, 5000);
+  assert.equal(sample.gpuTimingPending, 1);
+  timer.dispose();
+  assert.equal(state.calls.filter(call => call[0] === 'delete').length, 2);
+  assert.equal(timer.takeSample().gpuTimingStatus, 'disabled');
+});
+
+test('GPU query backlog stays bounded and reset drops stale measurements', () => {
+  const { timer, state } = gpuFixture(); timer.setEnabled(true);
+  for (let frame = 0; frame < 20; frame++) { timer.begin(); timer.end(); }
+  assert.equal(state.queries.length, 2);
+  assert.equal(timer.takeSample().gpuTimingPending, 2);
+  assert.equal(state.calls.filter(call => call[0] === 'result').length, 0);
+  timer.reset();
+  assert.equal(timer.takeSample().gpuTimingPending, 0);
+  assert.equal(state.calls.filter(call => call[0] === 'delete').length, 2);
+});
+
+test('GPU disjoint results are discarded and an external query is never ended or deleted', () => {
+  const { timer, state } = gpuFixture(); timer.setEnabled(true);
+  timer.begin(); timer.end(); state.disjoint = true;
+  timer.begin(); timer.end(); timer.begin(); timer.end();
+  const sample = timer.takeSample();
+  assert.equal(sample.gpuTimingStatus, 'disjoint'); assert.equal(sample.gpuTimingDisjointEvents, 1);
+  assert.equal(sample.gpuTimingSamples, 0); assert.equal(sample.gpuTimingPending, 0);
+  state.disjoint = false; state.external = { foreign: true };
+  const owned = state.queries.length;
+  const disjointPolls = state.calls.filter(call => call === 'getParameter').length;
+  timer.begin(); timer.end(); timer.dispose();
+  assert.equal(state.queries.length, owned);
+  assert.equal(state.calls.filter(call => call === 'getParameter').length, disjointPolls);
+  assert.equal(state.calls.some(call => Array.isArray(call) && call[1] === state.external), false);
+});
+
+test('GPU context loss clears old queries and reacquires the extension on restoration', () => {
+  const { timer, state } = gpuFixture(); timer.setEnabled(true);
+  timer.begin(); timer.end();
+  state.lost = true; timer.begin(); timer.end();
+  assert.equal(timer.takeSample().gpuTimingStatus, 'context-lost');
+  assert.equal(timer.takeSample().gpuTimingPending, 0);
+  state.lost = false; timer.begin(); timer.end();
+  assert.equal(state.calls.filter(call => call === 'getExtension').length, 2);
+  assert.equal(state.queries.length, 2);
+  timer.dispose();
+});
+
+test('GPU timer cleanup never ends a query that another profiler has replaced', () => {
+  const { timer, state } = gpuFixture(); timer.setEnabled(true); timer.begin();
+  const owned = state.active;
+  state.active = null; state.external = { foreign: true };
+  timer.end();
+  assert.equal(timer.takeSample().gpuTimingStatus, 'busy');
+  assert.equal(state.calls.filter(call => call[0] === 'end').length, 0);
+  assert.equal(state.calls.filter(call => call[0] === 'delete' && call[1] === owned).length, 1);
+  timer.dispose();
+});
+
 function rendererFixture(outlines = true, highlightMode = 'outline') {
   const renderer = Object.create(Renderer.prototype);
   const info = { render: { calls: 99, triangles: 999 }, memory: {},
@@ -111,6 +265,56 @@ function rendererFixture(outlines = true, highlightMode = 'outline') {
   });
   return renderer;
 }
+
+test('live border comparison restores source materials and resumes on the latest target', () => {
+  const renderer = rendererFixture(true, 'border');
+  const scene = new THREE.Scene();
+  const first = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: 0x6f4c2a }));
+  const second = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: 0x2f6c6a }));
+  const firstMaterial = first.material, secondMaterial = second.material;
+  scene.add(first, second);
+  renderer.setInteractionOutline(first);
+  assert.equal(renderer.borderHighlight.active, true);
+  renderer.setBorderHighlightEnabled(false);
+  assert.equal(renderer.borderHighlight.active, false);
+  assert.equal(first.material, firstMaterial);
+  renderer.setInteractionOutline(second);
+  assert.equal(second.material, secondMaterial);
+  renderer.setBorderHighlightEnabled(true);
+  assert.equal(renderer.borderHighlight.active, true);
+  assert.equal(first.material, firstMaterial);
+  assert.notEqual(second.material, secondMaterial);
+  assert.deepEqual(second.material.color, secondMaterial.color);
+  renderer.setInteractionOutline(null);
+  assert.equal(second.material, secondMaterial);
+});
+
+test('live shadow comparison changes renderer state while GPU timing remains guarded', () => {
+  const renderer = rendererFixture();
+  renderer.instance.shadowMap = { enabled: true };
+  renderer.setShadowsEnabled(false);
+  assert.equal(renderer.instance.shadowMap.enabled, false);
+  assert.equal(renderer.options.shadows, false);
+  renderer.setShadowsEnabled(true);
+  assert.equal(renderer.instance.shadowMap.enabled, true);
+  renderer.instance.getContext = () => { throw new Error('must not probe without diagnostics or alongside GPU stats'); };
+  renderer.setGpuTimingEnabled(true);
+  assert.equal(renderer.options.gpuTiming, false);
+  renderer.options.perfDiag = true; renderer.options.gpuStats = true;
+  renderer.setGpuTimingEnabled(true);
+  assert.equal(renderer.options.gpuTiming, false);
+});
+
+test('a rendering failure still ends the owned GPU query', () => {
+  const renderer = rendererFixture(false);
+  const { timer, state } = gpuFixture(); timer.setEnabled(true);
+  renderer.gpuTimer = timer; renderer.perfWarmupUntil = 0;
+  renderer.instance.render = () => { throw new Error('draw failed'); };
+  assert.throws(() => renderer.render({}, {}), /draw failed/);
+  assert.equal(state.active, null);
+  assert.equal(timer.takeSample().gpuTimingPending, 1);
+  timer.dispose();
+});
 
 test('opt-in outline path counts all passes, clears counters each frame, and returns to direct rendering', () => {
   const renderer = rendererFixture();

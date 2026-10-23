@@ -70,6 +70,8 @@ hardware rendering validation.
 
 Preparation trades some covered entry time for fewer first-use shader/upload
 stalls. Entry latency and actual FPS need hardware measurement on this branch.
+The later [local review and profiling notes](runtime-profiling.md) confirm cached
+exit/re-entry and workshop behavior; precise first-entry latency is still unmeasured.
 
 ## Lossless character and animation packing
 
@@ -129,6 +131,7 @@ The 62-test suite covers source geometry/material ownership, exclusions, root
 movement, local bounds, live toggles and late-created effects; culling/LOD
 compatibility; cache reuse/eviction; preparation cleanup; bounded loading and
 retry; real character decoding/fingerprints; skinned/morph/animated packing; and
-optional-module chunk separation. Full browser/PBR review and new hardware FPS
-measurements remain pending. Existing bundle-size and partial-checkout
+optional-module chunk separation. Local browser checks and their limits are in
+the [profiling notes](runtime-profiling.md); the fixed living-room comparison did
+not establish an FPS gain. Existing bundle-size and partial-checkout
 `edge-mask.webp` build warnings remain.

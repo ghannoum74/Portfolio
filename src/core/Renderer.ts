@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type Stats from "stats-gl";
 import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
 import { InteractionHighlight } from "./InteractionHighlight";
+import { GpuTimer } from "./GpuTimer";
 
 import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import type { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -27,6 +28,7 @@ export class Renderer {
   private statsReady?: Promise<void>;
   private outlineReady?: Promise<void>;
   private initializationError?: unknown;
+  private gpuTimer?: GpuTimer;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
@@ -48,6 +50,7 @@ export class Renderer {
     if (this.options.stats) {
       this.statsReady = this.initializeStats().catch(error => { this.initializationError = error; });
     }
+    if (this.options.gpuTiming) this.setGpuTimingEnabled(true);
   }
 
   private async initializeStats(): Promise<void> {
@@ -151,9 +154,35 @@ export class Renderer {
   }
 
   setInteractionOutline(object: THREE.Object3D | null): void {
-    if (!this.options.outlines) return;
     if (object === this.outlinedObject) return;
     this.outlinedObject = object;
+    this.applyInteractionOutline();
+  }
+
+  /** Keep the current/latest target while the diagnostic comparison is disabled. */
+  setBorderHighlightEnabled(enabled: boolean): void {
+    if (this.options.highlightMode !== "border") return;
+    this.options.outlines = enabled;
+    this.applyInteractionOutline();
+    this.resetPerformanceSamples();
+  }
+
+  setShadowsEnabled(enabled: boolean): void {
+    this.options.shadows = enabled;
+    this.instance.shadowMap.enabled = enabled;
+    this.resetPerformanceSamples();
+  }
+
+  setGpuTimingEnabled(enabled: boolean): void {
+    // stats-gl can own TIME_ELAPSED_EXT. Its existing opt-in remains independent.
+    this.options.gpuTiming = enabled && this.options.perfDiag && !this.options.gpuStats;
+    if (this.options.gpuTiming) this.gpuTimer ??= new GpuTimer(this.instance.getContext());
+    this.gpuTimer?.setEnabled(this.options.gpuTiming);
+    this.resetPerformanceSamples();
+  }
+
+  private applyInteractionOutline(): void {
+    const object = this.options.outlines ? this.outlinedObject : null;
 
     if (this.options.highlightMode === "border") {
       this.borderHighlight.setTarget(object);
@@ -180,25 +209,26 @@ export class Renderer {
     this.instance.info.reset();
     this.borderHighlight.update();
     this.stats?.begin();
-
-    if (
-      this.options.outlines &&
-      this.options.highlightMode === "outline" &&
-      this.hasInteractionOutline &&
-      this.composer &&
-      this.renderPass &&
-      this.outlinePass
-    ) {
-      this.renderPass.scene = scene;
-      this.renderPass.camera = camera;
-
-      this.outlinePass.renderScene = scene;
-
-      this.outlinePass.renderCamera = camera;
-
-      this.composer.render();
-    } else {
-      this.instance.render(scene, camera);
+    if (this.gpuTimer && performance.now() >= this.perfWarmupUntil) this.gpuTimer.begin();
+    try {
+      if (
+        this.options.outlines &&
+        this.options.highlightMode === "outline" &&
+        this.hasInteractionOutline &&
+        this.composer &&
+        this.renderPass &&
+        this.outlinePass
+      ) {
+        this.renderPass.scene = scene;
+        this.renderPass.camera = camera;
+        this.outlinePass.renderScene = scene;
+        this.outlinePass.renderCamera = camera;
+        this.composer.render();
+      } else {
+        this.instance.render(scene, camera);
+      }
+    } finally {
+      this.gpuTimer?.end();
     }
 
     this.stats?.end();
@@ -233,6 +263,12 @@ export class Renderer {
           pixelRatio: this.instance.getPixelRatio(),
           stats: this.options.stats,
           gpuStats: this.options.gpuStats,
+          gpuTiming: this.options.gpuTiming,
+          ...(this.gpuTimer?.takeSample() ?? {
+            gpuTimingStatus: "disabled", gpuTimingSamples: 0,
+            gpuRenderMsMean: null, gpuRenderMsP50: null, gpuRenderMsP95: null,
+            gpuTimingPending: 0, gpuTimingDisjointEvents: 0,
+          }),
           decorativeLights: this.options.decorativeLights,
           workshopLights: this.options.workshopLights,
           beamBatching: this.options.beamBatching,
@@ -253,6 +289,7 @@ export class Renderer {
   }
 
   resetPerformanceSamples(): void {
+    this.gpuTimer?.reset();
     this.perfStarted = performance.now();
     this.perfFrames = 0;
     this.perfRenderMs = 0;

@@ -7,6 +7,10 @@ runtime and loading pass on top of this work. See [the implementation and
 validation notes](runtime-optimization.md). It adds live **Static batching** and
 **Static transforms** controls alongside the existing Performance controls.
 
+The [frame/GPU profiling notes](runtime-profiling.md) record the subsequent local
+visual/transition checks, the controlled DPR/LOD comparison, and the opt-in GPU
+timer plus live border/shadow comparisons used to investigate remaining cost.
+
 ## Changes
 
 - Stats graphs and GPU timestamp queries are opt-in. When enabled, one explicit

@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Renderer } from "./Renderer";
 import { performanceOptions } from "./PerformanceOptions";
 import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
+import { FrameProfiler } from "./FrameProfiler";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 
@@ -86,11 +87,15 @@ export class Game {
 
   private timer = new THREE.Timer();
   private animationLoop: VisibleAnimationLoop;
+  private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
   private readonly performanceDebugState = {
     stoneLod: performanceOptions.stoneLod,
     surfaceCulling: performanceOptions.surfaceCulling,
     staticBatching: performanceOptions.staticBatching,
     staticTransforms: performanceOptions.staticTransforms,
+    borderHighlight: performanceOptions.outlines,
+    shadows: performanceOptions.shadows,
+    gpuTiming: performanceOptions.gpuTiming,
     pixelRatio: performanceOptions.pixelRatio,
     restartReadings: () => this.resetPerformanceSamples(),
   };
@@ -408,6 +413,7 @@ export class Game {
   }
 
   private update = (): void => {
+    this.frameProfiler?.begin();
     this.timer.update();
 
     const delta = this.timer.getDelta();
@@ -422,8 +428,11 @@ export class Game {
     this.entrance.raf(performance.now());
 
     if (this.phase === "loading" || this.preparingScene) {
+      this.frameProfiler?.skip();
       return;
     }
+
+    this.frameProfiler?.mark("setup");
 
     this.world.update(delta, !this.insideHouse);
 
@@ -433,6 +442,7 @@ export class Game {
         this.world.getTimeOfDay(),
       );
     }
+    this.frameProfiler?.mark("world");
 
     // Wait until the physical cover finishes opening
     // before moving the cinematic camera toward it.
@@ -468,6 +478,7 @@ export class Game {
       // Normal third-person camera.
       this.thirdPersonCamera?.update(delta);
     }
+    this.frameProfiler?.mark("camera");
 
     // House systems retain their state, but do no frame work outside.
     if (this.insideHouse) {
@@ -483,6 +494,7 @@ export class Game {
     this.bookPageControls.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
     );
+    this.frameProfiler?.mark("effectsUi");
 
     const gameplayActive =
       this.phase === "playing" &&
@@ -519,10 +531,15 @@ export class Game {
     this.world.setPhysicsDebugVisible(showDebug);
 
     if (showDebug) this.cameraHelper.update();
+    this.frameProfiler?.mark("interaction");
 
     const camera = this.getActiveCamera();
     this.world.updateLod(camera, window.innerHeight);
+    this.frameProfiler?.mark("lod");
     this.renderer.render(this.scene, camera);
+    this.frameProfiler?.mark("render");
+    const profile = this.frameProfiler?.finish(this.insideHouse ? "house" : "exterior");
+    if (profile) console.info("[Frame profile]", profile, JSON.stringify(profile));
   };
 
   private onResize = (): void => {
@@ -538,6 +555,7 @@ export class Game {
 
     this.renderer.resize();
     this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+    this.resetPerformanceSamples();
     this.updateOverlay();
   };
 
@@ -730,6 +748,21 @@ export class Game {
 
     if (performanceOptions.perfDiag) {
       const performanceFolder = gui.addFolder("Performance");
+      if (performanceOptions.highlightMode === "border") {
+        performanceFolder.add(this.performanceDebugState, "borderHighlight").name("Border highlight").onChange((enabled: boolean) => {
+          this.renderer.setBorderHighlightEnabled(enabled);
+          this.resetPerformanceSamples();
+        });
+      }
+      performanceFolder.add(this.performanceDebugState, "shadows").name("Shadows").onChange((enabled: boolean) => {
+        this.renderer.setShadowsEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      const gpuTimingController = performanceFolder.add(this.performanceDebugState, "gpuTiming").name("GPU timing").onChange((enabled: boolean) => {
+        this.renderer.setGpuTimingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      if (performanceOptions.gpuStats) gpuTimingController.disable();
       performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
         performanceOptions.stoneLod = enabled;
         this.world.setHouseStoneLodEnabled(enabled);
@@ -755,7 +788,7 @@ export class Game {
         .name("Pixel ratio").onFinishChange((ratio: number) => {
           this.renderer.setPixelRatio(ratio);
           this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
-          this.world.resetPerformanceSamples();
+          this.resetPerformanceSamples();
         });
       performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
       performanceFolder.open();
@@ -765,6 +798,7 @@ export class Game {
   }
 
   private resetPerformanceSamples(): void {
+    this.frameProfiler?.reset();
     this.renderer.resetPerformanceSamples();
     this.world.resetPerformanceSamples();
   }
