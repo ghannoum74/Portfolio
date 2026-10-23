@@ -67,7 +67,7 @@ prepared. That commit also updates the environment report, removes the inactive
 WebP house and adds Vite configuration. Those changes are preserved in the remote
 parent; none overlaps the eight files in this patch. The repository connector
 rejects the binary house download, so local asset-dependent tests use the prior
-house. The complete suite against the newer house remains pending. The two
+house. The owner subsequently reported all 93 tests passing against the newer house. The two
 day/night regressions do not depend on any house asset.
 
 The owner's subsequent Windows run passed 92 of 93 tests. The remaining failure
@@ -77,8 +77,8 @@ export. The follow-up test fix keys these explicit expectations by each GLB's Gi
 blob hash. It also verifies each changed geometry is closed/outward, checks the
 actual changed mesh/triangle/material totals, and retains the hierarchy,
 material restoration and stone-LOD assertions. Unknown exports fail explicitly.
-The revised suite passes 93 tests locally with the prior house; a rerun with the
-new house is still needed. No production code or asset changes in this fix.
+The revised suite passes 93 tests locally with the prior house; the owner also
+reported all 93 passing on Windows with the newer house. No production code or asset changes in this fix.
 
 Two new
 regressions verify zero-sunlight skipping, near-boundary dawn/dusk restoration,
@@ -91,3 +91,20 @@ The remaining roughly 22 ms GPU rendering time in this fixed view warrants
 profiling exterior geometry/material cost before choosing additional LOD or
 texture compression. No geometry simplification or KTX2 conversion is included
 in this patch.
+
+## Automatic policy live verification
+
+On October 23, the owner reported all 93 tests passing with the newer house.
+A subsequent Chrome check used the existing localhost diagnostic tab and fixed
+camera at the cottage entrance. At preview hour 0, global Shadows on and off both
+submitted 111 draws and 69,312 triangles. At hour 13 with Shadows on, submissions
+returned to 116 draws and 89,536 triangles, and the character shadow was visibly
+present. These are functional checks of the automatic policy, not comparable FPS
+measurements or the earlier benchmark camera. At 5.43 and 6 no additional shadow
+submissions appeared from this camera; the automated boundary tests establish
+castShadow restoration separately. No browser error logs were returned.
+
+Real time was restored, Shadows remained enabled, GPU timing remained disabled,
+and all quality switches remained enabled.
+
+![Daytime shadow restoration](sun-shadow-transition-day-2026-10-23.jpg)
