@@ -16,8 +16,11 @@ import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
 import { StaticMeshBatches, StaticMeshInstances, StaticTransforms } from "../optimization/StaticScene";
 
+import { HouseStoneLod, EXTERIOR_LOD_NAMES, type StoneLodData } from "./house/HouseStoneLod";
+
 export class World {
   model!: THREE.Group;
+  private exteriorLod?: HouseStoneLod;
   private meshes: THREE.Mesh[] = [];
   private bounds = new THREE.Box3();
   player!: Player;
@@ -132,6 +135,15 @@ export class World {
     await this.player.load();
 
     this.initialized = true;
+    if (performanceOptions.exteriorLod) {
+      new THREE.FileLoader().setResponseType("json").loadAsync(ASSETS.exteriorLods)
+        .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData, EXTERIOR_LOD_NAMES, 3))
+        .then(lod => {
+          this.exteriorLod = lod;
+          if (this.perfDiag) console.info("[Exterior LOD]", JSON.stringify(lod.stats));
+        })
+        .catch(error => console.warn("Exterior LOD unavailable; using authored geometry:", error));
+    }
   }
 
   get npcs(): readonly Npc[] {
@@ -183,6 +195,7 @@ export class World {
         const sample = {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
+          exteriorLod: exteriorActive ? this.exteriorLod?.stats : undefined,
           houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
           houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
         };
@@ -208,6 +221,7 @@ export class World {
   }
 
   updateLod(camera: THREE.Camera, viewportHeight: number): void {
+    if (this.model?.visible && this.model.parent) this.exteriorLod?.update(camera, viewportHeight);
     this.houseInterior?.updateLod(camera, viewportHeight);
   }
 

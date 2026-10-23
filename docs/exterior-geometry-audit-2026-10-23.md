@@ -31,3 +31,43 @@ colliders/materials/names, and compare silhouettes, UVs and shading while walkin
 through the actual exterior. Large bounding spheres can keep full detail active,
 so test real camera positions before deciding whether these objects need spatial
 partitioning. The existing house stone LOD provides a reference implementation.
+
+## Optional runtime implementation
+
+`?perfdiag=1&exteriorLod=1` loads an 809,223-byte index-only sidecar after
+essential world initialization. Default gameplay does not request it.
+This is intentionally opt-in while exterior silhouette, UV and shading review
+is pending; do not infer a measured FPS gain from the offline counts.
+
+The existing index LOD implementation now accepts explicit trusted target names.
+House defaults and thresholds remain unchanged. Exterior selection uses the same
+projected error/hysteresis policy (downgrade below 0.75 estimated CSS pixel,
+upgrade above 1 pixel), plus full authored geometry within 3 world units of
+the bounding sphere. Large bounds make this conservative. Both additional
+levels share original attributes/materials; indices alone differ. Colliders are
+created from the authored world before optional preparation. Missing/stale data
+is caught without replacing geometry. Source hashes cover all decoded attributes
+and original indices. The real-world regression checks near/far selection,
+source count, index range, shared streams/materials, restoration and stale data.
+
+Rebuild after Blender export and verified world packing:
+
+```sh
+npm run assets:exterior-lods
+npm test
+npm run typecheck
+npm run build
+```
+
+Compare `?perfdiag=1` with `?perfdiag=1&exteriorLod=1` at the same exterior
+camera/time/DPR. The `[House physics]` diagnostic includes `exteriorLod` counts
+when outside. Inspect near-to-far transitions, silhouettes, texture seams,
+shading and collision traversal before enabling it by default. The existing
+Stone LOD UI switch continues to control house stone geometry only.
+
+Validation: 94 local tests pass (including the real shipped world), typecheck,
+production build and whitespace checks pass. Local house-dependent tests still
+use the prior house export; the owner's earlier 93-test run passed with the newer
+house. The exterior sidecar targets the current world blob recorded above.
+Build retains existing large-chunk and partial-checkout edge-mask warnings.
+No browser visual validation of this new optional path has been completed.

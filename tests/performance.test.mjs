@@ -25,7 +25,7 @@ await build({ stdin: {
     export { FrameProfiler, summarizeTimings } from './src/core/FrameProfiler';
     export { GpuTimer } from './src/core/GpuTimer';
     export { InteractionHighlight } from './src/core/InteractionHighlight';
-    export { HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256 } from './src/world/house/HouseStoneLod';
+    export { HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256 } from './src/world/house/HouseStoneLod';
     export { HouseInterior } from './src/world/house/HouseInterior';
     export { ClosedSurfaceCulling, isClosedOutwardSurface } from './src/world/house/ClosedSurfaceCulling';
     export { VisibleAnimationLoop } from './src/core/VisibleAnimationLoop';
@@ -46,7 +46,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -1724,4 +1724,41 @@ test('asset packing rejects unknown extensions before replacing an existing outp
     await assert.rejects(optimizeAssets(source, output, { recursive: true }), /unsupported extension/);
     assert.equal(await readFile(`${output}/asset.glb`, 'utf8'), 'keep existing asset');
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test('optional exterior LOD preserves authored close-up meshes and rejects stale world data', async () => {
+  const { scene: root } = await readGeometryGLB(new URL('../public/assets/models/environment/world.glb', import.meta.url));
+  root.scale.setScalar(.25); root.updateMatrixWorld(true);
+  const data = JSON.parse(await readFile(new URL('../public/assets/models/environment/exterior-lods.json', import.meta.url), 'utf8'));
+  const meshes = EXTERIOR_LOD_NAMES.map(name => root.getObjectByName(name));
+  const originals = meshes.map(m => m.geometry), materials = meshes.map(m => m.material);
+  const lod = await HouseStoneLod.create(root, data, EXTERIOR_LOD_NAMES, 3);
+  const camera = new THREE.PerspectiveCamera(45, 1, .01, 10000);
+  const bounds = new THREE.Box3().setFromObject(meshes[0]);
+  const center = bounds.getCenter(new THREE.Vector3());
+  camera.position.copy(center); camera.lookAt(center.clone().add(new THREE.Vector3(0, 0, -1)));
+  lod.update(camera, 1080);
+  meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
+  camera.position.copy(center).add(new THREE.Vector3(0, 0, 100)); camera.lookAt(center);
+  lod.update(camera, 1080);
+  assert.deepEqual(lod.stats, { meshes: 2, sourceTriangles: 219904, selectedTriangles: 87960 });
+  meshes.forEach((m, i) => {
+    assert.equal(m.material, materials[i]);
+    for (const name of Object.keys(originals[i].attributes)) assert.equal(m.geometry.attributes[name], originals[i].attributes[name]);
+    assert.ok(m.geometry.index.array.every(index => index < originals[i].attributes.position.count));
+  });
+  camera.position.copy(center); lod.update(camera, 1080);
+  meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
+  camera.position.copy(center).add(new THREE.Vector3(0, 0, 100)); camera.lookAt(center); lod.update(camera, 1080);
+  lod.setEnabled(false); meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
+  lod.setEnabled(true); lod.update(camera, 1080); lod.dispose();
+  meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
+  const stale = structuredClone(data); stale.meshes[1].sourceHash = 'stale';
+  await assert.rejects(HouseStoneLod.create(root, stale, EXTERIOR_LOD_NAMES, 3), /source changed/);
+  meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
+  await assert.rejects(HouseStoneLod.create(root, data), /Unexpected house stone LOD target/);
+  assert.equal(getPerformanceOptions('', 1).exteriorLod, false);
+  assert.equal(getPerformanceOptions('?exteriorLod=1', 1).exteriorLod, true);
+  assert.equal(getPerformanceOptions('?exteriorLod=0', 1).exteriorLod, false);
 });

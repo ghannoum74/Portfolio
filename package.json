@@ -8,7 +8,8 @@
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "assets:optimize-all": "node scripts/optimize-assets.mjs asset-sources/models public/assets/models --recursive",
     "assets:stone-lods": "node scripts/generate-house-stone-lods.mjs",
-    "assets:textures": "node scripts/pack-lossless-textures.mjs"
+    "assets:textures": "node scripts/pack-lossless-textures.mjs",
+    "assets:exterior-lods": "node scripts/generate-house-stone-lods.mjs --exterior"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.20.0",

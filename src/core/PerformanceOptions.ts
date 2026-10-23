@@ -23,6 +23,8 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     beamBatching: params.get("beamBatching") !== "0",
     staticBatching: params.get("staticBatching") !== "0",
     staticTransforms: params.get("staticTransforms") !== "0",
+    // Opt in until the exterior silhouette/UV review is complete.
+    exteriorLod: enabled("exteriorLod"),
     stoneLod: params.get("stoneLod") !== "0",
     surfaceCulling: params.get("surfaceCulling") !== "0",
     activeLightsOnly: params.get("activeLightsOnly") !== "0",
