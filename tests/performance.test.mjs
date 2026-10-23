@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, mkdir, writeFile } from 'node:fs/promises';
+import { Document, NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { optimizeAssets, decodedAssetFingerprint } from '../scripts/optimize-assets.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -27,6 +30,10 @@ await build({ stdin: {
     export { World } from './src/world/World';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
+    export { NPC_DEFINITIONS } from './src/world/npc/NpcData';
+    export { StaticMeshBatches, StaticTransforms } from './src/optimization/StaticScene';
+    export { mapConcurrent } from './src/loaders/mapConcurrent';
+    export { Water } from './src/world/environment/Water';
     export { InteractionHint } from './src/ui/InteractionHint/InteractionHint';
     export { WorkshopExperience } from './src/world/house/workshop/WorkshopExperience';
     export { WorkshopSound } from './src/world/house/workshop/WorkshopSound';
@@ -36,7 +43,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -54,6 +61,10 @@ test('normal quality stays enabled with stats opt-in, switches remain independen
   assert.equal(getPerformanceOptions('?gpuStats=1', 1).stats, true);
   assert.equal(getPerformanceOptions('?decorativeLights=0', 1).decorativeLights, false);
   assert.equal(normal.beamBatching, true);
+  assert.equal(normal.staticBatching, true);
+  assert.equal(normal.staticTransforms, true);
+  assert.equal(getPerformanceOptions('?staticBatching=0', 1).staticBatching, false);
+  assert.equal(getPerformanceOptions('?staticTransforms=0', 1).staticTransforms, false);
   assert.equal(normal.stoneLod, true);
   assert.equal(normal.surfaceCulling, true);
   assert.equal(getPerformanceOptions('?surfaceCulling=0', 1).surfaceCulling, false);
@@ -1085,4 +1096,394 @@ test('seven idle furniture lights leave the shader light list and return while e
   for (const node of nodes) node.active = false;
   for (let i = 0; i < 120; i++) for (const node of nodes) effects.animateNode(node, 1 / 60);
   assert.equal(countLights(), 5);
+});
+
+function staticBox(material, x = 0.5, parent) {
+  const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  geometry.clearGroups();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(x, 0.5, 0.5);
+  parent?.add(mesh);
+  return mesh;
+}
+
+test('local static batches preserve transformed vertices, normals, UVs and authored material ownership', () => {
+  const root = new THREE.Group(), parent = new THREE.Group();
+  root.position.set(10, -30, 0); root.rotation.y = 0.3;
+  parent.position.set(0, 1, 1); parent.rotation.z = 0.1; root.add(parent);
+  const material = new THREE.MeshStandardMaterial({ color: 0x573922 });
+  const sources = [staticBox(material, 0.3, parent), staticBox(material, 0.7, parent)];
+  sources.forEach((mesh, i) => {
+    mesh.name = `decoration-${i}`; mesh.scale.y = 1.2; mesh.rotation.x = i * 0.1;
+    mesh.castShadow = true; mesh.receiveShadow = true;
+  });
+  root.updateMatrixWorld(true);
+  const expected = sources.flatMap(mesh => {
+    const { position, normal, uv } = mesh.geometry.attributes;
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+    return Array.from({ length: position.count }, (_, i) => ({
+      position: new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld),
+      normal: new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix),
+      uv: [uv.getX(i), uv.getY(i)],
+    }));
+  });
+  const originals = sources.map(mesh => mesh.geometry);
+  const batches = new StaticMeshBatches(root);
+  assert.deepEqual(batches.stats, { sourceMeshes: 2, batches: 1, triangles: 24 });
+  const batch = root.getObjectByName('STATIC_BATCH_1'); root.updateMatrixWorld(true);
+  const { position, normal, uv } = batch.geometry.attributes;
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(batch.matrixWorld);
+  for (let i = 0; i < position.count; i++) {
+    assert.ok(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(batch.matrixWorld).distanceTo(expected[i].position) < 0.000002);
+    assert.ok(new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix).distanceTo(expected[i].normal) < 0.000002);
+    assert.deepEqual([uv.getX(i), uv.getY(i)], expected[i].uv);
+  }
+  assert.equal(batch.material, material); assert.equal(batch.castShadow, true); assert.equal(batch.receiveShadow, true);
+  const hits = []; batch.raycast(null, hits); assert.deepEqual(hits, []);
+  let ownedDisposals = 0, sourceDisposals = 0;
+  batch.geometry.addEventListener('dispose', () => ownedDisposals++);
+  material.addEventListener('dispose', () => sourceDisposals++);
+  originals.forEach(geometry => geometry.addEventListener('dispose', () => sourceDisposals++));
+  assert.deepEqual(new StaticMeshBatches(root).stats, { sourceMeshes: 0, batches: 0, triangles: 0 });
+  batches.dispose(); batches.dispose();
+  assert.equal(ownedDisposals, 1); assert.equal(sourceDisposals, 0);
+  sources.forEach((mesh, i) => {
+    assert.equal(root.getObjectByName(mesh.name), mesh); assert.equal(mesh.geometry, originals[i]); assert.equal(mesh.visible, true);
+  });
+});
+
+test('static batching excludes gameplay, unsafe render states, animation, deformation and hidden children', () => {
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  staticBox(material, 0.3, root); staticBox(material, 0.7, root);
+  const excluded = [];
+  const add = () => { const mesh = staticBox(material, 0.5, root); excluded.push(mesh); return mesh; };
+  add().name = 'INTERACT_DOOR'; add().name = 'COL_BOX_WALL';
+  const tagged = new THREE.Group(); tagged.name = 'SEC_FURNITURE'; root.add(tagged);
+  const taggedChild = staticBox(material, 0.5, tagged); excluded.push(taggedChild);
+  add().scale.x = -1; add().visible = false;
+  add().material = new THREE.MeshStandardMaterial({ transparent: true });
+  add().material = new THREE.MeshStandardMaterial({ opacity: 0.9 });
+  add().material = new THREE.MeshPhysicalMaterial({ transmission: 0.4 });
+  add().material = new THREE.MeshStandardMaterial({ alphaTest: 0.5 });
+  add().material = new THREE.MeshStandardMaterial({ displacementMap: new THREE.Texture() });
+  add().onBeforeRender = () => {};
+  add().geometry.setDrawRange(0, 3);
+  const morph = add(); morph.geometry.morphAttributes.position = [morph.geometry.attributes.position.clone()];
+  const animated = add(); animated.name = 'moving';
+  const clips = [new THREE.AnimationClip('motion', 1, [new THREE.NumberKeyframeTrack('moving.position[x]', [0, 1], [0, 1])])];
+  const before = excluded.map(mesh => mesh.visible);
+  assert.equal(new StaticMeshBatches(root, clips).stats.sourceMeshes, 2);
+  assert.deepEqual(excluded.map(mesh => mesh.visible), before);
+});
+
+test('static batches retain local bounds and separate shadow/layer configurations', () => {
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  [0.3, 0.7, 7.3, 7.7].forEach(x => staticBox(material, x, root));
+  const differentShadow = staticBox(material, 0.5, root); differentShadow.castShadow = true;
+  const differentLayer = staticBox(material, 0.5, root); differentLayer.layers.set(2);
+  const result = new StaticMeshBatches(root);
+  assert.equal(result.stats.sourceMeshes, 4); assert.equal(result.stats.batches, 2);
+  for (const mesh of root.children.filter(child => child.name.startsWith('STATIC_BATCH_'))) {
+    assert.ok(mesh.geometry.boundingBox.getSize(new THREE.Vector3()).length() < 1);
+  }
+  assert.equal(differentShadow.visible, true); assert.equal(differentLayer.visible, true);
+});
+
+test('frozen local transforms keep root movement and gameplay/animated descendants functional', () => {
+  const root = new THREE.Group(), still = staticBox(new THREE.MeshBasicMaterial(), 1, root);
+  const gameplay = new THREE.Group(); gameplay.name = 'SEC_MOVABLE'; root.add(gameplay);
+  const dynamic = staticBox(still.material, 0.5, gameplay);
+  const animated = staticBox(still.material, 0.5, root); animated.name = 'animated';
+  const clip = new THREE.AnimationClip('move', 1, [new THREE.NumberKeyframeTrack('animated.position[x]', [0, 1], [0, 1])]);
+  const transforms = new StaticTransforms(root, [clip]);
+  assert.equal(still.matrixAutoUpdate, false); assert.equal(root.matrixAutoUpdate, true);
+  assert.equal(gameplay.matrixAutoUpdate, true); assert.equal(dynamic.matrixAutoUpdate, true); assert.equal(animated.matrixAutoUpdate, true);
+  root.position.x = 4; root.updateMatrixWorld(true);
+  assert.equal(still.getWorldPosition(new THREE.Vector3()).x, 5);
+  const mixer = new THREE.AnimationMixer(root); mixer.clipAction(clip).play(); mixer.update(0.25);
+  gameplay.position.y = 2; root.updateMatrixWorld(true);
+  assert.equal(animated.getWorldPosition(new THREE.Vector3()).x, 4.25);
+  assert.equal(dynamic.getWorldPosition(new THREE.Vector3()).y, 2.5);
+  transforms.dispose(); assert.equal(still.matrixAutoUpdate, true);
+});
+
+test('real house/world batching preserves source buffers and named gameplay nodes, with culling still switchable', async () => {
+  for (const name of ['house', 'world']) {
+    const gltf = await readGeometryGLB(new URL(`../public/assets/models/environment/${name}.glb`, import.meta.url));
+    const root = gltf.scene;
+    let culling;
+    if (name === 'house') {
+      root.position.y = -30; batchHouseBeams(root, gltf.animations);
+      culling = await ClosedSurfaceCulling.create(root, true, gltf.animations);
+    } else { root.scale.setScalar(0.25); new Water(root); }
+    const sources = []; root.traverse(node => {
+      if (node.isMesh) sources.push({ node, geometry: node.geometry, position: node.position.clone(), material: node.material });
+    });
+    const batches = new StaticMeshBatches(root, gltf.animations), transforms = new StaticTransforms(root, gltf.animations);
+    assert.ok(batches.stats.sourceMeshes > batches.stats.batches); assert.ok(transforms.count > 0);
+    for (const source of sources) {
+      assert.equal(source.node.geometry, source.geometry); assert.equal(source.node.material, source.material);
+      assert.deepEqual(source.node.position, source.position); assert.equal(root.getObjectByProperty('uuid', source.node.uuid), source.node);
+    }
+    if (culling) {
+      const frontMaterials = root.children.filter(node => node.name.startsWith('STATIC_BATCH_') && node.material.side === THREE.FrontSide).map(node => node.material);
+      assert.ok(frontMaterials.length > 0);
+      culling.setEnabled(false); frontMaterials.forEach(material => assert.equal(material.side, THREE.DoubleSide));
+      culling.setEnabled(true); frontMaterials.forEach(material => assert.equal(material.side, THREE.FrontSide));
+    }
+    transforms.dispose(); batches.dispose(); culling?.dispose();
+  }
+});
+
+test('border material programs survive focus changes, update on reuse and retain explicit disposal', () => {
+  const scene = new THREE.Scene(), material = new THREE.MeshStandardMaterial({ color: 0x202020 });
+  const a = staticBox(material, 0, scene), b = staticBox(material, 1, scene);
+  const highlight = new InteractionHighlight(); highlight.setTarget(a);
+  const mask = a.material, rim = scene.getObjectByName('INTERACTION_BORDER').children[0].material;
+  let disposed = 0; rim.addEventListener('dispose', () => disposed++);
+  highlight.setTarget(null); assert.equal(a.material, material); assert.equal(disposed, 0);
+  material.color.set(0xabcdef); highlight.setTarget(b);
+  assert.equal(b.material, mask); assert.equal(scene.getObjectByName('INTERACTION_BORDER').children[0].material, rim);
+  assert.deepEqual(b.material.color, material.color);
+  highlight.clear(); assert.equal(b.material, material); assert.equal(disposed, 1);
+});
+
+test('border cache evicts inactive materials without disposing source geometry or textures', () => {
+  const scene = new THREE.Scene(), highlight = new InteractionHighlight(), texture = new THREE.Texture();
+  const geometry = new THREE.BoxGeometry(); let sourceDisposals = 0, firstEvictions = 0;
+  texture.addEventListener('dispose', () => sourceDisposals++); geometry.addEventListener('dispose', () => sourceDisposals++);
+  for (let i = 0; i < 70; i++) {
+    const source = new THREE.MeshStandardMaterial({ map: texture }); source.addEventListener('dispose', () => sourceDisposals++);
+    const mesh = new THREE.Mesh(geometry, source); scene.add(mesh); highlight.setTarget(mesh);
+    if (i === 0) scene.getObjectByName('INTERACTION_BORDER').children[0].material.addEventListener('dispose', () => firstEvictions++);
+  }
+  assert.equal(firstEvictions, 1); assert.equal(highlight.materialOrder.size, 64);
+  highlight.clear(); assert.equal(sourceDisposals, 0); assert.equal(highlight.materialOrder.size, 0);
+});
+
+test('covered texture preparation uploads unique visible textures before compiling', async () => {
+  const renderer = rendererFixture(true, 'border'), scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const shared = new THREE.Texture(), extra = new THREE.Texture(), invisible = new THREE.Texture(), uniform = new THREE.Texture();
+  scene.background = shared;
+  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial({ map: shared, alphaMap: extra })));
+  const hidden = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial({ map: invisible })); hidden.visible = false; scene.add(hidden);
+  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.ShaderMaterial({ uniforms: { images: { value: [uniform] } } })));
+  const uploads = []; let compiles = 0;
+  renderer.instance.initTexture = texture => uploads.push(texture);
+  renderer.instance.compileAsync = async () => { assert.equal(uploads.length, 3); compiles++; };
+  await renderer.prepareScene(scene, camera);
+  assert.deepEqual(new Set(uploads), new Set([shared, extra, uniform])); assert.equal(compiles, 1);
+});
+
+test('covered highlight warm-up restores selection on success/failure and retains prepared rim materials', async () => {
+  const renderer = rendererFixture(true, 'border'), scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const mesh = staticBox(new THREE.MeshStandardMaterial(), 0, scene), original = mesh.material;
+  let compiledRim;
+  renderer.instance.compileAsync = async () => { compiledRim = scene.getObjectByName('INTERACTION_BORDER').children[0].material; };
+  await renderer.prepareHighlights(scene, camera, [mesh, new THREE.Group()]);
+  assert.equal(mesh.material, original); assert.equal(scene.getObjectByName('INTERACTION_BORDER'), undefined);
+  renderer.setInteractionOutline(mesh);
+  assert.equal(scene.getObjectByName('INTERACTION_BORDER').children[0].material, compiledRim);
+  renderer.setInteractionOutline(null);
+  renderer.instance.compileAsync = async () => { throw new Error('compile failed'); };
+  await assert.rejects(renderer.prepareHighlights(scene, camera, [mesh]), /compile failed/);
+  assert.equal(mesh.material, original); assert.equal(renderer.outlinedObject, null);
+  renderer.borderHighlight.clear();
+});
+
+test('furniture light preparation covers counts and restores brightness, visibility and effect state on failure', async () => {
+  const effects = Object.create(HouseFurnitureInteractions.prototype), lights = [0, 1, 2].map(i => {
+    const light = new THREE.PointLight(0xffffff, i / 10); light.visible = i !== 1; return light;
+  });
+  const nodes = lights.map(light => ({ light, active: false, progress: 0.4 }));
+  effects.nodes = new Map(nodes.map((node, i) => [i, node]));
+  const counts = [], compile = async () => counts.push(lights.filter(light => light.visible).length);
+  await effects.prepareLightingVariants(compile, async () => { assert.ok(lights.every(light => light.visible)); });
+  assert.deepEqual(counts, [0, 1, 2, 3]); assert.deepEqual(lights.map(light => light.visible), [true, false, true]);
+  await assert.rejects(effects.prepareLightingVariants(async () => { throw new Error('failed'); }), /failed/);
+  assert.deepEqual(lights.map(light => light.visible), [true, false, true]);
+  assert.deepEqual(lights.map(light => light.intensity), [0, 0.1, 0.2]); assert.ok(nodes.every(node => !node.active && node.progress === 0.4));
+});
+
+test('bounded loading preserves result order and drains started work before rejecting', async () => {
+  let active = 0, peak = 0;
+  const results = await mapConcurrent([0, 1, 2, 3, 4], 2, async value => {
+    peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--; return value * 2;
+  });
+  assert.deepEqual(results, [0, 2, 4, 6, 8]); assert.equal(peak, 2);
+  const started = [];
+  await assert.rejects(mapConcurrent([0, 1, 2, 3], 2, async value => {
+    started.push(value); active++; await new Promise(resolve => setImmediate(resolve)); active--;
+    if (value === 0) throw new Error('failed');
+  }), /failed/);
+  assert.deepEqual(started, [0, 1]); assert.equal(active, 0);
+});
+
+test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachment', async () => {
+  const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
+  let requests = 0, active = 0, peak = 0;
+  Object.assign(manager, { scene, npcs: [], visible: false,
+    loadAnimations: async () => clips,
+    loader: { loadGLB: async () => {
+      requests++; peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--;
+      return { scene: new THREE.Group() };
+    } },
+  });
+  const first = manager.load(); assert.equal(manager.load(), first); await first;
+  assert.equal(requests, NPC_DEFINITIONS.length); assert.equal(peak, 2);
+  assert.deepEqual(manager.npcs.map(npc => npc.id), NPC_DEFINITIONS.map(definition => definition.id));
+  assert.ok(manager.npcs.every(npc => npc.model.parent === null && !npc.model.visible));
+  await manager.load(); assert.equal(requests, NPC_DEFINITIONS.length);
+  manager.setVisible(true); assert.ok(manager.npcs.every(npc => npc.model.parent === scene));
+});
+
+test('recursive asset packing preserves skins, morphs, animation samples, texture bytes and tiny transforms', async () => {
+  const directory = await mkdtemp(new URL('../.asset-packing-test-', import.meta.url));
+  try {
+    const source = `${directory}/sources`, output = `${directory}/output`;
+    await mkdir(`${source}/player/animations`, { recursive: true });
+    const document = new Document(), buffer = document.createBuffer();
+    const accessor = (name, type, array) => document.createAccessor(name).setType(type).setArray(array).setBuffer(buffer);
+    const material = document.createMaterial('surface').setBaseColorFactor([0.2, 0.3, 0.4, 1]);
+    const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
+    material.setBaseColorTexture(document.createTexture('pixel').setMimeType('image/png').setImage(image));
+    const primitive = document.createPrimitive().setMaterial(material)
+      .setAttribute('POSITION', accessor('position', 'VEC3', new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])))
+      .setAttribute('JOINTS_0', accessor('joints', 'VEC4', new Uint16Array(12)))
+      .setAttribute('WEIGHTS_0', accessor('weights', 'VEC4', new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])))
+      .setIndices(accessor('indices', 'SCALAR', new Uint16Array([0, 1, 2])));
+    primitive.addTarget(document.createPrimitiveTarget().setAttribute('POSITION', accessor('morph', 'VEC3', new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0.2]))));
+    const mesh = document.createMesh('mesh').addPrimitive(primitive).setWeights([0.25]);
+    const joint = document.createNode('joint'), node = document.createNode('hero').setMesh(mesh).setTranslation([1e-9, 0, 0]);
+    node.setSkin(document.createSkin('skin').addJoint(joint).setSkeleton(joint)
+      .setInverseBindMatrices(accessor('inverseBind', 'MAT4', new Float32Array(new THREE.Matrix4().elements))));
+    document.createScene().addChild(joint).addChild(node);
+    const sampler = document.createAnimationSampler().setInterpolation('LINEAR')
+      .setInput(accessor('time', 'SCALAR', new Float32Array([0, 1])))
+      .setOutput(accessor('translation', 'VEC3', new Float32Array([0, 0, 0, 0, 1, 0])));
+    document.createAnimation('motion').addSampler(sampler).addChannel(document.createAnimationChannel().setTargetNode(joint).setTargetPath('translation').setSampler(sampler));
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+    let bytes = Buffer.from(await io.writeBinary(document));
+    // Reproduce Blender's tiny authored offset, which NodeIO omits as near-default.
+    const length = bytes.readUInt32LE(12), json = JSON.parse(bytes.subarray(20, 20 + length));
+    json.nodes.find(node => node.name === 'hero').translation = [1e-9, 0, 0];
+    let encoded = Buffer.from(JSON.stringify(json));
+    encoded = Buffer.concat([encoded, Buffer.alloc((4 - encoded.length % 4) % 4, 0x20)]);
+    const header = Buffer.from(bytes.subarray(0, 20)), tail = bytes.subarray(20 + length);
+    header.writeUInt32LE(encoded.length, 12); header.writeUInt32LE(20 + encoded.length + tail.length, 8);
+    bytes = Buffer.concat([header, encoded, tail]);
+    await writeFile(`${source}/player/hero.glb`, bytes); await writeFile(`${source}/player/animations/walk.glb`, bytes);
+    const report = await optimizeAssets(source, output, { recursive: true });
+    assert.equal(report.length, 2); assert.ok(report.every(row => row.verified));
+    const decoded = await io.read(`${output}/player/hero.glb`);
+    assert.deepEqual(decoded.getRoot().listTextures()[0].getImage(), new Uint8Array(image));
+    assert.deepEqual(decoded.getRoot().listSkins()[0].getInverseBindMatrices().getArray(), new Float32Array(new THREE.Matrix4().elements));
+    assert.deepEqual(decoded.getRoot().listAnimations()[0].listSamplers()[0].getOutput().getArray(), new Float32Array([0, 0, 0, 0, 1, 0]));
+    const gltf = await readGeometryGLB(`${output}/player/hero.glb`);
+    assert.equal(gltf.scene.getObjectByName('hero').position.x, 1e-9);
+    assert.deepEqual(await readFile(`${source}/player/hero.glb`), bytes);
+    await assert.rejects(optimizeAssets(source, `${source}/nested`, { recursive: true }), /separate/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('live static switches retain prepared geometry and never freeze effects added after asset loading', () => {
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  const a = staticBox(material, 0.3, root), b = staticBox(material, 0.7, root);
+  const authored = new Set([root, a, b]);
+  const effects = new THREE.Group(); root.add(effects);
+  const late = staticBox(material, 1.1, effects);
+  const batches = new StaticMeshBatches(root, [], authored), transforms = new StaticTransforms(root, [], authored);
+  const batch = root.getObjectByName('STATIC_BATCH_1'), geometry = batch.geometry;
+  assert.equal(batches.stats.sourceMeshes, 2); assert.equal(late.visible, true); assert.equal(late.matrixAutoUpdate, true);
+  batches.setEnabled(false); transforms.setEnabled(false);
+  assert.equal(a.visible, true); assert.equal(a.matrixAutoUpdate, true); assert.equal(batch.parent, null);
+  effects.position.x = 2; root.updateMatrixWorld(true);
+  assert.equal(late.getWorldPosition(new THREE.Vector3()).x, 3.1);
+  batches.setEnabled(true); transforms.setEnabled(true);
+  assert.equal(batch.geometry, geometry); assert.equal(a.visible, false); assert.equal(a.matrixAutoUpdate, false);
+  assert.equal(late.visible, true); assert.equal(late.matrixAutoUpdate, true);
+  batches.dispose(); transforms.dispose(); assert.equal(a.visible, true); assert.equal(a.matrixAutoUpdate, true);
+});
+
+test('overlapping surfaces, integer attributes and mirrored roots retain their original draws', () => {
+  const material = new THREE.MeshStandardMaterial(), overlap = new THREE.Group();
+  staticBox(material, 0.5, overlap); staticBox(material, 0.5, overlap);
+  assert.equal(new StaticMeshBatches(overlap).stats.batches, 0);
+  const quantized = new THREE.Group();
+  for (const x of [0.3, 0.7]) {
+    const mesh = staticBox(material, x, quantized);
+    mesh.geometry.setAttribute('normal', new THREE.BufferAttribute(new Int16Array(mesh.geometry.attributes.normal.count * 3), 3, true));
+  }
+  assert.equal(new StaticMeshBatches(quantized).stats.batches, 0);
+  const mirrored = new THREE.Group(); mirrored.scale.x = -1;
+  [0.3, 0.7].forEach(x => { staticBox(material, x, mirrored).scale.x = -1; });
+  assert.equal(new StaticMeshBatches(mirrored).stats.batches, 0);
+});
+
+test('packed character assets match verified decoded fingerprints and load through the runtime decoder', async () => {
+  const report = JSON.parse(await readFile(new URL('../public/assets/models/asset-sizes.json', import.meta.url)));
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+  assert.ok(report.length >= 15);
+  for (const entry of report) {
+    const path = new URL(`../public/assets/models/${entry.name}`, import.meta.url);
+    assert.equal(decodedAssetFingerprint(await io.read(fileURLToPath(path))), entry.decodedSha256, entry.name);
+    const gltf = await readGeometryGLB(path);
+    if (entry.name.includes('/animations/')) assert.ok(gltf.animations.length > 0, entry.name);
+    else {
+      const skinned = []; gltf.scene.traverse(node => { if (node.isSkinnedMesh) skinned.push(node); });
+      assert.ok(skinned.length > 0 && skinned.every(node => node.skeleton.bones.length > 0), entry.name);
+    }
+  }
+});
+
+test('normal renderer entry keeps stats and legacy postprocessing out of its static dependency graph', async () => {
+  const result = await build({ entryPoints: ['src/core/Renderer.ts'], bundle: true, splitting: true,
+    format: 'esm', platform: 'browser', write: false, metafile: true, outdir: '.bundle-check' });
+  const outputs = result.metafile.outputs, entry = Object.keys(outputs).find(path => outputs[path].entryPoint === 'src/core/Renderer.ts');
+  assert.ok(entry);
+  const visited = new Set(), inputs = new Set();
+  const visit = path => {
+    if (visited.has(path)) return;
+    visited.add(path); assert.ok(outputs[path], path);
+    Object.keys(outputs[path].inputs).forEach(input => inputs.add(input));
+    outputs[path].imports.filter(dependency => !dependency.external && dependency.kind !== 'dynamic-import').forEach(dependency => visit(dependency.path));
+  };
+  visit(entry);
+  assert.ok(![...inputs].some(input => input.includes('stats-gl') || input.includes('/postprocessing/')));
+  assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.includes('stats-gl'))));
+  assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.endsWith('/OutlinePass.js'))));
+});
+
+test('a failed NPC load can retry without partial characters or duplicate registrations', async () => {
+  const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
+  let calls = 0;
+  Object.assign(manager, { scene, npcs: [], visible: true, loadAnimations: async () => clips,
+    loader: { loadGLB: async () => {
+      const request = ++calls; await new Promise(resolve => setImmediate(resolve));
+      if (request === 1) throw new Error('network failed');
+      return { scene: new THREE.Group() };
+    } },
+  });
+  await assert.rejects(manager.load(), /network failed/); assert.equal(manager.npcs.length, 0);
+  await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
+  await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
+});
+
+test('asset packing rejects unknown extensions before replacing an existing output', async () => {
+  const directory = await mkdtemp(new URL('../.unsupported-asset-test-', import.meta.url));
+  try {
+    const source = `${directory}/source`, output = `${directory}/output`;
+    await mkdir(source); await mkdir(output);
+    let json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, extensionsUsed: ['PRIVATE_unhandled_data'] }));
+    json = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+    const header = Buffer.alloc(20);
+    header.writeUInt32LE(0x46546c67, 0); header.writeUInt32LE(2, 4); header.writeUInt32LE(20 + json.length, 8);
+    header.writeUInt32LE(json.length, 12); header.writeUInt32LE(0x4e4f534a, 16);
+    await writeFile(`${source}/asset.glb`, Buffer.concat([header, json]));
+    await writeFile(`${output}/asset.glb`, 'keep existing asset');
+    await assert.rejects(optimizeAssets(source, output, { recursive: true }), /unsupported extension/);
+    assert.equal(await readFile(`${output}/asset.glb`, 'utf8'), 'keep existing asset');
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

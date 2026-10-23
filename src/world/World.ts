@@ -14,6 +14,7 @@ import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
+import { StaticMeshBatches, StaticTransforms } from "../optimization/StaticScene";
 
 export class World {
   model!: THREE.Group;
@@ -44,6 +45,12 @@ export class World {
   private readonly npcManager: NpcManager;
   private water!: Water;
   private houseInterior?: HouseInterior;
+  private staticBatches?: StaticMeshBatches;
+  private staticTransforms?: StaticTransforms;
+  private staticBatchingEnabled = performanceOptions.staticBatching;
+  private staticTransformsEnabled = performanceOptions.staticTransforms;
+  private environmentAnimations: THREE.AnimationClip[] = [];
+  private readonly staticObjects = new Set<THREE.Object3D>();
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -65,14 +72,6 @@ export class World {
   async init(): Promise<void> {
     await this.physics.init();
 
-    // Start optional interior assets alongside the exterior without delaying
-    void this.loadHouseInterior().catch((error) => {
-      console.warn(
-        "House preload failed; entering the house will retry:",
-        error,
-      );
-    });
-
     // Rapier exists now, so debug renderer can safely use it.
     this.physicsDebugRenderer = new PhysicsDebugRenderer(
       this.scene,
@@ -87,10 +86,12 @@ export class World {
       this.onAssetReady,
     ).loadGLB(ASSETS.world);
     this.model = asset.scene;
+    this.environmentAnimations = asset.animations;
 
     this.model.scale.setScalar(0.25);
 
     this.model.traverse((child) => {
+      this.staticObjects.add(child);
       if (!(child instanceof THREE.Mesh)) {
         return;
       }
@@ -110,6 +111,12 @@ export class World {
     this.worldColliders.createFromEnvironment(this.model);
 
     this.stairDetector = new StairDetector(this.model);
+
+    if (this.staticBatchingEnabled) this.staticBatches = new StaticMeshBatches(this.model, asset.animations, this.staticObjects);
+    if (this.staticTransformsEnabled) this.staticTransforms = new StaticTransforms(this.model, asset.animations, this.staticObjects);
+    if (performanceOptions.perfDiag) console.info("[World static scene]", {
+      batching: this.staticBatches?.stats, frozenLocalTransforms: this.staticTransforms?.count ?? 0,
+    });
 
     this.player = new Player(
       this.scene,
@@ -209,6 +216,20 @@ export class World {
     this.houseInterior?.setSurfaceCullingEnabled(enabled);
   }
 
+  setStaticBatchingEnabled(enabled: boolean): void {
+    this.staticBatchingEnabled = enabled;
+    if (enabled && this.model && !this.staticBatches) this.staticBatches = new StaticMeshBatches(this.model, this.environmentAnimations, this.staticObjects);
+    this.staticBatches?.setEnabled(enabled);
+    this.houseInterior?.setStaticBatchingEnabled(enabled);
+  }
+
+  setStaticTransformsEnabled(enabled: boolean): void {
+    this.staticTransformsEnabled = enabled;
+    if (enabled && this.model && !this.staticTransforms) this.staticTransforms = new StaticTransforms(this.model, this.environmentAnimations, this.staticObjects);
+    this.staticTransforms?.setEnabled(enabled);
+    this.houseInterior?.setStaticTransformsEnabled(enabled);
+  }
+
   resetPerformanceSamples(): void {
     this.physicsTimingStarted = performance.now();
     this.physicsTimingMs = 0;
@@ -277,6 +298,13 @@ export class World {
     await this.houseInterior.load();
 
     return this.houseInterior;
+  }
+
+  preloadHouseInterior(): void {
+    // Optional downloads begin after the essential world/player loading screen.
+    void this.loadHouseInterior().catch(error => {
+      console.warn("House preload failed; entering the house will retry:", error);
+    });
   }
 
   setExteriorVisible(visible: boolean): void {

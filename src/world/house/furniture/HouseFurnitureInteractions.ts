@@ -246,6 +246,28 @@ export class HouseFurnitureInteractions {
     }
   }
 
+  /** Precompile reachable point-light counts without changing effect state or brightness. */
+  async prepareLightingVariants(compile: () => Promise<unknown>, atMaximum?: () => Promise<unknown>): Promise<void> {
+    if (!performanceOptions.decorativeLights || !performanceOptions.activeLightsOnly) {
+      await atMaximum?.();
+      return;
+    }
+    const lights = [...this.nodes.values()].flatMap(node => node.light ? [node.light] : []);
+    const visibility = lights.map(light => light.visible);
+    try {
+      lights.forEach(light => { light.visible = false; });
+      await compile();
+      for (const light of lights) {
+        light.visible = true;
+        await compile();
+      }
+      // Workshop inspection can add one more light to the largest furniture state.
+      await atMaximum?.();
+    } finally {
+      lights.forEach((light, index) => { light.visible = visibility[index]; });
+    }
+  }
+
   private makeNode(def: FurnitureDefinition, model: THREE.Object3D): FurnitureNode {
     model.updateWorldMatrix(true, true);
     const bounds = new THREE.Box3().setFromObject(model, true);

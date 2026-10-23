@@ -1,12 +1,11 @@
 import * as THREE from "three";
-import Stats from "stats-gl";
+import type Stats from "stats-gl";
 import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
 import { InteractionHighlight } from "./InteractionHighlight";
 
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import type { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import type { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js";
 
 export class Renderer {
   instance: THREE.WebGLRenderer;
@@ -25,6 +24,9 @@ export class Renderer {
   private perfRenderMs = 0;
   private perfWarmupUntil = 0;
   private pixelRatioOverride?: number;
+  private statsReady?: Promise<void>;
+  private outlineReady?: Promise<void>;
+  private initializationError?: unknown;
 
   constructor(canvas: HTMLCanvasElement) {
     this.instance = new THREE.WebGLRenderer({
@@ -44,14 +46,30 @@ export class Renderer {
 
     // GPU queries and graph drawing are opt-in during normal gameplay.
     if (this.options.stats) {
-      this.stats = new Stats({ trackGPU: this.options.gpuStats });
-      // Pass the context so stats-gl does not also wrap every render pass.
-      void this.stats.init(this.instance.getContext());
-      document.body.appendChild(this.stats.dom);
+      this.statsReady = this.initializeStats().catch(error => { this.initializationError = error; });
     }
   }
+
+  private async initializeStats(): Promise<void> {
+    const { default: Stats } = await import("stats-gl");
+    this.stats = new Stats({ trackGPU: this.options.gpuStats });
+    // Pass the context so stats-gl does not also wrap every render pass.
+    await this.stats.init(this.instance.getContext());
+    document.body.appendChild(this.stats.dom);
+  }
+
   setupInteractionOutline(scene: THREE.Scene, camera: THREE.Camera): void {
     if (!this.options.outlines || this.options.highlightMode !== "outline") return;
+    this.outlineReady ??= this.initializeOutline(scene, camera).catch(error => { this.initializationError = error; });
+  }
+
+  private async initializeOutline(scene: THREE.Scene, camera: THREE.Camera): Promise<void> {
+    const [{ EffectComposer }, { RenderPass }, { OutlinePass }, { OutputPass }] = await Promise.all([
+      import("three/examples/jsm/postprocessing/EffectComposer.js"),
+      import("three/examples/jsm/postprocessing/RenderPass.js"),
+      import("three/examples/jsm/postprocessing/OutlinePass.js"),
+      import("three/examples/jsm/postprocessing/OutputPass.js"),
+    ]);
     this.composer = new EffectComposer(this.instance);
 
     this.renderPass = new RenderPass(scene, camera);
@@ -78,6 +96,58 @@ export class Renderer {
     this.composer.addPass(this.outlinePass);
 
     this.composer.addPass(new OutputPass());
+  }
+
+  async ready(): Promise<void> {
+    await Promise.all([this.statsReady, this.outlineReady]);
+    if (this.initializationError) throw this.initializationError;
+  }
+
+  /** Prepare uploads as well as programs while the loading/transition cover is visible. */
+  async prepareScene(scene: THREE.Scene, camera: THREE.Camera): Promise<void> {
+    await this.ready();
+    const textures = new Set<THREE.Texture>();
+    const collect = (value: unknown) => {
+      if (value instanceof THREE.Texture) textures.add(value);
+    };
+    collect(scene.background); collect(scene.environment);
+    scene.traverseVisible(object => {
+      const material = (object as THREE.Mesh).material;
+      for (const item of Array.isArray(material) ? material : [material]) {
+        if (!(item instanceof THREE.Material)) continue;
+        Object.values(item).forEach(collect);
+        if (item instanceof THREE.ShaderMaterial) Object.values(item.uniforms).forEach(uniform => {
+          if (Array.isArray(uniform.value)) uniform.value.forEach(collect);
+          else collect(uniform.value);
+        });
+      }
+    });
+    let sliceStarted = performance.now();
+    for (const texture of textures) {
+      this.instance.initTexture(texture);
+      if (performance.now() - sliceStarted >= 6) {
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        sliceStarted = performance.now();
+      }
+    }
+    await this.instance.compileAsync(scene, camera);
+  }
+
+  /** Called only behind an opaque cover; cached rim programs survive deselection. */
+  async prepareHighlights(scene: THREE.Scene, camera: THREE.Camera, targets: readonly THREE.Object3D[]): Promise<void> {
+    if (!this.options.outlines || this.options.highlightMode !== "border") return;
+    const previous = this.outlinedObject;
+    try {
+      for (const target of targets) {
+        let ancestor: THREE.Object3D | null = target;
+        while (ancestor && ancestor !== scene) ancestor = ancestor.parent;
+        if (!ancestor) continue;
+        this.setInteractionOutline(target);
+        if (this.borderHighlight.active) await this.instance.compileAsync(scene, camera);
+      }
+    } finally {
+      this.setInteractionOutline(previous);
+    }
   }
 
   setInteractionOutline(object: THREE.Object3D | null): void {
@@ -166,6 +236,8 @@ export class Renderer {
           decorativeLights: this.options.decorativeLights,
           workshopLights: this.options.workshopLights,
           beamBatching: this.options.beamBatching,
+          staticBatching: this.options.staticBatching,
+          staticTransforms: this.options.staticTransforms,
           stoneLod: this.options.stoneLod,
           surfaceCulling: this.options.surfaceCulling,
           activeLightsOnly: this.options.activeLightsOnly,

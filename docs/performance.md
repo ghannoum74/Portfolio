@@ -2,6 +2,11 @@
 
 Baseline: `634dcd2f93fb60677a8ecfe8eb18066d5d2320e1`.
 
+The next branch, `perf/quality-preserving-runtime-2026-10-23`, adds a combined
+runtime and loading pass on top of this work. See [the implementation and
+validation notes](runtime-optimization.md). It adds live **Static batching** and
+**Static transforms** controls alongside the existing Performance controls.
+
 ## Changes
 
 - Stats graphs and GPU timestamp queries are opt-in. When enabled, one explicit
@@ -161,6 +166,8 @@ captures to avoid measuring their overhead.
 | `?perfdiag=1&workshopLights=all` | Keep all four workshop point lights on, including while walking |
 | `?perfdiag=1&workshopLights=focused` | Opt into one focused workshop light; changes illumination on other crafts |
 | `?perfdiag=1&beamBatching=0` | Original separate beam meshes for comparison |
+| `?perfdiag=1&staticBatching=0` | Disable additional local decoration/exterior batches; beam batching remains independent |
+| `?perfdiag=1&staticTransforms=0` | Disable authored static local-transform freezing |
 | `?perfdiag=1&stoneLod=0` | Original full-detail stone geometry at every distance |
 | `?perfdiag=1&activeLightsOnly=0` | Include idle zero-power furniture lights; workshop policy is unchanged |
 | `?perfdiag=1&stats=1` | CPU graphs enabled, GPU queries off |

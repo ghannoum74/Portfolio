@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/performance.test.mjs",
     "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:optimize-all": "node scripts/optimize-assets.mjs asset-sources/models public/assets/models --recursive",
     "assets:stone-lods": "node scripts/generate-house-stone-lods.mjs"
   },
   "dependencies": {

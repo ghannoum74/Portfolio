@@ -89,6 +89,8 @@ export class Game {
   private readonly performanceDebugState = {
     stoneLod: performanceOptions.stoneLod,
     surfaceCulling: performanceOptions.surfaceCulling,
+    staticBatching: performanceOptions.staticBatching,
+    staticTransforms: performanceOptions.staticTransforms,
     pixelRatio: performanceOptions.pixelRatio,
     restartReadings: () => this.resetPerformanceSamples(),
   };
@@ -108,6 +110,7 @@ export class Game {
   private readonly sceneTransition: SceneTransition;
 
   private transitioning = false;
+  private preparingScene = false;
 
   private insideHouse = false;
 
@@ -358,7 +361,9 @@ export class Game {
         this.world.physics,
       );
 
-      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      await this.renderer.prepareScene(this.scene, this.playerCamera);
+
+      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
 
       this.cameraHelper.visible = false;
       this.cameraDebugMesh.visible = false;
@@ -381,6 +386,7 @@ export class Game {
       await this.loading.complete();
 
       this.loadNpcsInBackground();
+      this.world.preloadHouseInterior();
 
       // Now the visitor may scroll.
       this.entrance.activate();
@@ -415,7 +421,7 @@ export class Game {
 
     this.entrance.raf(performance.now());
 
-    if (this.phase === "loading") {
+    if (this.phase === "loading" || this.preparingScene) {
       return;
     }
 
@@ -734,6 +740,16 @@ export class Game {
         this.world.setHouseSurfaceCullingEnabled(enabled);
         this.resetPerformanceSamples();
       });
+      performanceFolder.add(this.performanceDebugState, "staticBatching").name("Static batching").onChange((enabled: boolean) => {
+        performanceOptions.staticBatching = enabled;
+        this.world.setStaticBatchingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      performanceFolder.add(this.performanceDebugState, "staticTransforms").name("Static transforms").onChange((enabled: boolean) => {
+        performanceOptions.staticTransforms = enabled;
+        this.world.setStaticTransformsEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
       const maximumRatio = Math.min(window.devicePixelRatio || 1, 2);
       performanceFolder.add(this.performanceDebugState, "pixelRatio", Math.min(0.5, maximumRatio), maximumRatio, 0.05)
         .name("Pixel ratio").onFinishChange((ratio: number) => {
@@ -1003,6 +1019,10 @@ export class Game {
        */
       await this.sceneTransition.fadeIn();
 
+      // Keep light preparation deterministic while the opaque cover is visible.
+      // The clock still ticks, so resuming does not simulate the preparation interval.
+      this.preparingScene = true;
+
       house = await this.world.loadHouseInterior();
 
       const spawn = house.getSpawn();
@@ -1059,12 +1079,18 @@ export class Game {
        * Do it while the screen is covered
        * so there is no visible hitch.
        */
-      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
-      await this.workshop?.prepareLightingVariants(() =>
-        this.renderer.instance.compileAsync(this.scene, this.playerCamera),
-      );
+      await this.renderer.prepareScene(this.scene, this.playerCamera);
+      const compile = () => this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      if (this.furniture) {
+        await this.furniture.prepareLightingVariants(compile, () =>
+          this.workshop?.prepareLightingVariants(compile) ?? Promise.resolve(),
+        );
+      } else await this.workshop?.prepareLightingVariants(compile);
+
+      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
 
       this.insideHouse = true;
+      this.preparingScene = false;
 
       await this.sceneTransition.fadeOut();
     } catch (error) {
@@ -1090,8 +1116,11 @@ export class Game {
 
       this.thirdPersonCamera?.snap();
 
+      this.preparingScene = false;
+
       await this.sceneTransition.fadeOut();
     } finally {
+      this.preparingScene = false;
       this.transitioning = false;
 
       if (
