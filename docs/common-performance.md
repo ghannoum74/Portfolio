@@ -110,9 +110,12 @@ exterior batching appearance switch, all four workshop details, inspection-only
 lighting, thin stand borders, return to the house, one complete cached door
 exit/reentry cycle, all four Projects Book pages with forward/backward controls,
 Esc return and basic camera input. Other furniture modes and full wall-collision
-traversal remain pending for this pass. Cold-load latency and frame timings have
-not been remeasured. No hardware FPS improvement is claimed from draw-count or
-bundle-size reductions.
+traversal remain pending for this pass. The
+[same-view CPU/GPU comparison](common-performance-timing-2026-10-23.md) confirms
+110 -> 92 indoor and 176 -> 149 exterior draw calls with unchanged triangles.
+Repeated timing baselines drifted; no consistent FPS gain is established. A clean
+single-instance benchmark, cold startup and isolated camera-cache measurement
+remain pending. No FPS improvement is inferred from draw-count or bundle sizes.
 
 ## Primary references
 

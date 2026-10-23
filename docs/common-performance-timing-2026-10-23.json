@@ -1,0 +1,2193 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "featureHeadUnderReview": "8b9bb21a10340936961d1d0adba0e691cc36d2ab",
+  "runtimeChangeHead": "f4144381085e674622dd61295fe31a7e3d91f323",
+  "exactWindowsCheckoutShaVerified": false,
+  "site": "http://localhost:5173/?perfdiag=1",
+  "method": {
+    "order": "on, off, on separately in each view",
+    "reset": "Restart readings; application excludes two seconds",
+    "waitBeforeReadMs": 22000,
+    "selectedWindowsPerCondition": 5,
+    "windowDurationApproxMs": 3000,
+    "summary": "Median of five window summaries; GPU uses each window mean, not pooled per-frame percentiles",
+    "screenActionsDuringWait": false,
+    "qualityControlsHeldConstant": true
+  },
+  "views": {
+    "house": {
+      "cssViewport": {
+        "width": 1226,
+        "height": 828
+      },
+      "framebuffer": {
+        "width": 1348,
+        "height": 910
+      },
+      "pixelRatio": 1.1,
+      "previewHour": 20.961666666666666,
+      "pointLights": 1,
+      "highlightActive": true
+    },
+    "exterior": {
+      "cssViewport": {
+        "width": 1745,
+        "height": 777
+      },
+      "framebuffer": {
+        "width": 1919,
+        "height": 854
+      },
+      "pixelRatio": 1.1,
+      "previewHour": 13,
+      "pointLights": 0,
+      "highlightActive": false
+    }
+  },
+  "limits": [
+    "Local Vite development build, not a production or cold-cache benchmark.",
+    "Original portfolio tabs remained open; independent DOM reads returned visible for all three tabs. Simultaneous resource competition could not be excluded.",
+    "Initial and restored timing baselines drifted; no consistent FPS gain or timing percentage is established.",
+    "Static batching toggles merging plus exterior instancing together. Camera-query reuse and startup loading were not isolated.",
+    "No full Chrome Performance trace or hardware utilization capture was taken."
+  ],
+  "cleanup": {
+    "temporaryExteriorTabClosed": true,
+    "houseSettingsRestoredBeforeExterior": true,
+    "reloadObserved": true,
+    "freshExteriorStartupAt": "2026-10-23T18:34:10.724Z",
+    "lastCaptureEndAt": "2026-10-23T18:33:42.085Z",
+    "reloadCauseDetermined": false,
+    "finalOriginalDiagnosticView": "exterior spawn after restarting intro",
+    "finalSettings": {
+      "gpuTiming": false,
+      "realTime": true,
+      "staticBatching": true,
+      "staticTransforms": true,
+      "shadows": true,
+      "stoneLod": true,
+      "surfaceCulling": true,
+      "borderHighlight": true,
+      "pixelRatio": 1.1
+    },
+    "capturedConsoleErrors": [],
+    "localWorkspaceUnavailableDuringPublication": true
+  },
+  "summary": {
+    "houseDrawCallsOff": 110,
+    "houseDrawCallsOn": 92,
+    "houseDrawReductionPercent": 16.363636363636363,
+    "houseTriangles": 34428,
+    "exteriorDrawCallsOff": 176,
+    "exteriorDrawCallsOn": 149,
+    "exteriorDrawReductionPercent": 15.340909090909092,
+    "exteriorTriangles": 353420,
+    "validGpuSamples": 188,
+    "maxPendingQueries": 3,
+    "disjointEvents": 0,
+    "consistentFpsGainEstablished": false
+  },
+  "runs": [
+    {
+      "label": "A1 batching on",
+      "startedAt": "2026-10-23T18:21:34.817Z",
+      "endedAt": "2026-10-23T18:22:07.746Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:21:54.714Z",
+          "fpsApprox": 30,
+          "rendererCpuMsApprox": 2.84,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 303,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 12.92,
+          "gpuRenderMsP50": 12.92,
+          "gpuRenderMsP95": 13.11,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:21:57.739Z",
+          "fpsApprox": 32,
+          "rendererCpuMsApprox": 4.51,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 303,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 10,
+          "gpuRenderMsMean": 12.49,
+          "gpuRenderMsP50": 12.8,
+          "gpuRenderMsP95": 13.16,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:22:00.767Z",
+          "fpsApprox": 29,
+          "rendererCpuMsApprox": 5.51,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 303,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 12.54,
+          "gpuRenderMsP50": 12.82,
+          "gpuRenderMsP95": 13.05,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:22:03.780Z",
+          "fpsApprox": 30,
+          "rendererCpuMsApprox": 3.12,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 303,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 13.08,
+          "gpuRenderMsP50": 12.99,
+          "gpuRenderMsP95": 13.6,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:22:06.799Z",
+          "fpsApprox": 27,
+          "rendererCpuMsApprox": 3.16,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 303,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 8,
+          "gpuRenderMsMean": 12.9,
+          "gpuRenderMsP50": 12.82,
+          "gpuRenderMsP95": 13.11,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:21:54.851Z",
+          "scene": "house",
+          "frames": 91,
+          "elapsedMs": 3006.6,
+          "callbackCpuMs": {
+            "samples": 91,
+            "mean": 3.58,
+            "p50": 3.3,
+            "p95": 5.9
+          },
+          "callbackIntervalMs": {
+            "samples": 91,
+            "mean": 33.33,
+            "p50": 33.3,
+            "p95": 33.8
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.56,
+            "camera": 0.05,
+            "effectsUi": 0.07,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 2.86
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:21:57.900Z",
+          "scene": "house",
+          "frames": 99,
+          "elapsedMs": 3021.8,
+          "callbackCpuMs": {
+            "samples": 99,
+            "mean": 5.48,
+            "p50": 3.9,
+            "p95": 11.5
+          },
+          "callbackIntervalMs": {
+            "samples": 99,
+            "mean": 30.8,
+            "p50": 33.3,
+            "p95": 33.9
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.66,
+            "camera": 0.13,
+            "effectsUi": 0.1,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 4.54
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:22:00.932Z",
+          "scene": "house",
+          "frames": 88,
+          "elapsedMs": 3002.4,
+          "callbackCpuMs": {
+            "samples": 88,
+            "mean": 6.65,
+            "p50": 5.5,
+            "p95": 13
+          },
+          "callbackIntervalMs": {
+            "samples": 88,
+            "mean": 34.46,
+            "p50": 33.3,
+            "p95": 49.6
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 0.89,
+            "camera": 0.08,
+            "effectsUi": 0.12,
+            "interaction": 0.02,
+            "lod": 0.03,
+            "render": 5.48
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:22:03.978Z",
+          "scene": "house",
+          "frames": 91,
+          "elapsedMs": 3018.8,
+          "callbackCpuMs": {
+            "samples": 91,
+            "mean": 3.87,
+            "p50": 3.6,
+            "p95": 6.9
+          },
+          "callbackIntervalMs": {
+            "samples": 91,
+            "mean": 33.51,
+            "p50": 33.4,
+            "p95": 33.9
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.59,
+            "camera": 0.05,
+            "effectsUi": 0.08,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 3.12
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:22:07.032Z",
+          "scene": "house",
+          "frames": 84,
+          "elapsedMs": 3022,
+          "callbackCpuMs": {
+            "samples": 84,
+            "mean": 4.35,
+            "p50": 3.5,
+            "p95": 9.3
+          },
+          "callbackIntervalMs": {
+            "samples": 84,
+            "mean": 36.32,
+            "p50": 33.3,
+            "p95": 50.2
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.69,
+            "camera": 0.05,
+            "effectsUi": 0.08,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 3.48
+          }
+        }
+      ],
+      "summary": {
+        "label": "A1 batching on",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 30,
+        "callbackCpuMs": 4.35,
+        "callbackIntervalMs": 33.51,
+        "rendererCpuMs": 3.16,
+        "gpuRenderMs": 12.9,
+        "cameraCpuMs": 0.05,
+        "drawCalls": [
+          92
+        ],
+        "triangles": [
+          34428
+        ],
+        "staticBatching": [
+          true
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 45,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 1,
+        "scenes": [
+          "house"
+        ]
+      }
+    },
+    {
+      "label": "B batching off",
+      "startedAt": "2026-10-23T18:22:45.531Z",
+      "endedAt": "2026-10-23T18:23:19.612Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:23:05.396Z",
+          "fpsApprox": 28,
+          "rendererCpuMsApprox": 5.52,
+          "drawCallsLastFrame": 110,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 8,
+          "gpuRenderMsMean": 12.94,
+          "gpuRenderMsP50": 12.92,
+          "gpuRenderMsP95": 13.15,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:23:08.403Z",
+          "fpsApprox": 36,
+          "rendererCpuMsApprox": 4.7,
+          "drawCallsLastFrame": 110,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 11,
+          "gpuRenderMsMean": 11.89,
+          "gpuRenderMsP50": 13.07,
+          "gpuRenderMsP95": 13.74,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:23:11.423Z",
+          "fpsApprox": 29,
+          "rendererCpuMsApprox": 5.14,
+          "drawCallsLastFrame": 110,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 8,
+          "gpuRenderMsMean": 10.72,
+          "gpuRenderMsP50": 10.07,
+          "gpuRenderMsP95": 12.86,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:23:14.456Z",
+          "fpsApprox": 30,
+          "rendererCpuMsApprox": 3.77,
+          "drawCallsLastFrame": 110,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 13.06,
+          "gpuRenderMsP50": 12.95,
+          "gpuRenderMsP95": 13.99,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:23:17.460Z",
+          "fpsApprox": 28,
+          "rendererCpuMsApprox": 3.85,
+          "drawCallsLastFrame": 110,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 13.26,
+          "gpuRenderMsP50": 13.11,
+          "gpuRenderMsP95": 14.55,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:23:05.569Z",
+          "scene": "house",
+          "frames": 86,
+          "elapsedMs": 3012.2,
+          "callbackCpuMs": {
+            "samples": 86,
+            "mean": 6.85,
+            "p50": 6.3,
+            "p95": 12.3
+          },
+          "callbackIntervalMs": {
+            "samples": 86,
+            "mean": 35.66,
+            "p50": 33.4,
+            "p95": 50.2
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 0.87,
+            "camera": 0.09,
+            "effectsUi": 0.13,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 5.69
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:23:08.604Z",
+          "scene": "house",
+          "frames": 108,
+          "elapsedMs": 3013.5,
+          "callbackCpuMs": {
+            "samples": 108,
+            "mean": 5.67,
+            "p50": 4.3,
+            "p95": 12.5
+          },
+          "callbackIntervalMs": {
+            "samples": 108,
+            "mean": 28.09,
+            "p50": 33.1,
+            "p95": 33.8
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.66,
+            "camera": 0.06,
+            "effectsUi": 0.12,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 4.78
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:23:11.627Z",
+          "scene": "house",
+          "frames": 87,
+          "elapsedMs": 3006,
+          "callbackCpuMs": {
+            "samples": 87,
+            "mean": 5.94,
+            "p50": 5,
+            "p95": 12.4
+          },
+          "callbackIntervalMs": {
+            "samples": 87,
+            "mean": 34.86,
+            "p50": 33.4,
+            "p95": 49.9
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.79,
+            "camera": 0.07,
+            "effectsUi": 0.12,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 4.92
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:23:14.657Z",
+          "scene": "house",
+          "frames": 90,
+          "elapsedMs": 3003.7,
+          "callbackCpuMs": {
+            "samples": 90,
+            "mean": 4.49,
+            "p50": 4.1,
+            "p95": 7.3
+          },
+          "callbackIntervalMs": {
+            "samples": 90,
+            "mean": 33.7,
+            "p50": 33.3,
+            "p95": 33.9
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.61,
+            "camera": 0.06,
+            "effectsUi": 0.08,
+            "interaction": 0.02,
+            "lod": 0.01,
+            "render": 3.7
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:23:17.692Z",
+          "scene": "house",
+          "frames": 86,
+          "elapsedMs": 3004.8,
+          "callbackCpuMs": {
+            "samples": 86,
+            "mean": 4.82,
+            "p50": 4.1,
+            "p95": 8.5
+          },
+          "callbackIntervalMs": {
+            "samples": 86,
+            "mean": 35.27,
+            "p50": 33.3,
+            "p95": 52.3
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.67,
+            "camera": 0.05,
+            "effectsUi": 0.09,
+            "interaction": 0.01,
+            "lod": 0.03,
+            "render": 3.96
+          }
+        }
+      ],
+      "summary": {
+        "label": "B batching off",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 29,
+        "callbackCpuMs": 5.67,
+        "callbackIntervalMs": 34.86,
+        "rendererCpuMs": 4.7,
+        "gpuRenderMs": 12.94,
+        "cameraCpuMs": 0.06,
+        "drawCalls": [
+          110
+        ],
+        "triangles": [
+          34428
+        ],
+        "staticBatching": [
+          false
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 45,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 1,
+        "scenes": [
+          "house"
+        ]
+      }
+    },
+    {
+      "label": "A2 batching restored",
+      "startedAt": "2026-10-23T18:23:52.633Z",
+      "endedAt": "2026-10-23T18:24:27.088Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:24:12.549Z",
+          "fpsApprox": 30,
+          "rendererCpuMsApprox": 3.07,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 12.95,
+          "gpuRenderMsP50": 12.96,
+          "gpuRenderMsP95": 13.2,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:24:15.550Z",
+          "fpsApprox": 22,
+          "rendererCpuMsApprox": 6.3,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 7,
+          "gpuRenderMsMean": 13.27,
+          "gpuRenderMsP50": 13.11,
+          "gpuRenderMsP95": 14.07,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:24:18.548Z",
+          "fpsApprox": 29,
+          "rendererCpuMsApprox": 4.17,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 12.86,
+          "gpuRenderMsP50": 12.85,
+          "gpuRenderMsP95": 13.06,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:24:21.548Z",
+          "fpsApprox": 30,
+          "rendererCpuMsApprox": 3.26,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 9,
+          "gpuRenderMsMean": 12.9,
+          "gpuRenderMsP50": 12.89,
+          "gpuRenderMsP95": 13.14,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        },
+        {
+          "timestamp": "2026-10-23T18:24:24.559Z",
+          "fpsApprox": 17,
+          "rendererCpuMsApprox": 5.72,
+          "drawCallsLastFrame": 92,
+          "trianglesLastFrame": 34428,
+          "gpuTextures": 62,
+          "gpuGeometries": 336,
+          "highlightActive": true,
+          "highlightMode": "border",
+          "outlineActive": true,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 5,
+          "gpuRenderMsMean": 13.59,
+          "gpuRenderMsP50": 12.98,
+          "gpuRenderMsP95": 16.29,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 1
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:24:12.614Z",
+          "scene": "house",
+          "frames": 91,
+          "elapsedMs": 3002.5,
+          "callbackCpuMs": {
+            "samples": 91,
+            "mean": 3.79,
+            "p50": 3.5,
+            "p95": 6.6
+          },
+          "callbackIntervalMs": {
+            "samples": 91,
+            "mean": 33.33,
+            "p50": 33.3,
+            "p95": 33.7
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.54,
+            "camera": 0.06,
+            "effectsUi": 0.08,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 3.07
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:24:15.649Z",
+          "scene": "house",
+          "frames": 67,
+          "elapsedMs": 3004.5,
+          "callbackCpuMs": {
+            "samples": 67,
+            "mean": 7.82,
+            "p50": 6,
+            "p95": 14.2
+          },
+          "callbackIntervalMs": {
+            "samples": 67,
+            "mean": 45.27,
+            "p50": 33.3,
+            "p95": 48.2
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.16,
+            "camera": 0.09,
+            "effectsUi": 0.14,
+            "interaction": 0.01,
+            "lod": 0.03,
+            "render": 6.37
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:24:18.681Z",
+          "scene": "house",
+          "frames": 88,
+          "elapsedMs": 3002.8,
+          "callbackCpuMs": {
+            "samples": 88,
+            "mean": 5.09,
+            "p50": 4.7,
+            "p95": 8.5
+          },
+          "callbackIntervalMs": {
+            "samples": 88,
+            "mean": 34.46,
+            "p50": 33.3,
+            "p95": 49.8
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 0.73,
+            "camera": 0.07,
+            "effectsUi": 0.11,
+            "interaction": 0.01,
+            "lod": 0.03,
+            "render": 4.12
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:24:21.715Z",
+          "scene": "house",
+          "frames": 90,
+          "elapsedMs": 3003.5,
+          "callbackCpuMs": {
+            "samples": 90,
+            "mean": 4.1,
+            "p50": 3.8,
+            "p95": 6.5
+          },
+          "callbackIntervalMs": {
+            "samples": 90,
+            "mean": 33.7,
+            "p50": 33.4,
+            "p95": 34.1
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.59,
+            "camera": 0.05,
+            "effectsUi": 0.11,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 3.29
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:24:24.800Z",
+          "scene": "house",
+          "frames": 50,
+          "elapsedMs": 3057.4,
+          "callbackCpuMs": {
+            "samples": 50,
+            "mean": 7.36,
+            "p50": 4.7,
+            "p95": 12
+          },
+          "callbackIntervalMs": {
+            "samples": 50,
+            "mean": 61.65,
+            "p50": 33.4,
+            "p95": 86.3
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 0.94,
+            "camera": 0.09,
+            "effectsUi": 0.15,
+            "interaction": 0.01,
+            "lod": 0.04,
+            "render": 6.11
+          }
+        }
+      ],
+      "summary": {
+        "label": "A2 batching restored",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 29,
+        "callbackCpuMs": 5.09,
+        "callbackIntervalMs": 34.46,
+        "rendererCpuMs": 4.17,
+        "gpuRenderMs": 12.95,
+        "cameraCpuMs": 0.07,
+        "drawCalls": [
+          92
+        ],
+        "triangles": [
+          34428
+        ],
+        "staticBatching": [
+          true
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 39,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 1,
+        "scenes": [
+          "house"
+        ]
+      }
+    },
+    {
+      "label": "Exterior A1 batching on",
+      "startedAt": "2026-10-23T18:30:21.908Z",
+      "endedAt": "2026-10-23T18:30:56.675Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:30:42.316Z",
+          "fpsApprox": 11,
+          "rendererCpuMsApprox": 14.67,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 161,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 2,
+          "gpuRenderMsMean": 24.64,
+          "gpuRenderMsP50": 24.53,
+          "gpuRenderMsP95": 24.74,
+          "gpuTimingPending": 2,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:30:45.537Z",
+          "fpsApprox": 15,
+          "rendererCpuMsApprox": 16.73,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 161,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 5,
+          "gpuRenderMsMean": 25.24,
+          "gpuRenderMsP50": 24.5,
+          "gpuRenderMsP95": 27.46,
+          "gpuTimingPending": 2,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:30:48.891Z",
+          "fpsApprox": 7,
+          "rendererCpuMsApprox": 17.56,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 161,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 2,
+          "gpuRenderMsMean": 23.72,
+          "gpuRenderMsP50": 21.96,
+          "gpuRenderMsP95": 25.47,
+          "gpuTimingPending": 2,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:30:51.910Z",
+          "fpsApprox": 5,
+          "rendererCpuMsApprox": 9,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 161,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 3,
+          "gpuRenderMsMean": 23.19,
+          "gpuRenderMsP50": 24.25,
+          "gpuRenderMsP95": 24.74,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:30:55.164Z",
+          "fpsApprox": 6,
+          "rendererCpuMsApprox": 9.52,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 161,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 2,
+          "gpuRenderMsMean": 20.35,
+          "gpuRenderMsP50": 18.76,
+          "gpuRenderMsP95": 21.95,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:30:42.450Z",
+          "scene": "exterior",
+          "frames": 30,
+          "elapsedMs": 3030.8,
+          "callbackCpuMs": {
+            "samples": 30,
+            "mean": 16.76,
+            "p50": 15.3,
+            "p95": 25.9
+          },
+          "callbackIntervalMs": {
+            "samples": 30,
+            "mean": 102.76,
+            "p50": 50.5,
+            "p95": 175.8
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.86,
+            "camera": 0.04,
+            "effectsUi": 0.05,
+            "interaction": 0.04,
+            "lod": 0.02,
+            "render": 14.74
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:30:45.551Z",
+          "scene": "exterior",
+          "frames": 45,
+          "elapsedMs": 3057.8,
+          "callbackCpuMs": {
+            "samples": 45,
+            "mean": 19.26,
+            "p50": 16.8,
+            "p95": 29.4
+          },
+          "callbackIntervalMs": {
+            "samples": 45,
+            "mean": 68.67,
+            "p50": 49.2,
+            "p95": 133.1
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 2.04,
+            "camera": 0.06,
+            "effectsUi": 0.06,
+            "interaction": 0.03,
+            "lod": 0.01,
+            "render": 17.04
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:30:48.892Z",
+          "scene": "exterior",
+          "frames": 22,
+          "elapsedMs": 3347.6,
+          "callbackCpuMs": {
+            "samples": 22,
+            "mean": 19.72,
+            "p50": 17,
+            "p95": 27.1
+          },
+          "callbackIntervalMs": {
+            "samples": 22,
+            "mean": 152.94,
+            "p50": 48.5,
+            "p95": 939
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.95,
+            "camera": 0.03,
+            "effectsUi": 0.09,
+            "interaction": 0.01,
+            "lod": 0.01,
+            "render": 17.61
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:30:52.406Z",
+          "scene": "exterior",
+          "frames": 25,
+          "elapsedMs": 3043.7,
+          "callbackCpuMs": {
+            "samples": 25,
+            "mean": 11.62,
+            "p50": 11.2,
+            "p95": 21.6
+          },
+          "callbackIntervalMs": {
+            "samples": 25,
+            "mean": 140.44,
+            "p50": 99.3,
+            "p95": 479.1
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.03,
+            "world": 1.2,
+            "camera": 0.04,
+            "effectsUi": 0.03,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 10.28
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:30:55.898Z",
+          "scene": "exterior",
+          "frames": 14,
+          "elapsedMs": 3340,
+          "callbackCpuMs": {
+            "samples": 14,
+            "mean": 8.6,
+            "p50": 8.1,
+            "p95": 12.9
+          },
+          "callbackIntervalMs": {
+            "samples": 14,
+            "mean": 249.91,
+            "p50": 166.6,
+            "p95": 599.9
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1,
+            "camera": 0.02,
+            "effectsUi": 0.04,
+            "interaction": 0.01,
+            "lod": 0.01,
+            "render": 7.5
+          }
+        }
+      ],
+      "summary": {
+        "label": "Exterior A1 batching on",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 7,
+        "callbackCpuMs": 16.76,
+        "callbackIntervalMs": 140.44,
+        "rendererCpuMs": 14.67,
+        "gpuRenderMs": 23.72,
+        "cameraCpuMs": 0.04,
+        "drawCalls": [
+          149
+        ],
+        "triangles": [
+          353420
+        ],
+        "staticBatching": [
+          true
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 14,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 2,
+        "scenes": [
+          "exterior"
+        ]
+      }
+    },
+    {
+      "label": "Exterior B batching off",
+      "startedAt": "2026-10-23T18:31:45.392Z",
+      "endedAt": "2026-10-23T18:32:19.234Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:32:05.440Z",
+          "fpsApprox": 15,
+          "rendererCpuMsApprox": 9.93,
+          "drawCallsLastFrame": 176,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 4,
+          "gpuRenderMsMean": 22.5,
+          "gpuRenderMsP50": 21.92,
+          "gpuRenderMsP95": 24.14,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:32:08.452Z",
+          "fpsApprox": 16,
+          "rendererCpuMsApprox": 12.25,
+          "drawCallsLastFrame": 176,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 5,
+          "gpuRenderMsMean": 21.78,
+          "gpuRenderMsP50": 21.7,
+          "gpuRenderMsP95": 24.29,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:32:11.497Z",
+          "fpsApprox": 14,
+          "rendererCpuMsApprox": 11.24,
+          "drawCallsLastFrame": 176,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 4,
+          "gpuRenderMsMean": 23.9,
+          "gpuRenderMsP50": 24.36,
+          "gpuRenderMsP95": 24.87,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:32:14.514Z",
+          "fpsApprox": 17,
+          "rendererCpuMsApprox": 9.48,
+          "drawCallsLastFrame": 176,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 6,
+          "gpuRenderMsMean": 21.74,
+          "gpuRenderMsP50": 21.8,
+          "gpuRenderMsP95": 22.1,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:32:17.582Z",
+          "fpsApprox": 19,
+          "rendererCpuMsApprox": 8.85,
+          "drawCallsLastFrame": 176,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 3,
+          "gpuRenderMsMean": 19.7,
+          "gpuRenderMsP50": 21.82,
+          "gpuRenderMsP95": 23.24,
+          "gpuTimingPending": 3,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": false,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:32:05.710Z",
+          "scene": "exterior",
+          "frames": 44,
+          "elapsedMs": 3009.9,
+          "callbackCpuMs": {
+            "samples": 44,
+            "mean": 11.45,
+            "p50": 11.3,
+            "p95": 15.9
+          },
+          "callbackIntervalMs": {
+            "samples": 44,
+            "mean": 71.21,
+            "p50": 66.3,
+            "p95": 148.4
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.42,
+            "camera": 0.03,
+            "effectsUi": 0.05,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 9.89
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:32:08.879Z",
+          "scene": "exterior",
+          "frames": 54,
+          "elapsedMs": 3111.7,
+          "callbackCpuMs": {
+            "samples": 54,
+            "mean": 14.3,
+            "p50": 12.2,
+            "p95": 23.6
+          },
+          "callbackIntervalMs": {
+            "samples": 54,
+            "mean": 58.63,
+            "p50": 65.9,
+            "p95": 99.8
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.63,
+            "camera": 0.06,
+            "effectsUi": 0.04,
+            "interaction": 0.03,
+            "lod": 0.02,
+            "render": 12.51
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:32:12.045Z",
+          "scene": "exterior",
+          "frames": 47,
+          "elapsedMs": 3045.5,
+          "callbackCpuMs": {
+            "samples": 47,
+            "mean": 12.4,
+            "p50": 12,
+            "p95": 16.8
+          },
+          "callbackIntervalMs": {
+            "samples": 47,
+            "mean": 67.38,
+            "p50": 66.5,
+            "p95": 133.2
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.4,
+            "camera": 0.04,
+            "effectsUi": 0.08,
+            "interaction": 0.01,
+            "lod": 0.01,
+            "render": 10.83
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:32:15.203Z",
+          "scene": "exterior",
+          "frames": 54,
+          "elapsedMs": 3106.1,
+          "callbackCpuMs": {
+            "samples": 54,
+            "mean": 10.85,
+            "p50": 10.8,
+            "p95": 15.5
+          },
+          "callbackIntervalMs": {
+            "samples": 54,
+            "mean": 58.62,
+            "p50": 66.3,
+            "p95": 83.6
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.31,
+            "camera": 0.03,
+            "effectsUi": 0.05,
+            "interaction": 0.01,
+            "lod": 0.01,
+            "render": 9.41
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:32:18.284Z",
+          "scene": "exterior",
+          "frames": 58,
+          "elapsedMs": 3034.2,
+          "callbackCpuMs": {
+            "samples": 58,
+            "mean": 10.68,
+            "p50": 10.9,
+            "p95": 19.6
+          },
+          "callbackIntervalMs": {
+            "samples": 58,
+            "mean": 52.87,
+            "p50": 49.8,
+            "p95": 131.4
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.49,
+            "camera": 0.03,
+            "effectsUi": 0.05,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 9.05
+          }
+        }
+      ],
+      "summary": {
+        "label": "Exterior B batching off",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 16,
+        "callbackCpuMs": 11.45,
+        "callbackIntervalMs": 58.63,
+        "rendererCpuMs": 9.93,
+        "gpuRenderMs": 21.78,
+        "cameraCpuMs": 0.03,
+        "drawCalls": [
+          176
+        ],
+        "triangles": [
+          353420
+        ],
+        "staticBatching": [
+          false
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 22,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 3,
+        "scenes": [
+          "exterior"
+        ]
+      }
+    },
+    {
+      "label": "Exterior A2 batching restored",
+      "startedAt": "2026-10-23T18:33:05.143Z",
+      "endedAt": "2026-10-23T18:33:42.085Z",
+      "renderer": [
+        {
+          "timestamp": "2026-10-23T18:33:28.101Z",
+          "fpsApprox": 19,
+          "rendererCpuMsApprox": 9.22,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 6,
+          "gpuRenderMsMean": 20.9,
+          "gpuRenderMsP50": 20.51,
+          "gpuRenderMsP95": 21.76,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:33:31.164Z",
+          "fpsApprox": 16,
+          "rendererCpuMsApprox": 9.85,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 5,
+          "gpuRenderMsMean": 21.65,
+          "gpuRenderMsP50": 21.62,
+          "gpuRenderMsP95": 21.93,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:33:34.241Z",
+          "fpsApprox": 14,
+          "rendererCpuMsApprox": 10.85,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 4,
+          "gpuRenderMsMean": 20.19,
+          "gpuRenderMsP50": 19.93,
+          "gpuRenderMsP95": 21.81,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:33:37.248Z",
+          "fpsApprox": 18,
+          "rendererCpuMsApprox": 11.28,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 5,
+          "gpuRenderMsMean": 21.55,
+          "gpuRenderMsP50": 21.67,
+          "gpuRenderMsP95": 22.26,
+          "gpuTimingPending": 1,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        },
+        {
+          "timestamp": "2026-10-23T18:33:41.043Z",
+          "fpsApprox": 13,
+          "rendererCpuMsApprox": 12,
+          "drawCallsLastFrame": 149,
+          "trianglesLastFrame": 353420,
+          "gpuTextures": 34,
+          "gpuGeometries": 192,
+          "highlightActive": false,
+          "highlightMode": "border",
+          "outlineActive": false,
+          "postprocessOutlineActive": false,
+          "lowFx": false,
+          "shadows": true,
+          "pixelRatio": 1.100000023841858,
+          "stats": false,
+          "gpuStats": false,
+          "gpuTiming": true,
+          "gpuTimingStatus": "ready",
+          "gpuTimingSamples": 3,
+          "gpuRenderMsMean": 23.05,
+          "gpuRenderMsP50": 23.72,
+          "gpuRenderMsP95": 23.93,
+          "gpuTimingPending": 3,
+          "gpuTimingDisjointEvents": 0,
+          "decorativeLights": true,
+          "workshopLights": "inspect",
+          "beamBatching": true,
+          "staticBatching": true,
+          "staticTransforms": true,
+          "stoneLod": true,
+          "surfaceCulling": true,
+          "activeLightsOnly": true,
+          "pointLights": 0
+        }
+      ],
+      "profiles": [
+        {
+          "timestamp": "2026-10-23T18:33:28.497Z",
+          "scene": "exterior",
+          "frames": 56,
+          "elapsedMs": 3008.6,
+          "callbackCpuMs": {
+            "samples": 56,
+            "mean": 10.41,
+            "p50": 10.3,
+            "p95": 17.6
+          },
+          "callbackIntervalMs": {
+            "samples": 56,
+            "mean": 54.75,
+            "p50": 65.9,
+            "p95": 133.5
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.25,
+            "camera": 0.03,
+            "effectsUi": 0.05,
+            "interaction": 0.01,
+            "lod": 0.02,
+            "render": 9.03
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:33:31.618Z",
+          "scene": "exterior",
+          "frames": 53,
+          "elapsedMs": 3059.2,
+          "callbackCpuMs": {
+            "samples": 53,
+            "mean": 11.88,
+            "p50": 11.6,
+            "p95": 17.2
+          },
+          "callbackIntervalMs": {
+            "samples": 53,
+            "mean": 58.8,
+            "p50": 65.7,
+            "p95": 116.6
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.5,
+            "camera": 0.04,
+            "effectsUi": 0.05,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 10.23
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:33:34.706Z",
+          "scene": "exterior",
+          "frames": 43,
+          "elapsedMs": 3029.7,
+          "callbackCpuMs": {
+            "samples": 43,
+            "mean": 13.09,
+            "p50": 12.3,
+            "p95": 19.3
+          },
+          "callbackIntervalMs": {
+            "samples": 43,
+            "mean": 71.69,
+            "p50": 66.5,
+            "p95": 116.7
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.01,
+            "world": 1.66,
+            "camera": 0.04,
+            "effectsUi": 0.09,
+            "interaction": 0.02,
+            "lod": 0.02,
+            "render": 11.24
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:33:37.746Z",
+          "scene": "exterior",
+          "frames": 56,
+          "elapsedMs": 3006,
+          "callbackCpuMs": {
+            "samples": 56,
+            "mean": 12.45,
+            "p50": 11.7,
+            "p95": 18.4
+          },
+          "callbackIntervalMs": {
+            "samples": 56,
+            "mean": 54.45,
+            "p50": 50.1,
+            "p95": 83.6
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.3,
+            "camera": 0.04,
+            "effectsUi": 0.04,
+            "interaction": 0.02,
+            "lod": 0.01,
+            "render": 11.02
+          }
+        },
+        {
+          "timestamp": "2026-10-23T18:33:41.044Z",
+          "scene": "exterior",
+          "frames": 40,
+          "elapsedMs": 3256.1,
+          "callbackCpuMs": {
+            "samples": 40,
+            "mean": 13.86,
+            "p50": 11.1,
+            "p95": 19.5
+          },
+          "callbackIntervalMs": {
+            "samples": 40,
+            "mean": 82.49,
+            "p50": 50,
+            "p95": 106.5
+          },
+          "stagesCpuMsMean": {
+            "setup": 0.02,
+            "world": 1.22,
+            "camera": 0.04,
+            "effectsUi": 0.04,
+            "interaction": 0.01,
+            "lod": 0.03,
+            "render": 12.5
+          }
+        }
+      ],
+      "summary": {
+        "label": "Exterior A2 batching restored",
+        "rendererWindows": 5,
+        "profileWindows": 5,
+        "fps": 16,
+        "callbackCpuMs": 12.45,
+        "callbackIntervalMs": 58.8,
+        "rendererCpuMs": 10.85,
+        "gpuRenderMs": 21.55,
+        "cameraCpuMs": 0.04,
+        "drawCalls": [
+          149
+        ],
+        "triangles": [
+          353420
+        ],
+        "staticBatching": [
+          true
+        ],
+        "gpuStatus": [
+          "ready"
+        ],
+        "gpuSamples": 23,
+        "gpuDisjointEvents": [
+          0
+        ],
+        "gpuPendingMax": 3,
+        "scenes": [
+          "exterior"
+        ]
+      }
+    }
+  ]
+}

@@ -113,11 +113,13 @@ original browser captures, without image editing.
 - Longer player movement and a complete camera wall-collision route. The browser's
   press/release key gestures produce very small walking steps; repeated taps did
   not provide reliable traversal. No hidden game methods or synthetic page events
-  were used to reposition the player. The house tab now remains beside the
-  Projects Book in third-person mode after the book follow-up.
-- Fresh controlled frame/GPU timing and cold-load latency. Multiple local tabs,
-  browser interaction and screenshots make these checks unsuitable as a timing
-  benchmark. Earlier FPS/GPU reports predate this pass.
+  were used to reposition the player. The book follow-up left the house tab beside
+  the desk; the later timing check observed a post-capture reload and restored the
+  diagnostic tab at the exterior spawn.
+- A clean single-instance benchmark and cold-load latency. The later
+  [same-view batching comparison](common-performance-timing-2026-10-23.md) captures
+  CPU/GPU windows for this pass, with browser-workload and timing-drift limits.
+  The older reports remain historical rather than before/after benchmarks.
 
 No runtime source changes were needed during this check. The previously passing
 84 tests, typecheck and production build remain the source-validation result;

@@ -1,6 +1,22 @@
 # Frame and GPU profiling
 
-## Current evidence
+## Current common-pass comparison
+
+The [new same-view batching capture](common-performance-timing-2026-10-23.md)
+checks on -> off -> on separately near the Projects Book and at the exterior
+spawn. Indoor draw calls are 110 unbatched versus 92 batched (16.4% fewer);
+exterior calls are 176 versus 149 (15.3% fewer), with unchanged triangle counts.
+Thirty renderer windows and thirty callback windows include 188 valid GPU samples.
+The indoor FPS medians are 30 / 29 / 29 and exterior medians 7 / 16 / 16 in test
+order. Initial/restored timing baselines drifted and other portfolio tabs were
+open, so these results do not establish a consistent FPS gain or regression.
+The report preserves the slow first exterior baseline, full raw windows, viewport
+sizes, quality flags, cleanup and post-capture reload. Cold startup and an isolated
+camera-query comparison remain unmeasured.
+
+The measurements below predate that common implementation pass.
+
+## Earlier live evidence
 
 The local Chrome app was checked with the new static batching/transform controls
 enabled. Workshop approach keeps the original wood surface with a thin border.
