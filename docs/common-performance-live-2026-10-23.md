@@ -22,6 +22,8 @@ not expanded by the browser tool, so no live instance count is inferred from it.
 | Hover and stand borders | Hover showed the Runestone hint without filling its surface; after Esc, the stand had a thin cream border with its brown material retained | Border screenshot after returning to the house |
 | Return from workshop | Esc restored third-person house view and the Inspect Workshop hint | Border screenshot |
 | Cottage exit/reentry | From the user-positioned doorway, E restored the exterior and Enter hint; another E restored the furnished house and Exit hint | One complete cached cycle; exit and reentry screenshots; no error-level console entries returned |
+| Projects Book | E opened the book; all four numbered spreads rendered; Next, E and Right Arrow advanced; Left Arrow and Previous moved back; end buttons disabled correctly | Page 2/page 4 captures and accessible page counters; transitions were checked after their animations |
+| Return from book | Esc restored the third-person house and hid page controls; the open book retained its thin border and Turn Page proximity hint | Book-return capture; no error-level console entries returned |
 | Camera input smoke check | Indoor drag changed the view; exterior wheel input changed zoom and the opposite scroll returned it | Zoom screenshot; this does not establish complete wall-collision coverage |
 | Console errors | No error-level entries were returned for the diagnostic house/workshop tab or fresh exterior tab at the end of the checks | Captured browser logs only; not a claim that every warning or device is clean |
 
@@ -37,10 +39,27 @@ near the entrance wall; the room remained rendered. This is a transition smoke
 check, not a complete camera-collision route or a transition-latency measurement.
 No quality controls were changed during this follow-up.
 
+The book follow-up ran from `2026-10-23T18:06:40.326Z` to
+`2026-10-23T18:13:53.494Z`, starting from the user-positioned desk. The observed
+sequence was 01 -> 02 (Next button) -> 03 (E) -> 04 (Right Arrow) -> 03
+(Left Arrow) -> 02 -> 01 (Previous button twice). Previous was disabled on 01,
+and Next was disabled on 04. Each spread showed its project heading and preview
+image. Existing placeholder project copy and repeated preview artwork were not
+edited or treated as proof of the linked live sites. Opening those sites via O
+or a screenshot click was outside this check.
+
+Page controls disappear while animations run. An early arrow gesture while the
+controls folder was focused did not advance the page, and one automation wait
+expired during a turn; subsequent visible page counters confirmed navigation.
+These observations were not console/application errors. The controls folder was
+temporarily collapsed for unobstructed book captures and restored afterward.
+Esc returned to the house with the physical book still open and the hint
+`Turn Page`; no claim is made that Esc closes the physical book.
+
 ## Screenshots
 
 Initial exterior screenshots are 1745 x 777; initial workshop/house screenshots
-are 1745 x 828. The door follow-up captures are 1226 x 828. The browser viewport
+are 1745 x 828. The door and book follow-up captures are 1226 x 828. The browser viewport
 changed between those groups. Each on/off pair uses the same viewport. These are
 original browser captures, without image editing.
 
@@ -76,14 +95,26 @@ original browser captures, without image editing.
 
 ![Furnished house and Exit hint after reentry](common-performance-live-2026-10-23-reentry.png)
 
+### Projects Book page 2
+
+![Second project spread and page counter](common-performance-live-2026-10-23-book-page2.png)
+
+### Projects Book page 4
+
+![Fourth project spread with Next disabled](common-performance-live-2026-10-23-book-page4.png)
+
+### House after returning from the book
+
+![Third-person house with the open book and thin border](common-performance-live-2026-10-23-book-return.png)
+
 ## Remaining verification
 
-- Projects Book and other furniture interactions after this pass.
+- Other furniture inspection modes after this pass, including Awards Hall and map.
 - Longer player movement and a complete camera wall-collision route. The browser's
   press/release key gestures produce very small walking steps; repeated taps did
   not provide reliable traversal. No hidden game methods or synthetic page events
-  were used to reposition the player. The house tab now remains at the indoor
-  doorway after the successful exit/reentry follow-up.
+  were used to reposition the player. The house tab now remains beside the
+  Projects Book in third-person mode after the book follow-up.
 - Fresh controlled frame/GPU timing and cold-load latency. Multiple local tabs,
   browser interaction and screenshots make these checks unsuitable as a timing
   benchmark. Earlier FPS/GPU reports predate this pass.
