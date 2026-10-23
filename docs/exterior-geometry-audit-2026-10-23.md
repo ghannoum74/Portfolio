@@ -32,12 +32,13 @@ through the actual exterior. Large bounding spheres can keep full detail active,
 so test real camera positions before deciding whether these objects need spatial
 partitioning. The existing house stone LOD provides a reference implementation.
 
-## Optional runtime implementation
+## Runtime implementation
 
 `?perfdiag=1&exteriorLod=1` loads an 809,223-byte index-only sidecar after
-essential world initialization. Default gameplay does not request it.
-This is intentionally opt-in while exterior silhouette, UV and shading review
-is pending; do not infer a measured FPS gain from the offline counts.
+essential world initialization. This was initially opt-in. After the matched October 24 review, normal gameplay
+loads it after essential initialization unless `exteriorLod=0` is set.
+The default change does not establish an FPS gain; see the
+[matched live review](exterior-lod-matched-review-2026-10-24.md).
 
 The existing index LOD implementation now accepts explicit trusted target names.
 House defaults and thresholds remain unchanged. Exterior selection uses the same
@@ -62,7 +63,7 @@ npm run build
 Compare `?perfdiag=1` with `?perfdiag=1&exteriorLod=1` at the same exterior
 camera/time/DPR. The `[House physics]` diagnostic includes `exteriorLod` counts
 when outside. Inspect near-to-far transitions, silhouettes, texture seams,
-shading and collision traversal before enabling it by default. The existing
+shading and collision traversal when reviewing future exports or threshold changes. The existing
 Stone LOD UI switch continues to control house stone geometry only.
 
 Validation: 94 local tests pass (including the real shipped world), typecheck,
@@ -70,4 +71,6 @@ production build and whitespace checks pass. Local house-dependent tests still
 use the prior house export; the owner's earlier 93-test run passed with the newer
 house. The exterior sidecar targets the current world blob recorded above.
 Build retains existing large-chunk and partial-checkout edge-mask warnings.
-No browser visual validation of this new optional path has been completed.
+At initial publication no browser visual validation had been completed.
+The later matched review covers closer off/on appearance and zoom restoration;
+all 95 local tests, typecheck and build pass after enabling the default.

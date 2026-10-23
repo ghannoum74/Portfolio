@@ -1,8 +1,11 @@
 # Live exterior LOD comparison
 
 The `?perfdiag=1` Performance folder now has an **Exterior LOD** switch,
-separate from the existing house **Stone LOD** switch. Exterior LOD remains
-off by default; `exteriorLod=1` still opts in at startup.
+separate from the existing house **Stone LOD** switch. Following the matched
+live review on October 24, exterior LOD is enabled by default. Use
+`exteriorLod=0` for authored detail at every distance; `exteriorLod=1` also works.
+The optional 809,223-byte sidecar now downloads after essential initialization
+unless disabled. A missing or stale file still retains the authored geometry.
 
 Turning the switch on loads and validates the optional sidecar once. Turning it
 off immediately restores the authored indices. Disabling while the download or
@@ -31,12 +34,15 @@ deduplication, retry, late disable, distant selection and restoration. Local
 house-dependent checks use the prior house export; the owner previously reported
 all 93 tests passing on the newer house. Existing build warnings remain.
 
-The owner's browser still showed the preceding build during this change; the
-new switch has not been clicked live yet. Debug view was turned off after the
-review attempt, normal gameplay rendered, and no error logs were returned.
-The matched close-up comparison remains pending; exterior LOD stays opt-in.
-The debug camera was panned during review, so its pose differs from the previous
-wide-view captures. Player position also changed during the browser session.
+At initial publication the owner's browser still showed the preceding build.
+The subsequent pull enabled a matched off/on comparison in one tab. Both the
+wide overview and closer target view retained the same camera and viewport
+across each toggle. No obvious silhouette, texture or shading discrepancy was
+visible in the inspected views. Closer zoom restored all 219,904 source triangles
+with the switch still enabled, then restored 87,960 when zooming out. Debug view
+was turned off afterward, normal gameplay rendered, and no error logs were
+returned. This is a limited visual/functional review, not pixel equality or a
+measured FPS gain. See the [matched review](exterior-lod-matched-review-2026-10-24.md).
 
 ![Gameplay restored in the preceding build](exterior-lod-controls-restored-2026-10-24.jpg)
 

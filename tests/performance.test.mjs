@@ -1758,7 +1758,7 @@ test('optional exterior LOD preserves authored close-up meshes and rejects stale
   await assert.rejects(HouseStoneLod.create(root, stale, EXTERIOR_LOD_NAMES, 3), /source changed/);
   meshes.forEach((m, i) => assert.equal(m.geometry, originals[i]));
   await assert.rejects(HouseStoneLod.create(root, data), /Unexpected house stone LOD target/);
-  assert.equal(getPerformanceOptions('', 1).exteriorLod, false);
+  assert.equal(getPerformanceOptions('', 1).exteriorLod, true);
   assert.equal(getPerformanceOptions('?exteriorLod=1', 1).exteriorLod, true);
   assert.equal(getPerformanceOptions('?exteriorLod=0', 1).exteriorLod, false);
 });

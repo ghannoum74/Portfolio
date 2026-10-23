@@ -37,3 +37,7 @@ entry; the full-detail restoration is confirmed by the diagnostic counts.
 
 Raw console windows and DOM measurements: [JSON](exterior-lod-live-2026-10-23.json).
 
+
+Follow-up: the [October 24 matched review](exterior-lod-matched-review-2026-10-24.md)
+uses the live switch at an unchanged camera, checks closer appearance and zoom
+restoration, and enables LOD by default with a full-detail opt-out.
