@@ -9,6 +9,7 @@ import { performanceOptions } from "../../core/PerformanceOptions";
 import { batchHouseBeams } from "./batchHouseBeams";
 import { HouseStoneLod, type StoneLodData } from "./HouseStoneLod";
 import { ClosedSurfaceCulling } from "./ClosedSurfaceCulling";
+import { StaticMeshBatches, StaticTransforms } from "../../optimization/StaticScene";
 
 export class HouseInterior {
   public model = new THREE.Group();
@@ -20,6 +21,12 @@ export class HouseInterior {
   private stoneLodEnabled = performanceOptions.stoneLod;
   private surfaceCulling?: ClosedSurfaceCulling;
   private surfaceCullingEnabled = performanceOptions.surfaceCulling;
+  private staticBatches?: StaticMeshBatches;
+  private staticTransforms?: StaticTransforms;
+  private staticBatchingEnabled = performanceOptions.staticBatching;
+  private staticTransformsEnabled = performanceOptions.staticTransforms;
+  private animations: THREE.AnimationClip[] = [];
+  private readonly staticObjects = new Set<THREE.Object3D>();
 
   // Keep the house physically separated from the exterior Rapier world.
   private readonly worldOffset = new THREE.Vector3(0, -30, 0);
@@ -66,6 +73,7 @@ export class HouseInterior {
       this.loader.loadGLB(ASSETS.house),
       this.loader.loadGLB(ASSETS.bookAnimated),
     ]);
+    this.animations = house.animations;
 
     this.model = house.scene;
 
@@ -98,6 +106,7 @@ export class HouseInterior {
     this.model.visible = false;
 
     this.model.traverse((child) => {
+      this.staticObjects.add(child);
       if (child.name.startsWith("ZONE_")) {
         child.visible = false;
         return;
@@ -140,6 +149,13 @@ export class HouseInterior {
     } catch (error) {
       console.warn("House surface culling unavailable; keeping authored materials:", error);
     }
+
+    // Batch after surface preparation so front-/double-sided assignments stay distinct.
+    if (this.staticBatchingEnabled) this.staticBatches = new StaticMeshBatches(this.model, house.animations, this.staticObjects);
+    if (this.staticTransformsEnabled) this.staticTransforms = new StaticTransforms(this.model, house.animations, this.staticObjects);
+    if (performanceOptions.perfDiag) console.info("[House static scene]", {
+      batching: this.staticBatches?.stats, frozenLocalTransforms: this.staticTransforms?.count ?? 0,
+    });
 
     this.loaded = true;
 
@@ -306,6 +322,18 @@ export class HouseInterior {
 
   get isLoaded(): boolean {
     return this.loaded;
+  }
+
+  setStaticBatchingEnabled(enabled: boolean): void {
+    this.staticBatchingEnabled = enabled;
+    if (enabled && this.loaded && !this.staticBatches) this.staticBatches = new StaticMeshBatches(this.model, this.animations, this.staticObjects);
+    this.staticBatches?.setEnabled(enabled);
+  }
+
+  setStaticTransformsEnabled(enabled: boolean): void {
+    this.staticTransformsEnabled = enabled;
+    if (enabled && this.loaded && !this.staticTransforms) this.staticTransforms = new StaticTransforms(this.model, this.animations, this.staticObjects);
+    this.staticTransforms?.setEnabled(enabled);
   }
 
   get projectBook(): AnimatedBook3D | undefined {

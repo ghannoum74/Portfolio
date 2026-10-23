@@ -183,8 +183,10 @@ export class ProjectPageTextures {
     ctx.textAlign = "left";
   }
 
-  details(project: PortfolioProject, forLeftPage = true): THREE.CanvasTexture {
-    const key = `${project.id}:${forLeftPage ? "left" : "turning"}`;
+  details(project: PortfolioProject, _forLeftPage = true): THREE.CanvasTexture {
+    // Resting and turning details use identical pixels and UV correction.
+    // Keep the role argument compatible with callers, but share the texture.
+    const key = project.id;
     const cached = this.detailsCache.get(key);
     if (cached) return cached;
 

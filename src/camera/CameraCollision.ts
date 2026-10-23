@@ -13,6 +13,11 @@ export class CameraCollision {
   private readonly padding = 0.08;
   private readonly shape;
   private readonly direction = new THREE.Vector3();
+  private readonly lastTarget = new THREE.Vector3();
+  private readonly lastDesiredPosition = new THREE.Vector3();
+  private readonly queryRotation = { x: 0, y: 0, z: 0, w: 1 };
+  private lastRevision = -1;
+  private cached = false;
   private readonly result: CameraCollisionResult = {
     position: new THREE.Vector3(),
     blocked: false,
@@ -26,6 +31,11 @@ export class CameraCollision {
     target: THREE.Vector3,
     desiredPosition: THREE.Vector3,
   ): CameraCollisionResult {
+    const revision = this.physics.staticColliderRevision;
+    // This query includes ONLY_FIXED. Kinematic player/NPC motion cannot change it.
+    if (this.cached && revision === this.lastRevision &&
+        target.equals(this.lastTarget) && desiredPosition.equals(this.lastDesiredPosition)) return this.result;
+    this.cached = false;
     this.direction.copy(desiredPosition).sub(target);
 
     const distance = this.direction.length();
@@ -35,6 +45,7 @@ export class CameraCollision {
 
       this.result.blocked = false;
 
+      this.cache(target, desiredPosition, revision);
       return this.result;
     }
 
@@ -42,24 +53,9 @@ export class CameraCollision {
 
     // this is check if the target between the player and the camera has any abstcled
     const hit = this.physics.world.castShape(
-      {
-        x: target.x,
-        y: target.y,
-        z: target.z,
-      },
-
-      {
-        x: 0,
-        y: 0,
-        z: 0,
-        w: 1,
-      },
-
-      {
-        x: this.direction.x,
-        y: this.direction.y,
-        z: this.direction.z,
-      },
+      target,
+      this.queryRotation,
+      this.direction,
       this.shape,
       0,
       distance,
@@ -72,6 +68,7 @@ export class CameraCollision {
 
       this.result.blocked = false;
 
+      this.cache(target, desiredPosition, revision);
       return this.result;
     }
 
@@ -83,6 +80,14 @@ export class CameraCollision {
 
     this.result.blocked = true;
 
+    this.cache(target, desiredPosition, revision);
     return this.result;
+  }
+
+  private cache(target: THREE.Vector3, desiredPosition: THREE.Vector3, revision: number): void {
+    this.lastTarget.copy(target);
+    this.lastDesiredPosition.copy(desiredPosition);
+    this.lastRevision = revision;
+    this.cached = true;
   }
 }

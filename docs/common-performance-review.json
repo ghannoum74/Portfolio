@@ -1,0 +1,189 @@
+{
+  "asset": "public/assets/models/environment/world.glb",
+  "assetSha256": "43675843a81eedd1b8b64498b8c13b9cedb667e238d292718e35ff1cffab8bcc",
+  "method": "CPU inspection omits image references only in memory. Runtime GLB bytes are unchanged. Every instanced source retains its own node, geometry and material references. Attribute/index bytes match the shared geometry exactly; instance matrices use Float32 GPU storage.",
+  "merging": {
+    "sourceMeshes": 11,
+    "batches": 4,
+    "triangles": 132
+  },
+  "additionalInstancing": {
+    "sourceMeshes": 36,
+    "batches": 16,
+    "triangles": 2200
+  },
+  "additionalWholeAssetDrawReduction": 20,
+  "comparedVertices": 4328,
+  "maximumWorldPositionError": 8.675567330020587e-8,
+  "maximumUnitNormalError": 1.6958841029353936e-8,
+  "groups": [
+    {
+      "name": "STATIC_INSTANCE_1",
+      "sources": [
+        "Cube003_2",
+        "Cube013_1"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_2",
+      "sources": [
+        "Cube004_1",
+        "Cube014_1"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_3",
+      "sources": [
+        "Cube006_2",
+        "Cube015_1"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_4",
+      "sources": [
+        "Cube032",
+        "Cube046"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_5",
+      "sources": [
+        "Cube019",
+        "Cube031"
+      ],
+      "trianglesPerCopy": 144,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_6",
+      "sources": [
+        "Cube019_1",
+        "Cube031_1"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_7",
+      "sources": [
+        "Cube032_1",
+        "Cube035_1"
+      ],
+      "trianglesPerCopy": 144,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_8",
+      "sources": [
+        "Cube032_2",
+        "Cube035_2"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_9",
+      "sources": [
+        "Cube036_1",
+        "Cube023"
+      ],
+      "trianglesPerCopy": 144,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_10",
+      "sources": [
+        "Cube036_2",
+        "Cube023_1"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_11",
+      "sources": [
+        "Cube037_1",
+        "Cube017",
+        "Cube022",
+        "Cube021_1"
+      ],
+      "trianglesPerCopy": 144,
+      "instanceBufferBytes": 256
+    },
+    {
+      "name": "STATIC_INSTANCE_12",
+      "sources": [
+        "Cube037_2",
+        "Cube017_1",
+        "Cube022_1",
+        "Cube021_2"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 256
+    },
+    {
+      "name": "STATIC_INSTANCE_13",
+      "sources": [
+        "Cube018",
+        "Cube020_1"
+      ],
+      "trianglesPerCopy": 144,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_14",
+      "sources": [
+        "Cube018_1",
+        "Cube020_2"
+      ],
+      "trianglesPerCopy": 12,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_15",
+      "sources": [
+        "Icosphere006",
+        "Icosphere020"
+      ],
+      "trianglesPerCopy": 94,
+      "instanceBufferBytes": 128
+    },
+    {
+      "name": "STATIC_INSTANCE_16",
+      "sources": [
+        "Cylinder035_1",
+        "Cylinder038_1"
+      ],
+      "trianglesPerCopy": 22,
+      "instanceBufferBytes": 128
+    }
+  ],
+  "productionBuild": {
+    "previousEntryBytes": 3861920,
+    "entryBytes": 1012560,
+    "physicsChunkBytes": 2855120,
+    "previousEntryGzipBytes": 1348590,
+    "entryGzipBytes": 269660,
+    "physicsChunkGzipBytes": 1078390,
+    "precision": "Build console values rounded to 0.01 kB; decimal kB. Physics remains required and total transfer is essentially unchanged."
+  },
+  "validation": {
+    "testsPassed": 84,
+    "typecheck": true,
+    "build": true,
+    "hardwareFpsGainMeasured": false
+  },
+  "limits": [
+    "Whole-asset instance counts are not visible-frame draw calls or FPS gains.",
+    "Coarser bounds can submit additional instances near a cell boundary.",
+    "New browser appearance, cold-load latency and frame timings require review after the update."
+  ]
+}

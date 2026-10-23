@@ -1,0 +1,58 @@
+{
+  "baseCommit": "5f6bebec8f0c5484e9d611ebf0aa3f4a16042b68",
+  "method": "CPU comparison of every merged source vertex in world space, normalized world normals, raw unmodified attributes, ordered indices, and material identity. Includes the last captured local export as a separate compatibility check.",
+  "reports": [
+    {
+      "name": "repository-house",
+      "sourceSha256": "1f2dc6fe27fc4dc7506f3268fd2af9dd0999740b9b11ed46427982c59e5fe3c4",
+      "batching": {
+        "sourceMeshes": 50,
+        "batches": 22,
+        "triangles": 7576
+      },
+      "frozenLocalTransforms": 235,
+      "verticesCompared": 7019,
+      "maxWorldPositionError": 6.300144413187523e-7,
+      "maxUnitNormalVectorError": 4.035444978812638e-8,
+      "unchangedOtherAttributeComponents": 70190,
+      "unchangedOrderedIndices": 22728,
+      "materials": "same object references",
+      "note": "Counts describe all eligible meshes, not a camera frame or FPS benchmark."
+    },
+    {
+      "name": "repository-world",
+      "sourceSha256": "43675843a81eedd1b8b64498b8c13b9cedb667e238d292718e35ff1cffab8bcc",
+      "batching": {
+        "sourceMeshes": 11,
+        "batches": 4,
+        "triangles": 132
+      },
+      "frozenLocalTransforms": 218,
+      "verticesCompared": 264,
+      "maxWorldPositionError": 1.1455267667770386e-7,
+      "maxUnitNormalVectorError": 0,
+      "unchangedOtherAttributeComponents": 528,
+      "unchangedOrderedIndices": 396,
+      "materials": "same object references",
+      "note": "Counts describe all eligible meshes, not a camera frame or FPS benchmark."
+    },
+    {
+      "name": "last-captured-local-house",
+      "sourceSha256": "d34cd595e7ffa135b48147e048a40fc000671d3f93a91aa66b257e6df6bff2b9",
+      "batching": {
+        "sourceMeshes": 50,
+        "batches": 22,
+        "triangles": 7576
+      },
+      "frozenLocalTransforms": 236,
+      "verticesCompared": 7019,
+      "maxWorldPositionError": 6.300144413187523e-7,
+      "maxUnitNormalVectorError": 4.035444978812638e-8,
+      "unchangedOtherAttributeComponents": 70190,
+      "unchangedOrderedIndices": 22728,
+      "materials": "same object references",
+      "note": "Counts describe all eligible meshes, not a camera frame or FPS benchmark."
+    }
+  ],
+  "limits": "This is structural/transform validation. Full browser/PBR appearance, entry latency and hardware FPS still need review on the new branch."
+}

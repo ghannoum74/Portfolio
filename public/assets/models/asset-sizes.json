@@ -1,0 +1,137 @@
+[
+  {
+    "name": "player/animations/ascending-stairs.glb",
+    "originalBytes": 249600,
+    "optimizedBytes": 209356,
+    "reductionPercent": 16.1,
+    "verified": true,
+    "sourceGitSha": "3b5c4af8a7356cb626b3ff07d1f08bd8704adc1a",
+    "decodedSha256": "2092167c8bedca4919bcdad82b3cee3c75a55e98c7f29aca29f556ca7ea3a6e4"
+  },
+  {
+    "name": "player/animations/breathing_idle.glb",
+    "originalBytes": 320388,
+    "optimizedBytes": 221264,
+    "reductionPercent": 30.9,
+    "verified": true,
+    "sourceGitSha": "9a98b1cb4032f82eafb699d34e6787a65ca27ea0",
+    "decodedSha256": "a2f3951cb0e2fffca116b83fdd9466b35633dd2ca8af8e22d98765233fb0a70e"
+  },
+  {
+    "name": "player/animations/idle.glb",
+    "originalBytes": 116488,
+    "optimizedBytes": 95828,
+    "reductionPercent": 17.7,
+    "verified": true,
+    "sourceGitSha": "f4a28f818186db3417b1f00c918bb0b1768bc328",
+    "decodedSha256": "a8ea436fe98d2e64b319215590f2d074a7277edaf16f842625f8dca91b13de2a"
+  },
+  {
+    "name": "player/animations/jump.glb",
+    "originalBytes": 122228,
+    "optimizedBytes": 107412,
+    "reductionPercent": 12.1,
+    "verified": true,
+    "sourceGitSha": "4ff7d1707271ee6f08be59a6805b344fe8138649",
+    "decodedSha256": "4d8c2b25428f791d798c6ab4902cbc76296a549066d5fbe737a61d369fd635b3"
+  },
+  {
+    "name": "player/animations/running-backwords.glb",
+    "originalBytes": 99440,
+    "optimizedBytes": 91080,
+    "reductionPercent": 8.4,
+    "verified": true,
+    "sourceGitSha": "bce2be3dbbf04fcb0f4cf303aba999a4572ea7d1",
+    "decodedSha256": "4e9c7216e5b2de9262e97753319d29a59f37f9950af615363ef4cb909e1f565f"
+  },
+  {
+    "name": "player/animations/running.glb",
+    "originalBytes": 100480,
+    "optimizedBytes": 91384,
+    "reductionPercent": 9.1,
+    "verified": true,
+    "sourceGitSha": "e027dd8d9de0de1f5fee351dd18757459614166f",
+    "decodedSha256": "47609907b08828ce327fc8497a2dd7cff94f81793d32596c4e0043393ab87b6b"
+  },
+  {
+    "name": "player/animations/talking_1.glb",
+    "originalBytes": 657992,
+    "optimizedBytes": 492612,
+    "reductionPercent": 25.1,
+    "verified": true,
+    "sourceGitSha": "e26695121cc7db1e7321e0cf418a4b10e35f6413",
+    "decodedSha256": "d7f90bb8e098b41525337ea22665a08f03abe31e4419c136a73e7df3a719951b"
+  },
+  {
+    "name": "player/animations/talking_2.glb",
+    "originalBytes": 152456,
+    "optimizedBytes": 118408,
+    "reductionPercent": 22.3,
+    "verified": true,
+    "sourceGitSha": "230698b37a75cb352cd2809e11115316156f9851",
+    "decodedSha256": "22a26be152a0c06ebc3ce2c7fad9c228d77e83c00db787b23b5be72a9b95558e"
+  },
+  {
+    "name": "player/animations/talking_3.glb",
+    "originalBytes": 328888,
+    "optimizedBytes": 232204,
+    "reductionPercent": 29.4,
+    "verified": true,
+    "sourceGitSha": "ff337910f63f6bfbb663dde82ae338e74d762129",
+    "decodedSha256": "e57695fe8ae0070503bb0571f0158631e119cdf6e64d1859700ac24e52f6a76a"
+  },
+  {
+    "name": "player/animations/walking-backwords.glb",
+    "originalBytes": 93836,
+    "optimizedBytes": 86164,
+    "reductionPercent": 8.2,
+    "verified": true,
+    "sourceGitSha": "428b8a1ac007a64c037d3c6da487c170c0c4c8cd",
+    "decodedSha256": "74dee164a72b871b654dedb4f002714ef2102e384bc7029b4c58d05d91369f49"
+  },
+  {
+    "name": "player/animations/walking.glb",
+    "originalBytes": 109008,
+    "optimizedBytes": 97116,
+    "reductionPercent": 10.9,
+    "verified": true,
+    "sourceGitSha": "9c41514aee0728e5a6fca766a67dada374eb8b3e",
+    "decodedSha256": "75d8158ac48fe7b7b9c7a0b52685627fab30338f98dd6fbf329224bcabe8f5b9"
+  },
+  {
+    "name": "player/frequenc.glb",
+    "originalBytes": 618280,
+    "optimizedBytes": 459208,
+    "reductionPercent": 25.7,
+    "verified": true,
+    "sourceGitSha": "6c4252dcd9dcd64fcb74da70a1f6e2c586ed6169",
+    "decodedSha256": "cdabcdc5eaa0fe8bffb2278217fea42884b4f70e7df0886f79bf86350515a814"
+  },
+  {
+    "name": "player/interphase.glb",
+    "originalBytes": 613568,
+    "optimizedBytes": 501192,
+    "reductionPercent": 18.3,
+    "verified": true,
+    "sourceGitSha": "6958085ce547bdcc6c403e2703a855b1823343cd",
+    "decodedSha256": "20b55dd702ec06f1d9111c09cd16a43bccdbecb8d7edb00b05337359d2cd0706"
+  },
+  {
+    "name": "player/player.glb",
+    "originalBytes": 852384,
+    "optimizedBytes": 698540,
+    "reductionPercent": 18,
+    "verified": true,
+    "sourceGitSha": "91a536bff525707c1d75b1b0ac034b7ea467b2dc",
+    "decodedSha256": "1732dbbe644456827ed68fd996197ff72efd949e68681a5396cd02cdc9a81d52"
+  },
+  {
+    "name": "player/se-factory.glb",
+    "originalBytes": 927704,
+    "optimizedBytes": 721116,
+    "reductionPercent": 22.3,
+    "verified": true,
+    "sourceGitSha": "1624b1be45b5347788ea556b4707b5c83e9f0b5f",
+    "decodedSha256": "ab8170a104f537032658dfc3a56bda420fc2e5772ebeae2f5610cafc7c6d3ccc"
+  }
+]

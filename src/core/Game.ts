@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Renderer } from "./Renderer";
 import { performanceOptions } from "./PerformanceOptions";
 import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
+import { FrameProfiler } from "./FrameProfiler";
 import { World } from "../world/World";
 import { Keyboard } from "../input/Keyboard";
 
@@ -86,9 +87,16 @@ export class Game {
 
   private timer = new THREE.Timer();
   private animationLoop: VisibleAnimationLoop;
+  private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
   private readonly performanceDebugState = {
+    exteriorLod: performanceOptions.exteriorLod,
     stoneLod: performanceOptions.stoneLod,
     surfaceCulling: performanceOptions.surfaceCulling,
+    staticBatching: performanceOptions.staticBatching,
+    staticTransforms: performanceOptions.staticTransforms,
+    borderHighlight: performanceOptions.outlines,
+    shadows: performanceOptions.shadows,
+    gpuTiming: performanceOptions.gpuTiming,
     pixelRatio: performanceOptions.pixelRatio,
     restartReadings: () => this.resetPerformanceSamples(),
   };
@@ -108,6 +116,7 @@ export class Game {
   private readonly sceneTransition: SceneTransition;
 
   private transitioning = false;
+  private preparingScene = false;
 
   private insideHouse = false;
 
@@ -358,7 +367,9 @@ export class Game {
         this.world.physics,
       );
 
-      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      await this.renderer.prepareScene(this.scene, this.playerCamera);
+
+      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
 
       this.cameraHelper.visible = false;
       this.cameraDebugMesh.visible = false;
@@ -381,6 +392,7 @@ export class Game {
       await this.loading.complete();
 
       this.loadNpcsInBackground();
+      this.world.preloadHouseInterior();
 
       // Now the visitor may scroll.
       this.entrance.activate();
@@ -402,6 +414,7 @@ export class Game {
   }
 
   private update = (): void => {
+    this.frameProfiler?.begin();
     this.timer.update();
 
     const delta = this.timer.getDelta();
@@ -415,9 +428,12 @@ export class Game {
 
     this.entrance.raf(performance.now());
 
-    if (this.phase === "loading") {
+    if (this.phase === "loading" || this.preparingScene) {
+      this.frameProfiler?.skip();
       return;
     }
+
+    this.frameProfiler?.mark("setup");
 
     this.world.update(delta, !this.insideHouse);
 
@@ -427,6 +443,7 @@ export class Game {
         this.world.getTimeOfDay(),
       );
     }
+    this.frameProfiler?.mark("world");
 
     // Wait until the physical cover finishes opening
     // before moving the cinematic camera toward it.
@@ -462,6 +479,7 @@ export class Game {
       // Normal third-person camera.
       this.thirdPersonCamera?.update(delta);
     }
+    this.frameProfiler?.mark("camera");
 
     // House systems retain their state, but do no frame work outside.
     if (this.insideHouse) {
@@ -477,6 +495,7 @@ export class Game {
     this.bookPageControls.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
     );
+    this.frameProfiler?.mark("effectsUi");
 
     const gameplayActive =
       this.phase === "playing" &&
@@ -513,10 +532,15 @@ export class Game {
     this.world.setPhysicsDebugVisible(showDebug);
 
     if (showDebug) this.cameraHelper.update();
+    this.frameProfiler?.mark("interaction");
 
     const camera = this.getActiveCamera();
     this.world.updateLod(camera, window.innerHeight);
+    this.frameProfiler?.mark("lod");
     this.renderer.render(this.scene, camera);
+    this.frameProfiler?.mark("render");
+    const profile = this.frameProfiler?.finish(this.insideHouse ? "house" : "exterior");
+    if (profile) console.info("[Frame profile]", profile, JSON.stringify(profile));
   };
 
   private onResize = (): void => {
@@ -532,6 +556,7 @@ export class Game {
 
     this.renderer.resize();
     this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
+    this.resetPerformanceSamples();
     this.updateOverlay();
   };
 
@@ -724,6 +749,26 @@ export class Game {
 
     if (performanceOptions.perfDiag) {
       const performanceFolder = gui.addFolder("Performance");
+      if (performanceOptions.highlightMode === "border") {
+        performanceFolder.add(this.performanceDebugState, "borderHighlight").name("Border highlight").onChange((enabled: boolean) => {
+          this.renderer.setBorderHighlightEnabled(enabled);
+          this.resetPerformanceSamples();
+        });
+      }
+      performanceFolder.add(this.performanceDebugState, "shadows").name("Shadows").onChange((enabled: boolean) => {
+        this.renderer.setShadowsEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      const gpuTimingController = performanceFolder.add(this.performanceDebugState, "gpuTiming").name("GPU timing").onChange((enabled: boolean) => {
+        this.renderer.setGpuTimingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      if (performanceOptions.gpuStats) gpuTimingController.disable();
+      performanceFolder.add(this.performanceDebugState, "exteriorLod").name("Exterior LOD").onChange((enabled: boolean) => {
+        performanceOptions.exteriorLod = enabled;
+        this.world.setExteriorLodEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
       performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
         performanceOptions.stoneLod = enabled;
         this.world.setHouseStoneLodEnabled(enabled);
@@ -734,12 +779,22 @@ export class Game {
         this.world.setHouseSurfaceCullingEnabled(enabled);
         this.resetPerformanceSamples();
       });
+      performanceFolder.add(this.performanceDebugState, "staticBatching").name("Static batching").onChange((enabled: boolean) => {
+        performanceOptions.staticBatching = enabled;
+        this.world.setStaticBatchingEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
+      performanceFolder.add(this.performanceDebugState, "staticTransforms").name("Static transforms").onChange((enabled: boolean) => {
+        performanceOptions.staticTransforms = enabled;
+        this.world.setStaticTransformsEnabled(enabled);
+        this.resetPerformanceSamples();
+      });
       const maximumRatio = Math.min(window.devicePixelRatio || 1, 2);
       performanceFolder.add(this.performanceDebugState, "pixelRatio", Math.min(0.5, maximumRatio), maximumRatio, 0.05)
         .name("Pixel ratio").onFinishChange((ratio: number) => {
           this.renderer.setPixelRatio(ratio);
           this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
-          this.world.resetPerformanceSamples();
+          this.resetPerformanceSamples();
         });
       performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
       performanceFolder.open();
@@ -749,6 +804,7 @@ export class Game {
   }
 
   private resetPerformanceSamples(): void {
+    this.frameProfiler?.reset();
     this.renderer.resetPerformanceSamples();
     this.world.resetPerformanceSamples();
   }
@@ -1003,6 +1059,10 @@ export class Game {
        */
       await this.sceneTransition.fadeIn();
 
+      // Keep light preparation deterministic while the opaque cover is visible.
+      // The clock still ticks, so resuming does not simulate the preparation interval.
+      this.preparingScene = true;
+
       house = await this.world.loadHouseInterior();
 
       const spawn = house.getSpawn();
@@ -1059,12 +1119,18 @@ export class Game {
        * Do it while the screen is covered
        * so there is no visible hitch.
        */
-      await this.renderer.instance.compileAsync(this.scene, this.playerCamera);
-      await this.workshop?.prepareLightingVariants(() =>
-        this.renderer.instance.compileAsync(this.scene, this.playerCamera),
-      );
+      await this.renderer.prepareScene(this.scene, this.playerCamera);
+      const compile = () => this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      if (this.furniture) {
+        await this.furniture.prepareLightingVariants(compile, () =>
+          this.workshop?.prepareLightingVariants(compile) ?? Promise.resolve(),
+        );
+      } else await this.workshop?.prepareLightingVariants(compile);
+
+      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
 
       this.insideHouse = true;
+      this.preparingScene = false;
 
       await this.sceneTransition.fadeOut();
     } catch (error) {
@@ -1090,8 +1156,11 @@ export class Game {
 
       this.thirdPersonCamera?.snap();
 
+      this.preparingScene = false;
+
       await this.sceneTransition.fadeOut();
     } finally {
+      this.preparingScene = false;
       this.transitioning = false;
 
       if (
