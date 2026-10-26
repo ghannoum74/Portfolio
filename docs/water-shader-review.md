@@ -38,11 +38,11 @@ in the original fragment path. Vertex positions are unchanged. Materials in
 all modes share one advancing animation clock and are created lazily/reused,
 so switching does not restart water animation.
 
-This is not a measured optimization yet. Extra interpolated values may offset
-the saved fragment arithmetic, and the driver can optimize either program.
-Floating-point evaluation order differs even though the expressions agree in
-real arithmetic. Original remains the default until native-resolution GPU
-readings and live appearance checks justify selecting the candidate.
+The live comparison below did not establish a GPU benefit for the candidate.
+Extra interpolated values may offset the saved fragment arithmetic, and the
+driver can optimize either program. Floating-point evaluation order differs
+even though the expressions agree in real arithmetic. Original remains the
+default; the candidate remains available only for explicit comparison.
 
 The depth diagnostic uses an opaque Basic material with color writes off and
 depth testing/writes on for the animated surface slots. The altered appearance
@@ -79,9 +79,76 @@ normalization. Tests evaluate the actual old/new scalar shader expressions
 across interpolated triangles and time samples, including long sessions, to
 check real-arithmetic wave equivalence; this does not emulate GPU precision.
 
-The new variants have not yet been compiled or timed in the owner's live WebGL
-page. No GPU/FPS or pixel-equality gain is claimed. The existing larger-chunk and
+The active near-water variants compiled and rendered in the owner's live WebGL
+page with no error logs returned. The unused horizon branch has only local
+coverage. No GPU/FPS or pixel-equality gain is claimed. The existing larger-chunk and
 partial-checkout edge-mask build warnings remain. Local house-dependent tests
 use the prior house; the owner previously confirmed the earlier 93-test suite
 with the newer house export. No GLB/Blender source, textures or dependencies
 change in this follow-up.
+
+## Live comparison — October 26, 2026
+
+The new Water shader control was present in the owner's existing local tab.
+The expected branch head was `bfaa7358e915dfd4c97b6a08d087483da78c8af6`; the
+browser source revision was not independently fingerprinted. One unchanged
+normal gameplay camera at the cottage deck spawn was used throughout, without
+debug overlays or camera/player input. Preview hour was fixed at 13, CSS viewport
+1745 × 777, framebuffer 1919 × 854 and DPR 1.1. Shadows, border highlighting,
+exterior/stone LOD, culling, batching and static transforms remained on. No point
+lights were active. The world reported one animated water mesh and both exterior
+LOD targets at 87,960 selected triangles.
+
+Each condition used Restart readings and its two-second warmup exclusion,
+followed by 18 seconds before collecting the latest five reporting windows.
+Vertex phases had three additional seconds to settle after first selection.
+The sequence yielded 25 renderer windows with **131 completed, ready GPU
+queries, zero disjoint events and at most one pending query**. The GPU column is
+the median of five window means, not a pooled per-frame median.
+
+| Condition | GPU ms | GPU window means, ms | Renderer CPU ms | FPS | Queries |
+| --- | ---: | --- | ---: | ---: | ---: |
+| A1 Original | 21.14 | 20.92, 21.42, 20.72, 21.36, 21.14 | 4.67 | 17 | 26 |
+| B Depth only | 20.05 | 20.37, 19.78, 20.12, 20.05, 19.92 | 4.97 | 17 | 26 |
+| A2 Original | 20.79 | 20.86, 20.78, 21.20, 20.71, 20.79 | 5.19 | 17 | 26 |
+| C1 Vertex phases | 20.78 | 20.58, 20.78, 20.82, 20.72, 21.28 | 5.15 | 17 | 25 |
+| A3 Original | 20.70 | 20.70, 20.98, 20.76, 20.52, 20.69 | 5.66 | 19 | 28 |
+
+All 25 windows reported **149 draws and 221,476 triangles**, with the expected
+mode and unchanged rendering options. Renderer CPU and FPS are also medians
+of reporting windows. Animation continued, another deployed portfolio tab
+remained open, and external load/GPU clocks were uncontrolled.
+
+Depth isolation reduced the reported GPU time by 0.74–1.09 ms relative to its
+surrounding originals, about 4–5%. This suggests a modest combined effect of
+animated-surface shading in this camera, subject to the depth/sorting caveats
+above. It does not explain most of the roughly 21 ms GPU frame or isolate the
+other water materials. The vertex candidate's 20.78 ms lies within the
+surrounding originals' 20.79/20.70 ms variation. **No measurable candidate GPU
+benefit or consistent FPS gain was established; Original stays the default.**
+
+No obvious discrepancy in wave scale, color, flat shading or silhouettes
+appeared in the inspected native-resolution daytime view. Animation time was
+not frozen, so captures are not pixel comparisons. Close-up/all-angle and
+candidate day/night visual coverage remain incomplete. The near-water programs
+rendered without returned console errors; the current world does not exercise
+the horizon branch.
+
+Original, native DPR, shadows and real time were restored, GPU timing disabled,
+and exterior LOD left enabled. This follow-up changes documentation only; no
+additional runtime, model or Blender changes were justified by these readings.
+
+Raw logs, window summaries, method and restored UI:
+[water-shader-live-2026-10-26.json](water-shader-live-2026-10-26.json).
+
+Original at the measurement camera:
+
+![Original water, fixed daytime camera](water-shader-original-2026-10-26.png)
+
+Vertex phases at the same camera, with animation continuing:
+
+![Vertex phases water, same daytime camera](water-shader-vertex-2026-10-26.png)
+
+[Depth diagnostic appearance](water-shader-depth-2026-10-26.png) intentionally
+differs. [Restored settings](water-shader-restored-2026-10-26.png) show real time
+returning to the owner's nighttime clock, Original selected and GPU timing off.
