@@ -75,7 +75,8 @@ export class ClosedSurfaceCulling {
   private enabled = false;
   private triangles = 0;
 
-  static async create(root: THREE.Object3D, enabled: boolean, animations: readonly THREE.AnimationClip[] = []) {
+  static async create(root: THREE.Object3D, enabled: boolean, animations: readonly THREE.AnimationClip[] = [],
+    options: { maxTriangles?: number } = {}) {
     const result = new ClosedSurfaceCulling();
     const animated = new Set(animations.flatMap(clip => clip.tracks.map(track =>
       THREE.PropertyBinding.parseTrackName(track.name).nodeName)));
@@ -85,6 +86,8 @@ export class ClosedSurfaceCulling {
           child instanceof THREE.InstancedMesh || child instanceof THREE.BatchedMesh ||
           child.onBeforeRender !== THREE.Mesh.prototype.onBeforeRender ||
           Object.keys(child.geometry.morphAttributes).length ||
+          (child.geometry.index?.count ?? child.geometry.getAttribute("position")?.count ?? 0) >
+            (options.maxTriangles ?? 1_000_000) * 3 ||
           child.geometry.drawRange.start !== 0 ||
           child.geometry.drawRange.count < (child.geometry.index?.count ?? child.geometry.getAttribute("position")?.count ?? 0)) return;
       let ancestor: THREE.Object3D | null = child;

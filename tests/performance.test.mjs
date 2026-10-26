@@ -1000,6 +1000,97 @@ test('surface culling toggles remain compatible with a selected border and clean
   culling.dispose();
 });
 
+test('surface culling budgets skip dense meshes before topology reads and leave the house default intact', async () => {
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+  const small = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const dense = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1, 8, 8, 8), material);
+  root.add(small, dense);
+  const position = dense.geometry.attributes.position, getX = position.getX;
+  position.getX = () => { throw new Error('dense geometry should not be audited'); };
+  let bounded;
+  try {
+    bounded = await ClosedSurfaceCulling.create(root, true, [], { maxTriangles: 32 });
+    assert.deepEqual(bounded.stats, { enabled: true, meshes: 1, triangles: 12, materials: 1 });
+    assert.equal(small.material.side, THREE.FrontSide); assert.equal(dense.material, material);
+  } finally { position.getX = getX; bounded?.dispose(); }
+  const unrestricted = await ClosedSurfaceCulling.create(root, true);
+  assert.deepEqual(unrestricted.stats, { enabled: true, meshes: 2, triangles: 780, materials: 1 });
+  unrestricted.dispose();
+  assert.equal(small.material, material); assert.equal(dense.material, material);
+});
+
+test('verified exterior culling preserves source streams, material properties, names and full restoration', async () => {
+  const path = new URL('../public/assets/models/environment/world.glb', import.meta.url), bytes = await readFile(path);
+  assert.equal(createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),
+    '97e2f5e33ea4b50f3424db0f0b23f9dd39f88525', 'Review the exterior culling fixture after a new export');
+  const { scene: root, animations } = await readGeometryGLB(path);
+  root.scale.setScalar(.25);
+  root.traverse(node => { if (/^(COL_|ZONE_)/.test(node.name)) node.visible = false; });
+  const water = new Water(root); root.updateMatrixWorld(true);
+  const fingerprint = geometry => {
+    const hash = createHash('sha256');
+    for (const attribute of [...Object.keys(geometry.attributes).sort().map(name => geometry.attributes[name]), geometry.index]) {
+      if (attribute) hash.update(new Uint8Array(attribute.array.buffer, attribute.array.byteOffset, attribute.array.byteLength));
+    }
+    return hash.digest('hex');
+  };
+  const before = new Map(), geometries = new Map(), originals = new Set();
+  root.traverse(node => {
+    before.set(node, { parent: node.parent, name: node.name, visible: node.visible, matrix: node.matrix.clone(),
+      geometry: node.geometry, material: node.material });
+    if (!node.isMesh) return;
+    geometries.set(node.geometry, fingerprint(node.geometry));
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) originals.add(material);
+  });
+  const culling = await ClosedSurfaceCulling.create(root, true, animations, { maxTriangles: 10_000 });
+  const expected = { enabled: true, meshes: 104, triangles: 6828, materials: 8 };
+  assert.deepEqual(culling.stats, expected);
+  const prepared = new Set(), verified = new Set(); let meshes = 0, triangles = 0;
+  for (const [node, state] of before) {
+    assert.equal(node.parent, state.parent); assert.equal(node.name, state.name);
+    assert.equal(node.visible, state.visible); assert.deepEqual(node.matrix, state.matrix);
+    assert.equal(node.geometry, state.geometry);
+    if (node.material === state.material) continue;
+    if (!verified.has(node.geometry)) {
+      assert.equal(await isClosedOutwardSurface(node.geometry), true, node.name); verified.add(node.geometry);
+    }
+    meshes++; triangles += (node.geometry.index?.count ?? node.geometry.attributes.position.count) / 3;
+    const old = Array.isArray(state.material) ? state.material : [state.material];
+    const current = Array.isArray(node.material) ? node.material : [node.material];
+    assert.equal(current.length, old.length);
+    old.forEach((source, index) => {
+      const material = current[index];
+      if (source.side !== THREE.DoubleSide) { assert.equal(material, source); return; }
+      assert.notEqual(material, source); assert.equal(source.side, THREE.DoubleSide); assert.equal(material.side, THREE.FrontSide);
+      prepared.add(material);
+      const sourceJSON = source.toJSON(), preparedJSON = material.toJSON();
+      assert.deepEqual(material.userData, { ...source.userData, houseClosedSurfaceCulling: true });
+      for (const json of [sourceJSON, preparedJSON]) { delete json.uuid; delete json.userData; delete json.side; }
+      assert.deepEqual(preparedJSON, sourceJSON);
+      for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap']) assert.equal(material[key], source[key]);
+    });
+  }
+  assert.deepEqual({ enabled: true, meshes, triangles, materials: prepared.size }, expected);
+  for (const [node, state] of before) {
+    if (!node.isMesh) continue;
+    const names = (Array.isArray(state.material) ? state.material : [state.material]).map(m => m.name);
+    if (names.some(name => ['Leaves', 'Water', 'Water_Surface', 'Water_Sides', 'Material.002'].includes(name)) ||
+        EXTERIOR_LOD_NAMES.includes(node.name)) assert.equal(node.material, state.material, node.name);
+  }
+  culling.setEnabled(false); prepared.forEach(material => assert.equal(material.side, THREE.DoubleSide));
+  culling.setEnabled(true); prepared.forEach(material => assert.equal(material.side, THREE.FrontSide));
+  let ownedDisposals = 0, sourceDisposals = 0;
+  prepared.forEach(material => material.addEventListener('dispose', () => ownedDisposals++));
+  originals.forEach(material => material.addEventListener('dispose', () => sourceDisposals++));
+  geometries.forEach((hash, geometry) => {
+    assert.equal(fingerprint(geometry), hash); geometry.addEventListener('dispose', () => sourceDisposals++);
+  });
+  culling.dispose(); culling.dispose();
+  assert.equal(ownedDisposals, 8); assert.equal(sourceDisposals, 0);
+  for (const [node, state] of before) assert.equal(node.material, state.material);
+  water.dispose();
+});
+
 test('hidden pages stop the frame loop and resume from a new timing window without duplicate listeners', () => {
   const visibility = new EventTarget(); visibility.hidden = false;
   const events = [], tick = () => events.push('tick');
@@ -1453,7 +1544,10 @@ test('real house/world batching preserves source buffers and named gameplay node
     if (name === 'house') {
       root.position.y = -30; batchHouseBeams(root, gltf.animations);
       culling = await ClosedSurfaceCulling.create(root, true, gltf.animations);
-    } else { root.scale.setScalar(0.25); new Water(root); }
+    } else {
+      root.scale.setScalar(0.25); new Water(root);
+      culling = await ClosedSurfaceCulling.create(root, true, gltf.animations, { maxTriangles: 10_000 });
+    }
     const sources = []; root.traverse(node => {
       if (node.isMesh) sources.push({ node, geometry: node.geometry, position: node.position.clone(), material: node.material });
     });

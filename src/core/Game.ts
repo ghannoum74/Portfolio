@@ -785,7 +785,7 @@ export class Game {
       });
       performanceFolder.add(this.performanceDebugState, "surfaceCulling").name("Backface culling").onChange((enabled: boolean) => {
         performanceOptions.surfaceCulling = enabled;
-        this.world.setHouseSurfaceCullingEnabled(enabled);
+        this.world.setSurfaceCullingEnabled(enabled);
         this.resetPerformanceSamples();
       });
       performanceFolder.add(this.performanceDebugState, "staticBatching").name("Static batching").onChange((enabled: boolean) => {
