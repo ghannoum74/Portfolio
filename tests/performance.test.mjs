@@ -1804,3 +1804,130 @@ test('live exterior LOD toggles deduplicate loading, honor late disable and retr
     world.exteriorLod?.dispose();
   }
 });
+
+function waterProgram(material) {
+  const shader = { uniforms: {}, vertexShader: '#include <common>\nvoid main(){\n#include <begin_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main(){\n#include <color_fragment>\n}' };
+  material.onBeforeCompile(shader, null);
+  return shader;
+}
+
+test('water comparisons reuse variants, share animation time and preserve depth, source slots and ownership', () => {
+  const root = new THREE.Group(), nearSource = new THREE.MeshStandardMaterial({ roughness: .17 });
+  nearSource.name = 'Water_Surface';
+  const farSource = new THREE.MeshStandardMaterial(); farSource.name = 'Water_Horizon';
+  const other = new THREE.MeshStandardMaterial(), sourceSlots = [nearSource, other];
+  const near = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), sourceSlots);
+  const far = new THREE.Mesh(near.geometry, farSource); root.add(near, far);
+  near.castShadow = true; near.receiveShadow = true;
+  const geometry = near.geometry, water = new Water(root), nearOriginal = near.material, farOriginal = far.material;
+  assert.deepEqual(water.stats, { mode: 'original', meshes: 2 });
+  assert.equal(near.material[1], other); assert.equal(near.material[0].roughness, .17);
+  assert.equal(near.material[0].flatShading, true); assert.equal(far.material.roughness, .5);
+  const originals = [near.material[0], far.material];
+  const time = waterProgram(originals[0]).uniforms.uTime;
+  assert.equal(waterProgram(originals[1]).uniforms.uTime, time);
+  water.setShaderMode('vertex');
+  const nearVertex = near.material, farVertex = far.material;
+  const variants = new Set([...originals, near.material[0], far.material]);
+  assert.ok(near.material[0].isMeshStandardMaterial); assert.equal(near.material[1], other);
+  assert.equal(waterProgram(near.material[0]).uniforms.uTime, time);
+  water.update(.125); assert.equal(time.value, .125);
+  assert.notEqual(near.material[0].customProgramCacheKey(), originals[0].customProgramCacheKey());
+  water.setShaderMode('original'); assert.equal(near.material, nearOriginal); assert.equal(far.material, farOriginal);
+  water.setShaderMode('depth'); variants.add(near.material[0]); variants.add(far.material);
+  for (const material of [near.material[0], far.material]) {
+    assert.equal(material.colorWrite, false); assert.equal(material.depthWrite, true);
+    assert.equal(material.depthTest, true); assert.equal(material.side, THREE.FrontSide);
+    assert.equal(material.transparent, false);
+  }
+  assert.equal(near.material[1], other); assert.equal(near.geometry, geometry);
+  water.setShaderMode('vertex'); assert.equal(near.material, nearVertex); assert.equal(far.material, farVertex);
+  assert.throws(() => water.setShaderMode('invalid'), /Unknown water/);
+  let ownedDisposals = 0, sourceDisposals = 0;
+  variants.forEach(m => m.addEventListener('dispose', () => ownedDisposals++));
+  [nearSource, farSource, other].forEach(m => m.addEventListener('dispose', () => sourceDisposals++));
+  water.dispose(); water.dispose();
+  assert.equal(ownedDisposals, 6); assert.equal(sourceDisposals, 0);
+  assert.equal(near.material, sourceSlots); assert.equal(far.material, farSource);
+  assert.equal(near.castShadow, true); assert.equal(near.receiveShadow, true);
+});
+
+function waterSinArguments(source) {
+  const result = [];
+  for (const match of source.matchAll(/\bsin\s*\(/g)) {
+    const start = match.index + match[0].length;
+    let end = start, depth = 1;
+    while (depth && end < source.length) { if (source[end] === '(') depth++; if (source[end] === ')') depth--; end++; }
+    assert.equal(depth, 0); result.push(source.slice(start, end - 1));
+  }
+  return result;
+}
+
+test('original water GLSL is retained and vertex phases preserve the original affine wave arguments', () => {
+  const golden = {
+    Water_Surface: ['b5f747a12627b8f1f31e69e0a4ff3db8e0be54df40102a722ee2030d69c1bd0c',
+      '20fca6fd31c37ad9637b17cebc2d2e4c33ef47581ce98446bfaef996a1059809'],
+    Water_Horizon: ['b5f747a12627b8f1f31e69e0a4ff3db8e0be54df40102a722ee2030d69c1bd0c',
+      '07b1881c9aee532163592ad3bb6492c4b020d829163fcf3c0395348c0524bd15'],
+  };
+  let seed = 17;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
+  for (const name of Object.keys(golden)) {
+    const source = new THREE.MeshStandardMaterial(); source.name = name;
+    const root = new THREE.Group(), mesh = new THREE.Mesh(new THREE.PlaneGeometry(), source); root.add(mesh);
+    const water = new Water(root), original = waterProgram(mesh.material);
+    ['vertexShader', 'fragmentShader'].forEach((stage, i) => assert.equal(
+      createHash('sha256').update(original[stage].replace(/\s+/g, '')).digest('hex'), golden[name][i]));
+    water.setShaderMode('vertex'); const vertex = waterProgram(mesh.material);
+    assert.equal(waterSinArguments(vertex.vertexShader).length, 0, 'nonlinear sine stays per fragment');
+    const referenceArguments = waterSinArguments(original.fragmentShader);
+    const movedArguments = waterSinArguments(vertex.fragmentShader);
+    assert.equal(referenceArguments.length, name === 'Water_Surface' ? 4 : 2);
+    assert.equal(movedArguments.length, referenceArguments.length);
+    // Evaluate the actual generated scalar expressions, independently of the
+    // implementation's template layout. This checks real-arithmetic identity;
+    // driver precision and rendered pixels still require live review.
+    const phaseTerms = vertex.vertexShader.match(/vWaterPhases\s*=\s*vec[24]\(([\s\S]*?)\);/)[1];
+    const phases = new Function('vWaterWorldPosition', `return [${phaseTerms}];`);
+    const old = referenceArguments.map(arg => new Function('vWaterWorldPosition', 'uTime', `return Math.sin(${arg});`));
+    const moved = movedArguments.map(arg => new Function('vWaterPhases', 'uTime', `return Math.sin(${arg});`));
+    for (let i = 0; i < 100; i++) {
+      const points = Array.from({ length: 3 }, () => ({ x: random() * 200 - 100, z: random() * 200 - 100 }));
+      const a = random(), b = random() * (1 - a), weights = [a, b, 1 - a - b];
+      const at = { x: 0, z: 0 }, interpolated = Array(old.length).fill(0);
+      points.forEach((p, j) => { at.x += p.x * weights[j]; at.z += p.z * weights[j];
+        phases(p).forEach((value, k) => { interpolated[k] += value * weights[j]; }); });
+      const varying = Object.fromEntries(['x', 'y', 'z', 'w'].map((key, j) => [key, interpolated[j]]));
+      for (const time of [0, 1.234, 60, 628, 3600, 86400]) {
+        old.forEach((evaluate, k) => assert.ok(Math.abs(evaluate(at, time) - moved[k](varying, time)) < 1e-8));
+      }
+    }
+    water.dispose();
+  }
+});
+
+test('real world water modes preserve every mesh buffer and leave unmodified water materials alone', async () => {
+  const { scene: root } = await readGeometryGLB(new URL('../public/assets/models/environment/world.glb', import.meta.url));
+  const saved = [];
+  root.traverse(mesh => { if (mesh.isMesh) saved.push({ mesh, geometry: mesh.geometry, material: mesh.material }); });
+  const water = new Water(root);
+  assert.deepEqual(water.stats, { mode: 'original', meshes: 1 });
+  for (const mode of ['vertex', 'depth', 'original']) {
+    water.setShaderMode(mode);
+    saved.forEach(({ mesh, geometry, material }) => {
+      assert.equal(mesh.geometry, geometry);
+      if (material.name !== 'Water_Surface') assert.equal(mesh.material, material);
+    });
+  }
+  water.dispose(); saved.forEach(({ mesh, material }) => assert.equal(mesh.material, material));
+});
+
+test('water shader variants are opt-in and depth isolation requires diagnostic mode', () => {
+  assert.equal(getPerformanceOptions('', 1).waterShader, 'original');
+  assert.equal(getPerformanceOptions('?waterShader=vertex', 1).waterShader, 'vertex');
+  assert.equal(getPerformanceOptions('?waterShader=depth', 1).waterShader, 'original');
+  assert.equal(getPerformanceOptions('?perfdiag=0&waterShader=depth', 1).waterShader, 'original');
+  assert.equal(getPerformanceOptions('?perfdiag=1&waterShader=depth', 1).waterShader, 'depth');
+  assert.equal(getPerformanceOptions('?perfdiag=1&waterShader=unknown', 1).waterShader, 'original');
+});

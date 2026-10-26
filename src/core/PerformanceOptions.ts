@@ -25,6 +25,9 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     staticTransforms: params.get("staticTransforms") !== "0",
     // Retain authored close-ups; allow a direct full-detail comparison.
     exteriorLod: params.get("exteriorLod") !== "0",
+    // Colorless depth isolation is available only in explicit diagnostics.
+    waterShader: params.get("waterShader") === "vertex" ? "vertex" as const
+      : perfDiag && params.get("waterShader") === "depth" ? "depth" as const : "original" as const,
     stoneLod: params.get("stoneLod") !== "0",
     surfaceCulling: params.get("surfaceCulling") !== "0",
     activeLightsOnly: params.get("activeLightsOnly") !== "0",

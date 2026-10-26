@@ -275,6 +275,7 @@ export class Renderer {
           staticBatching: this.options.staticBatching,
           staticTransforms: this.options.staticTransforms,
           exteriorLod: this.options.exteriorLod,
+          waterShader: this.options.waterShader,
           stoneLod: this.options.stoneLod,
           surfaceCulling: this.options.surfaceCulling,
           activeLightsOnly: this.options.activeLightsOnly,

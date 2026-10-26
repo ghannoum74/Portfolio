@@ -11,7 +11,7 @@ import { ASSETS } from "../loaders/AssetManifest";
 import { DayNightCycle } from "./environment/DayNightCycle";
 import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
-import { Water } from "./environment/Water";
+import { Water, type WaterShaderMode } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
 import { StaticMeshBatches, StaticMeshInstances, StaticTransforms } from "../optimization/StaticScene";
@@ -108,7 +108,7 @@ export class World {
 
       this.meshes.push(child);
     });
-    this.water = new Water(this.model);
+    this.water = new Water(this.model, performanceOptions.waterShader);
     this.scene.add(this.model);
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
@@ -204,6 +204,7 @@ export class World {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
           exteriorLod: exteriorActive ? this.exteriorLod?.stats : undefined,
+          waterShader: exteriorActive ? this.water?.stats : undefined,
           houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
           houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
         };
@@ -237,6 +238,10 @@ export class World {
     this.exteriorLodEnabled = enabled;
     this.exteriorLod?.setEnabled(enabled);
     if (enabled) this.loadExteriorLods();
+  }
+
+  setWaterShaderMode(mode: WaterShaderMode): void {
+    this.water?.setShaderMode(mode);
   }
 
   setHouseStoneLodEnabled(enabled: boolean): void {

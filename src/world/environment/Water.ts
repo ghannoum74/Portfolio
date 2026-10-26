@@ -1,6 +1,18 @@
 import * as THREE from "three";
 
+export type WaterShaderMode = "original" | "vertex" | "depth";
+type WaterEntry = {
+  mesh: THREE.Mesh;
+  source: THREE.Material | THREE.Material[];
+  castShadow: boolean;
+  receiveShadow: boolean;
+  variants: Map<WaterShaderMode, THREE.Material | THREE.Material[]>;
+};
+
 export class Water {
+  private readonly entries: WaterEntry[] = [];
+  private readonly ownedMaterials = new Set<THREE.Material>();
+  private shaderMode: WaterShaderMode = "original";
   private readonly time = {
     value: 0,
   };
@@ -25,12 +37,55 @@ export class Water {
     value: new THREE.Color("#48bfd0"),
   };
 
-  constructor(environment: THREE.Object3D) {
+  constructor(environment: THREE.Object3D, mode: WaterShaderMode = "original") {
     this.setupWater(environment);
+    this.setShaderMode(mode);
   }
 
   update(delta: number): void {
     this.time.value += delta;
+  }
+
+  setShaderMode(mode: WaterShaderMode): void {
+    if (mode !== "original" && mode !== "vertex" && mode !== "depth") throw new Error("Unknown water shader mode");
+    for (const entry of this.entries) {
+      let materials = entry.variants.get(mode);
+      if (!materials) {
+        const create = (source: THREE.Material) => {
+          if (source.name !== "Water_Surface" && source.name !== "Water_Horizon") return source;
+          // Diagnostic keeps the same opaque depth coverage and vertex positions.
+          // Its missing water color is an isolation view, never a quality preset.
+          const material = mode === "depth"
+            ? new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.FrontSide })
+            : source.name === "Water_Surface"
+              ? this.createNearWaterMaterial(source, mode === "vertex")
+              : this.createHorizonWaterMaterial(source, mode === "vertex");
+          this.ownedMaterials.add(material);
+          return material;
+        };
+        materials = Array.isArray(entry.source) ? entry.source.map(create) : create(entry.source);
+        entry.variants.set(mode, materials);
+      }
+      entry.mesh.material = materials;
+    }
+    this.shaderMode = mode;
+  }
+
+  get stats() {
+    return { mode: this.shaderMode, meshes: this.entries.length };
+  }
+
+  dispose(): void {
+    for (const entry of this.entries) {
+      if ([...entry.variants.values()].includes(entry.mesh.material)) {
+        entry.mesh.material = entry.source;
+        entry.mesh.castShadow = entry.castShadow;
+        entry.mesh.receiveShadow = entry.receiveShadow;
+      }
+    }
+    for (const material of this.ownedMaterials) material.dispose();
+    this.ownedMaterials.clear();
+    this.entries.length = 0;
   }
 
   private setupWater(environment: THREE.Object3D): void {
@@ -43,31 +98,12 @@ export class Water {
         ? child.material
         : [child.material];
 
-      let containsWater = false;
-
-      const newMaterials = originalMaterials.map((material) => {
-        if (material.name === "Water_Surface") {
-          containsWater = true;
-
-          return this.createNearWaterMaterial(material);
-        }
-
-        if (material.name === "Water_Horizon") {
-          containsWater = true;
-
-          return this.createHorizonWaterMaterial(material);
-        }
-
-        return material;
-      });
-
-      if (!containsWater) {
+      if (!originalMaterials.some(material => material.name === "Water_Surface" || material.name === "Water_Horizon")) {
         return;
       }
 
-      child.material = Array.isArray(child.material)
-        ? newMaterials
-        : newMaterials[0];
+      this.entries.push({ mesh: child, source: child.material,
+        castShadow: child.castShadow, receiveShadow: child.receiveShadow, variants: new Map() });
 
       child.castShadow = false;
       child.receiveShadow = false;
@@ -76,6 +112,7 @@ export class Water {
 
   private createNearWaterMaterial(
     originalMaterial: THREE.Material,
+    vertexPhases = false,
   ): THREE.MeshStandardMaterial {
     const material = new THREE.MeshStandardMaterial({
       color: this.surfaceColor.value,
@@ -110,6 +147,7 @@ export class Water {
           #include <common>
 
           varying vec3 vWaterWorldPosition;
+          ${vertexPhases ? "varying vec4 vWaterPhases;" : ""}
           `,
       );
 
@@ -126,6 +164,14 @@ export class Water {
                 1.0
               )
             ).xyz;
+          ${vertexPhases ? `
+            vWaterPhases = vec4(
+              vWaterWorldPosition.x * 0.55 + vWaterWorldPosition.z * 0.22,
+              vWaterWorldPosition.z * 0.7 - vWaterWorldPosition.x * 0.18,
+              (vWaterWorldPosition.x + vWaterWorldPosition.z) * 1.15,
+              vWaterWorldPosition.x * 1.4 - vWaterWorldPosition.z * 0.8
+            );
+          ` : ""}
           `,
       );
 
@@ -141,6 +187,7 @@ export class Water {
           uniform vec3 uHighlightColor;
 
           varying vec3 vWaterWorldPosition;
+          ${vertexPhases ? "varying vec4 vWaterPhases;" : ""}
           `,
       );
 
@@ -151,25 +198,19 @@ export class Water {
 
           float waveA =
             sin(
-              vWaterWorldPosition.x * 0.55 +
-              vWaterWorldPosition.z * 0.22 +
+              ${vertexPhases ? "vWaterPhases.x" : "vWaterWorldPosition.x * 0.55 + vWaterWorldPosition.z * 0.22"} +
               uTime * 0.35
             );
 
           float waveB =
             sin(
-              vWaterWorldPosition.z * 0.7 -
-              vWaterWorldPosition.x * 0.18 -
+              ${vertexPhases ? "vWaterPhases.y" : "vWaterWorldPosition.z * 0.7 - vWaterWorldPosition.x * 0.18"} -
               uTime * 0.28
             );
 
           float ripple =
             sin(
-              (
-                vWaterWorldPosition.x +
-                vWaterWorldPosition.z
-              ) *
-              1.15 +
+              ${vertexPhases ? "vWaterPhases.z" : "(vWaterWorldPosition.x + vWaterWorldPosition.z) * 1.15"} +
               uTime *
               0.65
             );
@@ -212,8 +253,7 @@ float horizonFade =
 
 float highlightPattern =
   sin(
-    vWaterWorldPosition.x * 1.4 -
-    vWaterWorldPosition.z * 0.8 +
+    ${vertexPhases ? "vWaterPhases.w" : "vWaterWorldPosition.x * 1.4 - vWaterWorldPosition.z * 0.8"} +
     uTime * 0.75
   ) *
   0.5 +
@@ -256,13 +296,14 @@ diffuseColor.rgb =
       );
     };
 
-    material.customProgramCacheKey = () => "portfolio-water-near-v1";
+    material.customProgramCacheKey = () => vertexPhases ? "portfolio-water-near-vertex-v1" : "portfolio-water-near-v1";
 
     return material;
   }
 
   private createHorizonWaterMaterial(
     _originalMaterial: THREE.Material,
+    vertexPhases = false,
   ): THREE.MeshStandardMaterial {
     const material = new THREE.MeshStandardMaterial({
       color: this.horizonSurfaceColor.value,
@@ -289,6 +330,7 @@ diffuseColor.rgb =
           #include <common>
 
           varying vec3 vWaterWorldPosition;
+          ${vertexPhases ? "varying vec2 vWaterPhases;" : ""}
           `,
       );
 
@@ -305,6 +347,12 @@ diffuseColor.rgb =
                 1.0
               )
             ).xyz;
+          ${vertexPhases ? `
+            vWaterPhases = vec2(
+              vWaterWorldPosition.x * 0.10 + vWaterWorldPosition.z * 0.08,
+              vWaterWorldPosition.z * 0.13
+            );
+          ` : ""}
           `,
       );
 
@@ -319,6 +367,7 @@ diffuseColor.rgb =
           uniform vec3 uHorizonSurface;
 
           varying vec3 vWaterWorldPosition;
+          ${vertexPhases ? "varying vec2 vWaterPhases;" : ""}
           `,
       );
 
@@ -329,14 +378,13 @@ diffuseColor.rgb =
 
           float wave =
             sin(
-              vWaterWorldPosition.x * 0.10 +
-              vWaterWorldPosition.z * 0.08 +
+              ${vertexPhases ? "vWaterPhases.x" : "vWaterWorldPosition.x * 0.10 + vWaterWorldPosition.z * 0.08"} +
               uTime * 0.12
             );
 
           float wave2 =
             sin(
-              vWaterWorldPosition.z * 0.13 -
+              ${vertexPhases ? "vWaterPhases.y" : "vWaterWorldPosition.z * 0.13"} -
               uTime * 0.09
             );
 
@@ -361,7 +409,7 @@ diffuseColor.rgb =
       );
     };
 
-    material.customProgramCacheKey = () => "portfolio-water-horizon-v1";
+    material.customProgramCacheKey = () => vertexPhases ? "portfolio-water-horizon-vertex-v1" : "portfolio-water-horizon-v1";
 
     return material;
   }

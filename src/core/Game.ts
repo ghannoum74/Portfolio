@@ -5,6 +5,7 @@ import { performanceOptions } from "./PerformanceOptions";
 import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
 import { FrameProfiler } from "./FrameProfiler";
 import { World } from "../world/World";
+import type { WaterShaderMode } from "../world/environment/Water";
 import { Keyboard } from "../input/Keyboard";
 
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -90,6 +91,7 @@ export class Game {
   private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
   private readonly performanceDebugState = {
     exteriorLod: performanceOptions.exteriorLod,
+    waterShader: performanceOptions.waterShader,
     stoneLod: performanceOptions.stoneLod,
     surfaceCulling: performanceOptions.surfaceCulling,
     staticBatching: performanceOptions.staticBatching,
@@ -764,6 +766,13 @@ export class Game {
         this.resetPerformanceSamples();
       });
       if (performanceOptions.gpuStats) gpuTimingController.disable();
+      performanceFolder.add(this.performanceDebugState, "waterShader", {
+        "Original": "original", "Vertex phases": "vertex", "Depth only (diagnostic)": "depth",
+      }).name("Water shader").onChange((mode: WaterShaderMode) => {
+        performanceOptions.waterShader = mode;
+        this.world.setWaterShaderMode(mode);
+        this.resetPerformanceSamples();
+      });
       performanceFolder.add(this.performanceDebugState, "exteriorLod").name("Exterior LOD").onChange((enabled: boolean) => {
         performanceOptions.exteriorLod = enabled;
         this.world.setExteriorLodEnabled(enabled);
