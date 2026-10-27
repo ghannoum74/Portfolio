@@ -298,6 +298,7 @@ export class Game {
       this.keyboard,
       this.loading.manager,
       this.loading.assetReady,
+      this.renderer.instance,
     );
     this.setupPerformanceReport();
 
@@ -758,6 +759,9 @@ export class Game {
 
     if (performanceOptions.perfDiag) {
       const performanceFolder = gui.addFolder("Performance");
+      const world = this.world;
+      performanceFolder.add({ get mode() { return world.textureCompression.mode; } }, "mode")
+        .name("World textures").disable();
       if (performanceOptions.highlightMode === "border") {
         performanceFolder.add(this.performanceDebugState, "borderHighlight").name("Border highlight").onChange((enabled: boolean) => {
           this.renderer.setBorderHighlightEnabled(enabled);
@@ -849,6 +853,7 @@ export class Game {
       realTime: this.world.isUsingRealTime(),
       hour: this.world.getTimeOfDay(),
       playerPosition: this.world.player?.model?.position.toArray() ?? null,
+      worldTextureCompression: this.world.textureCompression,
       camera: { type: camera.type, worldMatrix: camera.matrixWorld.toArray(), projectionMatrix: camera.projectionMatrix.toArray() },
       viewport: { cssWidth: window.innerWidth, cssHeight: window.innerHeight,
         framebufferWidth: canvas.width, framebufferHeight: canvas.height,

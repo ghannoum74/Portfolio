@@ -1,6 +1,8 @@
 export const ASSETS = {
   world: "/assets/models/environment/world.glb",
 
+  worldKtx2: "/assets/models/environment/world-ktx2.json",
+
   house: "/assets/models/environment/house.glb",
 
   exteriorLods: "/assets/models/environment/exterior-lods.json",

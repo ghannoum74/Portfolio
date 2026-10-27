@@ -1,0 +1,112 @@
+{
+  "source": "world.glb",
+  "sourceSha256": "2731f90a21b31b1cf7ec8d3f42df49bd81d15b6a58b409f0e3a114f41a4e8e88",
+  "sourceBytes": 5044436,
+  "encoder": "ktx version: v4.4.2",
+  "encoding": "UASTC quality 4, no RDO, Zstandard 18",
+  "scope": "Opaque sRGB exterior base-color images only",
+  "imageDimensionsChanged": false,
+  "geometryChanged": false,
+  "materialsChanged": false,
+  "gpuMemoryFiguresAreEstimates": true,
+  "nativeWebGLReviewed": false,
+  "fpsGainMeasured": false,
+  "validation": {
+    "localTestsPassed": 131,
+    "typecheckPassed": true,
+    "productionBuildPassed": true,
+    "whitespaceCheckPassed": true,
+    "sourceAndDecodedGeometryPreserved": true,
+    "runtimeBasisWasmTranscodedEveryMipToBc7AndAstc": true,
+    "nativeGpuMemoryMeasured": false,
+    "nativeWebGLAppearanceReviewed": false,
+    "normalDefaultChanged": false,
+    "ordinaryLoaderStaticGraphExcludesKtx2": true
+  },
+  "images": [
+    {
+      "image": 0,
+      "name": "PathRocks_Diffuse",
+      "usages": [
+        {
+          "slot": ".pbrMetallicRoughness.baseColorTexture",
+          "material": "PathRocks"
+        }
+      ],
+      "width": 1024,
+      "height": 1024,
+      "sourceBytes": 643742,
+      "sourceRgbaSha256": "995437a3d1942464a9f7a037872524d5a82c679168112adc782d1f0e83ba9626",
+      "output": "world-0-9851135d54f1a3cf.ktx2",
+      "outputBytes": 933399,
+      "outputSha256": "9851135d54f1a3cfe0a9f9088d8d020f9245fcd23b52e9d35ef93085aa0dba56",
+      "levels": 11,
+      "rgba8MipBytesEstimate": 5592404,
+      "bc7OrAstc4x4MipBytesEstimate": 1398128,
+      "quality": {
+        "exactPixels": false,
+        "rmse": 0.8875,
+        "psnrDb": 49.1675,
+        "p99AbsoluteChannelError": 4,
+        "maxAbsoluteChannelError": 20
+      }
+    },
+    {
+      "image": 1,
+      "name": "Image_0",
+      "usages": [
+        {
+          "slot": ".pbrMetallicRoughness.baseColorTexture",
+          "material": "Material.002"
+        }
+      ],
+      "width": 1024,
+      "height": 1024,
+      "sourceBytes": 323290,
+      "sourceRgbaSha256": "47dda331b6064ba57b6b10226f61801514de981bf9ad3869271dcac13fa6ea02",
+      "output": "world-1-a4ae3b0a85feae0b.ktx2",
+      "outputBytes": 573068,
+      "outputSha256": "a4ae3b0a85feae0b613de16c2d00e0ceae3b65ece84986cb4609d077466db5f0",
+      "levels": 11,
+      "rgba8MipBytesEstimate": 5592404,
+      "bc7OrAstc4x4MipBytesEstimate": 1398128,
+      "quality": {
+        "exactPixels": false,
+        "rmse": 0.542,
+        "psnrDb": 53.4501,
+        "p99AbsoluteChannelError": 2,
+        "maxAbsoluteChannelError": 20
+      }
+    },
+    {
+      "image": 2,
+      "name": "tiny_treats_texture_1",
+      "usages": [
+        {
+          "slot": ".pbrMetallicRoughness.baseColorTexture",
+          "material": "tiny_treats_1"
+        }
+      ],
+      "width": 1024,
+      "height": 1024,
+      "sourceBytes": 18562,
+      "sourceRgbaSha256": "4e0021c56ed025a6aa8d010d5832c4ddcbe4f98d7412b989b80306b0edd01a9b",
+      "output": "world-2-be8d2654bbaf7836.ktx2",
+      "outputBytes": 53515,
+      "outputSha256": "be8d2654bbaf7836db44a22d97b613360bcdec3b928482431ad37908f5a116a4",
+      "levels": 11,
+      "rgba8MipBytesEstimate": 5592404,
+      "bc7OrAstc4x4MipBytesEstimate": 1398128,
+      "quality": {
+        "exactPixels": false,
+        "rmse": 0.3044,
+        "psnrDb": 58.4624,
+        "p99AbsoluteChannelError": 1,
+        "maxAbsoluteChannelError": 2
+      }
+    }
+  ],
+  "totalEncodedBytes": 1559982,
+  "rgba8MipBytesEstimate": 16777212,
+  "bc7OrAstc4x4MipBytesEstimate": 4194384
+}
