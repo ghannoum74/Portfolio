@@ -33,7 +33,10 @@ export class AssetLoader {
         comparison.onState(result.state);
       } else {
         asset = await this.gltfLoader.parseAsync(source as ArrayBuffer, path);
-        comparison.onState({ requested: true, mode: "original", reason: "KTX2 code unavailable", images: 0 });
+        const error = extension.error;
+        const message = error instanceof Error ? error.message
+          : typeof error === "object" && error !== null && "message" in error ? String(error.message) : String(error);
+        comparison.onState({ requested: true, mode: "original", reason: `KTX2 code unavailable: ${message}`, images: 0 });
         console.warn("[World texture compression] Using original textures:", extension.error);
       }
     } else {

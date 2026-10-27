@@ -21,7 +21,8 @@
     "nativeGpuMemoryMeasured": false,
     "nativeWebGLAppearanceReviewed": false,
     "normalDefaultChanged": false,
-    "ordinaryLoaderStaticGraphExcludesKtx2": true
+    "ordinaryLoaderStaticGraphExcludesKtx2": true,
+    "workerErrorEventLikeMessagesPreserved": true
   },
   "images": [
     {

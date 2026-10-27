@@ -182,7 +182,7 @@ test('unsupported formats, unavailable manifests, stale exports and decode failu
         createBackend: async () => {
           if (failure === 'setup') throw new Error('optional module unavailable');
           return { ktx2: { workerConfig: { bptcSupported: failure !== 'unsupported' }, dispose() { disposed++; } },
-            loader: { async parseAsync() { parses++; if (failure === 'transcoder') throw new Error('decode failed'); return bad.asset; } } };
+            loader: { async parseAsync() { parses++; if (failure === 'transcoder') throw { message: 'worker decode failed' }; return bad.asset; } } };
         },
         readManifest: async () => {
           reads++; if (failure === 'manifest') throw new Error('optional HTTP 404');
@@ -195,6 +195,7 @@ test('unsupported formats, unavailable manifests, stale exports and decode failu
       assert.equal(originals, 1); assert.equal(disposed, failure === 'setup' ? 0 : 1);
       if (failure === 'unsupported' || failure === 'setup') assert.equal(reads, 0);
       if (failure === 'stale') assert.equal(parses, 0);
+      if (failure === 'transcoder') assert.equal(result.state.reason, 'worker decode failed');
       if (failure === 'format' || failure === 'mipmaps') assert.deepEqual(bad.disposals, { textures: 3, materials: 3, geometries: 3 });
     }
   } finally { console.warn = savedWarn; }

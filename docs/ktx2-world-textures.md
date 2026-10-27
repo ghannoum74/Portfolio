@@ -68,7 +68,11 @@ completed candidates release their textures/materials/geometry; the KTX2 loader
 releases its worker pool after the comparison load.
 
 The Performance folder's read-only **World textures** field shows `original`
-or `ktx2-uastc`. The downloadable report records `worldTextureCompression`,
+or `ktx2-uastc`; its disabled appearance is intentional. The **KTX2 status** text
+field is read-only but selectable/copyable. It distinguishes a missing
+`&ktx2=1` flag from loading, an active target and the actual fallback reason.
+Worker error-event messages and optional module-load errors are retained.
+The downloadable report records `worldTextureCompression`,
 including actual format or fallback reason. The requested URL flag alone is
 not proof that compression was used. This field describes the exterior asset
 even in a report captured inside the house.
@@ -120,7 +124,7 @@ DOM/renderer/optional-loader test doubles do not prove native WebGL operation.
 Existing house tests still use the older execution-workspace house fixture;
 this pass does not replace or claim to retest the owner's newer house export.
 
-The main entry builds to 1,025.08 kB minified / 273.16 kB gzip, versus the preceding
+The main entry builds to 1,025.58 kB minified / 273.38 kB gzip, versus the preceding
 1,022.71 / 272.25 kB. Physics is unchanged at 2,855.12 / 1,078.39 kB. KTX2 assets
 and loader/transcoder code are lazy. A separate dependency-graph check confirms
 that the ordinary AssetLoader's static graph excludes the comparison module and
@@ -133,7 +137,9 @@ viewport, DPR, fixed preview hour and quality settings:
 1. Original: `http://localhost:5173/?perfdiag=1`
 2. Compressed: `http://localhost:5173/?perfdiag=1&ktx2=1`
 
-Check **World textures** in Performance before interpreting readings. Compare
+Check **World textures** in Performance before interpreting readings. If it
+shows `original`, copy **KTX2 status** or download the report so the exact reason
+can be inspected. Do not infer unsupported hardware from the mode alone. Compare
 rocks, ground/cliffs and the prop atlas close up and at distance. Confirm full
 LODs, seams, wrapping, colors, shadows and animated water still match the intended
 appearance. Enable GPU timing if available, restart readings and hold the same

@@ -172,7 +172,8 @@ export async function loadKtx2World(
     const format = formats.has(THREE.RGBA_BPTC_Format) ? "bc7" : "astc4x4";
     return { asset: candidate, state: { requested: true, mode: "ktx2-uastc", reason: "active", images: maps.size, format } };
   } catch (error) {
-    reason = error instanceof Error ? error.message : String(error);
+    reason = error instanceof Error ? error.message
+      : typeof error === "object" && error !== null && "message" in error ? String(error.message) : String(error);
     if (candidate) disposeCandidate(candidate);
   } finally {
     backend?.ktx2.dispose();
