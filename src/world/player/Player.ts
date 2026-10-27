@@ -7,6 +7,7 @@ import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { PlayerBody } from "./PlayerBody";
 import { StairDetector } from "../StairDetector";
 import { ASSETS } from "../../loaders/AssetManifest";
+import { SeatedPose } from "./SeatedPose";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export class Player {
@@ -20,6 +21,8 @@ export class Player {
   private body!: PlayerBody;
 
   private modelBottomY = 0;
+  private seatedPose?: SeatedPose;
+  private readonly standingFeet = new THREE.Vector3();
 
   constructor(
     private scene: THREE.Scene,
@@ -43,6 +46,7 @@ export class Player {
     ]);
 
     this.model = playerAsset.scene;
+    this.seatedPose = new SeatedPose(this.model);
 
     // this.model.scale.setScalar(0.01);
 
@@ -123,15 +127,34 @@ export class Player {
   }
 
   updatePhysics(delta: number): void {
+    if (this.seatedPose?.isActive) return;
     this.controller?.update(delta);
   }
 
   updateAnimation(delta: number): void {
+    if (this.seatedPose?.isActive) return;
     this.mixer?.update(delta);
   }
 
   syncFromPhysics(): void {
+    if (this.seatedPose?.isActive) return;
     this.body.syncModel(this.model, this.modelBottomY);
+  }
+
+  beginSitting(seat: THREE.Vector3, look: THREE.Vector3): boolean {
+    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive) return false;
+    this.body.getFeetPosition(this.standingFeet);
+    if (!this.seatedPose.begin(seat, look)) return false;
+    // Keep the physics capsule at the clear approach point, outside the sofa.
+    this.body.teleport(this.standingFeet);
+    return true;
+  }
+
+  endSitting(): void {
+    if (!this.seatedPose?.isActive) return;
+    this.seatedPose.end();
+    this.body.teleport(this.standingFeet);
+    this.syncFromPhysics();
   }
 
   private stripRootTranslation(
@@ -164,6 +187,7 @@ export class Player {
   }
 
   teleport(feetPosition: THREE.Vector3, rotationY?: number): void {
+    this.endSitting();
     if (rotationY !== undefined) {
       this.model.rotation.y = rotationY;
     }

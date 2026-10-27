@@ -1351,7 +1351,7 @@ export class Game {
       house.model,
       this.playerCamera,
       {
-        onFocusStart: () => {
+        onFocusStart: (showPlayer = false) => {
           if (
             this.phase !== "playing" || !this.insideHouse ||
             this.transitioning || this.projectBookMode !== "idle" ||
@@ -1364,7 +1364,7 @@ export class Game {
           this.keyboard.setEnabled(false);
           this.thirdPersonCamera?.setInputEnabled(false);
           this.renderer.setInteractionOutline(null);
-          this.world.player.model.visible = false;
+          this.world.player.model.visible = showPlayer;
           this.helpButton.setVisible(false);
           return true;
         },
@@ -1377,6 +1377,8 @@ export class Game {
             !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
           );
         },
+        onSitStart: (seat, look) => this.world.player.beginSitting(seat, look),
+        onSitEnd: () => this.world.player.endSitting(),
         isMuted: () => this.worldAudio.isMuted,
       },
     );
