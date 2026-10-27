@@ -14,8 +14,6 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
   return {
     lowFx,
     perfDiag,
-    // Experimental texture comparison: full-quality originals remain default.
-    ktx2Textures: perfDiag && params.get("ktx2") === "1",
     outlines: !lowFx && params.get("outlines") !== "0",
     highlightMode: params.get("highlight") === "outline" ? "outline" : "border",
     shadows: !lowFx && params.get("shadows") !== "0",

@@ -130,8 +130,7 @@ test('Game exports current camera, resolution, scene and live settings without U
   const model = new THREE.Group(); model.position.set(1, 2, 3);
   Object.assign(game, { performanceReport: new PerformanceReport(), phase: 'playing', insideHouse: true, debugMode: false, projectBookMode: 'idle',
     getActiveCamera: () => camera, awards: { mode: 'active' }, journey: { mode: 'idle' }, workshop: { mode: 'idle' },
-    world: { player: { model }, isUsingRealTime: () => false, getTimeOfDay: () => 7.15,
-      textureCompression: { requested: true, mode: 'original', reason: 'BC7/ASTC unavailable', images: 0 } },
+    world: { player: { model }, isUsingRealTime: () => false, getTimeOfDay: () => 7.15 },
     renderer: { instance: { domElement: { width: 1920, height: 1080 }, getPixelRatio: () => 1.5,
       render() { assert.fail('download must not submit a render'); }, getContext() { assert.fail('download must not sample GPU'); } } },
   });
@@ -143,8 +142,6 @@ test('Game exports current camera, resolution, scene and live settings without U
     assert.equal(result.metadata.sourceRevision, null); assert.equal(result.metadata.documentVisibility, 'visible');
     assert.equal(context.scene, 'house'); assert.equal(context.phase, 'playing'); assert.equal(context.awardsMode, 'active');
     assert.equal(context.realTime, false); assert.equal(context.hour, 7.15); assert.deepEqual(context.playerPosition, [1, 2, 3]);
-    assert.deepEqual(context.worldTextureCompression, game.world.textureCompression);
-    assert.equal(context.worldTextureCompression.mode, 'original');
     assert.deepEqual(context.camera.worldMatrix, camera.matrixWorld.toArray()); assert.deepEqual(context.camera.projectionMatrix, camera.projectionMatrix.toArray());
     assert.deepEqual(context.viewport, { cssWidth: 1280, cssHeight: 720, framebufferWidth: 1920, framebufferHeight: 1080, nativePixelRatio: 1.5, pixelRatio: 1.5 });
     assert.deepEqual(context.settings, options); assert.deepEqual(performanceOptions, options);

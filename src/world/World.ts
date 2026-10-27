@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { Keyboard } from "../input/Keyboard";
 import { Player } from "./player/Player";
 import { AssetLoader } from "../loaders/AssetLoader";
-import type { WorldTextureState } from "../loaders/Ktx2WorldTextures";
 import { WorldColliders } from "../physics/WorldColliders";
 import { PhysicsWorld } from "../physics/PhysicsWorld";
 import { PhysicsDebugRenderer } from "../physics/PhysicsDebugRenderer";
@@ -24,7 +23,6 @@ import { ClosedSurfaceCulling } from "./house/ClosedSurfaceCulling";
 export class World {
   model!: THREE.Group;
   onPerformanceSample?: PerformanceSampleListener;
-  textureCompression: WorldTextureState = { requested: false, mode: "original", reason: "default", images: 0 };
   private exteriorLod?: HouseStoneLod;
   private exteriorLodPromise?: Promise<void>;
   private exteriorLodEnabled = performanceOptions.exteriorLod;
@@ -70,7 +68,6 @@ export class World {
     private readonly keyboard: Keyboard,
     private readonly loadingManager: THREE.LoadingManager,
     private readonly onAssetReady?: (url: string) => void,
-    private readonly renderer?: THREE.WebGLRenderer,
   ) {
     this.addLights();
 
@@ -87,11 +84,7 @@ export class World {
     // Independent network/decoder work starts together behind the loading screen.
     const [, asset] = await Promise.all([
       this.physics.init(),
-      new AssetLoader(this.loadingManager, this.onAssetReady).loadGLB(ASSETS.world,
-        performanceOptions.ktx2Textures && this.renderer ? {
-          renderer: this.renderer, manifest: ASSETS.worldKtx2,
-          onState: state => { this.textureCompression = state; },
-        } : undefined),
+      new AssetLoader(this.loadingManager, this.onAssetReady).loadGLB(ASSETS.world),
     ]);
 
     // Rapier exists now, so debug renderer can safely use it.
@@ -104,7 +97,6 @@ export class World {
      *load the world and create colliders for it.
      */
     this.model = asset.scene;
-    if (performanceOptions.perfDiag) console.info("[World texture compression]", this.textureCompression);
     this.environmentAnimations = asset.animations;
 
     this.model.scale.setScalar(0.25);

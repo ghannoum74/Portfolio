@@ -298,7 +298,6 @@ export class Game {
       this.keyboard,
       this.loading.manager,
       this.loading.assetReady,
-      this.renderer.instance,
     );
     this.setupPerformanceReport();
 
@@ -759,20 +758,6 @@ export class Game {
 
     if (performanceOptions.perfDiag) {
       const performanceFolder = gui.addFolder("Performance");
-      const world = this.world;
-      performanceFolder.add({ get mode() { return world.textureCompression.mode; } }, "mode")
-        .name("World textures").disable();
-      const textureStatus = performanceFolder.add({ get status() {
-        if (!performanceOptions.ktx2Textures) return "Not requested: add &ktx2=1";
-        const state = world.textureCompression;
-        if (!state.requested) return "Loading textures";
-        return state.mode === "ktx2-uastc" ? `Active (${state.format})` : state.reason;
-      } }, "status").name("KTX2 status");
-      const statusInput = textureStatus.domElement.querySelector("input");
-      if (statusInput) {
-        statusInput.readOnly = true;
-        statusInput.title = "Read-only status. Select and copy this text if original textures are used.";
-      }
       if (performanceOptions.highlightMode === "border") {
         performanceFolder.add(this.performanceDebugState, "borderHighlight").name("Border highlight").onChange((enabled: boolean) => {
           this.renderer.setBorderHighlightEnabled(enabled);
@@ -864,7 +849,6 @@ export class Game {
       realTime: this.world.isUsingRealTime(),
       hour: this.world.getTimeOfDay(),
       playerPosition: this.world.player?.model?.position.toArray() ?? null,
-      worldTextureCompression: this.world.textureCompression,
       camera: { type: camera.type, worldMatrix: camera.matrixWorld.toArray(), projectionMatrix: camera.projectionMatrix.toArray() },
       viewport: { cssWidth: window.innerWidth, cssHeight: window.innerHeight,
         framebufferWidth: canvas.width, framebufferHeight: canvas.height,

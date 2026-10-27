@@ -102,12 +102,37 @@ The inactive `house-webp.glb` is a different asset: 201 meshes/19 materials,
 compared with the active house's 248 meshes/72 materials. It uses different
 material maps as well. Its smaller file size does not establish equivalence.
 
-The current loader configures Meshopt decoding; it does not configure KTX2
-transcoding, and the repository tree contains no KTX2/Basis assets. KTX2/Basis is
-a possible later GPU-texture-compression pass. It requires inspecting the active
-model textures, choosing formats, adding capability-aware loader/transcoder
-support, and comparing close-up appearance. KTX2/Basis GPU compression is not
-included in the lossless WebP delivery pass.
+The runtime uses the original GLB images and Meshopt decoding. The optional
+KTX2/Basis comparison was removed at the owner's request on October 27, 2026,
+after the supplied `original.json` and `bc7.json` exports showed no meaningful
+speed improvement. Its loader, query option, diagnostic controls, generator,
+manifest, three sidecar textures and dedicated tests are removed. Existing
+`&ktx2=1` bookmarks now use the same original-image loading path.
+
+Only the final measurement runs were compared: run 11 in `original.json` and
+run 5 in `bc7.json`. Their recorded window-end contexts match the exterior
+camera (within floating-point noise), player position, fixed hour 13, 1226 x 828
+CSS viewport, 1348 x 910 framebuffer, DPR about 1.1 and all quality settings
+apart from the compression option. BC7 was active for all three world images.
+
+| Median of final-run reporting windows | Original (7 windows) | BC7 (8 windows) |
+| --- | ---: | ---: |
+| Approximate FPS | 59 | 59 |
+| GPU render window mean | 13.63 ms | 13.575 ms |
+| CPU callback window mean | 10.36 ms | 10.89 ms |
+| Last-frame draw calls | 136 | 136 |
+| Last-frame triangles | 192,524 | 192,524 |
+
+The original run contains 124 completed GPU queries and the BC7 run 140; all
+renderer windows report ready, zero disjoint events and at most one pending
+query. The 0.055 ms GPU difference (about 0.4%) is smaller than the variation
+between window means. These exports do not establish a repeatable speed gain.
+They are separate short runs, contain window-end context snapshots rather than
+continuous condition verification, and have no source-revision fingerprint.
+No close-up appearance review or native GPU-memory measurement was supplied.
+The earlier 16 MiB to 4 MiB texture-storage estimate concerned only these three
+images; it did not measure total driver memory. Original textures are now the
+only runtime path, with no compression comparison or associated extra downloads.
 
 ## Attached source files
 
