@@ -22,8 +22,29 @@
     "build": true,
     "whitespace": true,
     "liveBrowserReview": false,
+    "ownerReportedManualBookReview": true,
     "hardwareFpsGainMeasured": false,
     "gpuGainMeasured": false
+  },
+  "manualBookReview": {
+    "date": "2026-10-27",
+    "reporter": "owner",
+    "result": "all passed",
+    "sourceCommitNotIndependentlyVerified": "44d1dad7420a4d9a7db9cab71c911f9072f8dd9a",
+    "requestedChecks": [
+      "All four spreads and forward/backward turns",
+      "Arrow/counter and first/last-page states",
+      "Controls hide during page curl",
+      "Window resizing",
+      "Esc, return and reopening",
+      "Page text and screenshots"
+    ],
+    "assistantOperatedBrowser": false,
+    "browserBlocker": "Browser access requires the originating browser context",
+    "screenshotsSupplied": false,
+    "consoleErrorsIndependentlyChecked": false,
+    "renderingSettingsIndependentlyCaptured": false,
+    "beforeAfterTimingsSupplied": false
   },
   "build": {
     "entryMinifiedKB": 1018.53,

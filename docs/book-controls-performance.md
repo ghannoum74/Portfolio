@@ -61,12 +61,20 @@ Build entry: 1,018.53 kB minified / 271.04 kB gzip. Required physics remains
 warnings remain. Machine-readable work evidence:
 [book-controls-work-review.json](book-controls-work-review.json).
 
-## Live review
+## Owner's manual review — October 27, 2026
 
-After pulling, open the Projects book and leave it in reading mode with
-`?perfdiag=1`. Inspect both arrows and the counter on all four spreads, turn
-forward/backward, resize the window and return/reopen with Esc. Confirm controls
-hide during the curl, settle at their original positions and update first/last
-page button states. This can also cover the outstanding shared detail-texture
-and lossless WebP appearance checks. The latest change has not yet received
-that live browser review; no hardware FPS/GPU improvement is claimed.
+The owner reported **"all passed"** after the requested manual book check:
+all four spreads, forward/backward turns, arrow/counter and first/last-page
+states, controls hiding during the curl, window resizing, and Esc/return/reopen.
+The checklist also requested inspection of page text and screenshots. No
+failure was reported, completing the owner's functional book review.
+
+This is an owner-reported result. The Browser connector rejected access before
+any page action with "Browser access requires the originating browser context";
+the assistant did not operate or independently observe this run. No screenshots,
+console-error capture, exact running-source fingerprint, rendering-setting
+capture or before/after timing measurements were supplied. Shared detail-texture
+and screenshot appearance received the manual check's reported pass, not a
+matched pixel comparison. The exterior/world WebP appearance and broader
+gameplay traversal are outside this book checklist. No hardware FPS/GPU
+improvement is claimed. This follow-up changes documentation only.
