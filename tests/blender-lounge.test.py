@@ -59,8 +59,9 @@ def main():
     back = box("Fixture_Back", (0, 0.38, 0.8), (2.2, 0.18, 1.0), couch)
     fireplace = box("Fixture_Fireplace", (5, -2, 0.7), (1.5, 0.8, 1.6))
     collider = box("COL_BOX_FIXTURE_COUCH", (1, -1, 0.5), (2, 1, 1))
+    table = box("Table_Large", (1, -3, 0.35), (2, 1, 0.1))
     bpy.context.view_layer.update()
-    originals = (couch, seat, back, fireplace, collider)
+    originals = (couch, seat, back, fireplace, collider, table)
     before = snapshot(originals)
     tool.register()
     settings = bpy.context.scene.portfolio_lounge
@@ -74,12 +75,36 @@ def main():
     assert bpy.context.scene.portfolio_lounge.couch == couch
     settings = bpy.context.scene.portfolio_lounge
     settings.couch, settings.fireplace = None, None
+    # Screenshot case: a coffee table is selected and the furniture is unnamed.
+    old_names = couch.name, fireplace.name
+    couch.name, fireplace.name = "Furniture_A", "Furniture_B"
+    bpy.ops.object.select_all(action="DESELECT")
+    table.select_set(True)
+    bpy.context.view_layer.objects.active = table
+    runpy.run_path(str(spec.origin), run_name="__main__")
+    failed_settings = bpy.context.scene.portfolio_lounge
+    assert failed_settings.status == "FAILED"
+    failure_report = bpy.data.texts[failed_settings.report_name].as_string()
+    assert "Table_Large" in failure_report
+    assert all(name + ": MISSING" in failure_report for name in tool.MARKERS)
+    assert not any(bpy.data.objects.get(name) for name in tool.MARKERS)
+    couch.name, fireplace.name = old_names
     bpy.ops.object.select_all(action="DESELECT")
     couch.select_set(True)
     bpy.context.view_layer.objects.active = couch
     runpy.run_path(str(spec.origin), run_name="__main__")
     assert bpy.context.scene.portfolio_lounge.couch == couch
     assert bpy.context.scene.portfolio_lounge.fireplace == fireplace
+    assert bpy.context.scene.portfolio_lounge.status == "READY"
+    ready_report = bpy.data.texts[bpy.context.scene.portfolio_lounge.report_name].as_string()
+    assert all(name + ": PRESENT" in ready_report for name in tool.MARKERS)
+    # Selecting the table on a rerun never binds it as the couch.
+    bpy.ops.object.select_all(action="DESELECT")
+    table.select_set(True)
+    bpy.context.view_layer.objects.active = table
+    assert bpy.ops.portfolio_lounge.auto_setup() == {"FINISHED"}
+    assert bpy.context.scene.portfolio_lounge.couch == couch
+    assert table.get("portfolioAuthoringName") is None
     bpy.context.view_layer.update()
     expected_cushion_top = max((seat.matrix_world @ Vector(v.co)).z for v in seat.data.vertices)
     assert abs(bpy.data.objects["SEAT_COUCH"].matrix_world.translation.z - expected_cushion_top) < 1e-5
@@ -190,6 +215,9 @@ def main():
         "automaticRerunHasNoDriftOrDuplicates": True,
         "anonymousSelectedFurnitureDetected": True,
         "ambiguousFurnitureDeclinedWithoutMutation": True,
+        "selectedTableIsNotBoundAsCouch": True,
+        "failedSetupWritesMissingMarkerReport": True,
+        "readyStatusVerifiesAllSixMarkers": True,
         "collidersPreserved": True,
         "rerunPreservesAdjustedMarkers": True,
         "textEditorReregistrationPassed": True,

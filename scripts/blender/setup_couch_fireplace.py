@@ -20,6 +20,9 @@ from mathutils import Vector, Matrix
 
 
 OWNER = "portfolio.couch-fireplace.v1"
+SCRIPT_VERSION = "2026-10-27.3"
+REPORT_NAME = "PORTFOLIO_LOUNGE_REPORT"
+COUCH_REJECT = r"(^|[_ .-])(table|desk|floor|wall|roof|ceiling|ground)($|[_ .-])"
 AUTO_SETUP_ON_RUN = True
 # Optional exact-name overrides. Leave empty for selection/name detection.
 COUCH_OBJECT_NAME = ""
@@ -126,15 +129,17 @@ def automatic_targets(settings):
     couch = exact(COUCH_OBJECT_NAME)
     active = bpy.context.view_layer.objects.active
     selected_couch = [o for o in selected if o != fireplace and
-                      not re.search(r"fireplace|flame|(^|[_ .-])(floor|wall|roof|ceiling|ground)($|[_ .-])", o.name, re.I)]
+                      not re.search(r"fireplace|flame|" + COUCH_REJECT, o.name, re.I)]
     if couch is None:
         if len(selected_couch) == 1:
             couch = selected_couch[0]
         elif len(selected) == 2 and active in selected_couch:
             couch = active
-    if couch is None and eligible(settings.couch):
+    if couch is None and eligible(settings.couch) and not re.search(COUCH_REJECT, settings.couch.name, re.I):
         couch = settings.couch
     couch = couch or named(("SEC_LOUNGE_Couch", "Couch", "Sofa"), r"couch|sofa", (fireplace,))
+    if couch is not None and re.search(COUCH_REJECT, couch.name, re.I) and not COUCH_OBJECT_NAME:
+        raise ValueError("The selected object is " + couch.name + ". Select the couch frame, not a table or a room surface.")
     if fireplace is None and couch is not None and len(selected) == 2:
         fireplace = next((o for o in selected if o != couch), None)
     if couch is None or fireplace is None:
@@ -357,11 +362,70 @@ def create_markers(couch, fireplace, flame=None, initial_on=False, reset_positio
     return couch_marker, fire_marker
 
 
+def record_setup(status, detail="", targets=None):
+    context = bpy.context
+    settings = getattr(context.scene, "portfolio_lounge", None)
+    report = bpy.data.texts.get(getattr(settings, "report_name", "") or REPORT_NAME)
+    if report is None or report.get("portfolioOwner") != OWNER:
+        report = bpy.data.texts.new(REPORT_NAME)
+        report["portfolioOwner"] = OWNER
+    active = context.view_layer.objects.active
+    lines = [
+        "Portfolio couch and fireplace setup",
+        "Script: " + SCRIPT_VERSION,
+        "Blender: " + bpy.app.version_string,
+        "Status: " + status,
+        "Detail: " + detail,
+        "Active object: " + (active.name if active else "(none)"),
+        "Selected: " + (", ".join(o.name for o in context.selected_objects) or "(none)"),
+    ]
+    if targets:
+        lines.extend(("Couch: " + targets[0].name, "Fireplace: " + targets[1].name,
+                      "Flame: " + (targets[2].name if targets[2] else "(generated/reused)")))
+    lines.append("Marker objects in the active scene:")
+    for name in MARKERS:
+        obj = context.scene.objects.get(name)
+        lines.append("  " + name + ": " + ("PRESENT" if obj else "MISSING"))
+    lines.append("Couch names: " + ", ".join(o.name for o in context.scene.objects
+                 if re.search(r"couch|sofa", o.name, re.I) and not o.name.startswith(PREFIXES)))
+    lines.append("Fireplace names: " + ", ".join(o.name for o in context.scene.objects
+                 if re.search("fireplace", o.name, re.I) and not o.name.startswith(PREFIXES)))
+    report.clear()
+    report.write("\n".join(lines) + "\n")
+    if settings is not None:
+        for name, value in (("status", status), ("detail", detail), ("report_name", report.name)):
+            if hasattr(settings, name):
+                setattr(settings, name, value)
+    print("\n".join(lines))
+    return report.name
+
+
+def reveal_markers(context):
+    """Expose Empty objects in the Outliner; leave render settings alone."""
+    for area in context.screen.areas if context.screen else ():
+        if area.type == "VIEW_3D":
+            area.spaces.active.show_region_ui = True
+        elif area.type == "OUTLINER":
+            space = area.spaces.active
+            space.filter_text = ""
+            if hasattr(space, "use_filter_object_empty"):
+                space.use_filter_object_empty = True
+
+
+def verify_markers():
+    missing = [name for name in MARKERS if bpy.context.scene.objects.get(name) is None]
+    if missing:
+        raise RuntimeError("Setup did not create all markers: " + ", ".join(missing))
+
+
 class PFLOUNGE_PG_settings(bpy.types.PropertyGroup):
     couch: bpy.props.PointerProperty(name="Couch", type=bpy.types.Object)
     fireplace: bpy.props.PointerProperty(name="Fireplace", type=bpy.types.Object)
     flame: bpy.props.PointerProperty(name="Existing Flame (optional)", type=bpy.types.Object)
     initial_on: bpy.props.BoolProperty(name="Fire initially on in game", default=False)
+    status: bpy.props.StringProperty(name="Setup status", default="NOT RUN")
+    detail: bpy.props.StringProperty(name="Setup detail", default="")
+    report_name: bpy.props.StringProperty(name="Diagnostic report", default="")
 
 
 class PFLOUNGE_OT_build(bpy.types.Operator):
@@ -373,10 +437,15 @@ class PFLOUNGE_OT_build(bpy.types.Operator):
     def execute(self, context):
         settings = context.scene.portfolio_lounge
         try:
+            record_setup("RUNNING", "Manual marker setup")
             create_markers(settings.couch, settings.fireplace, settings.flame, settings.initial_on)
-        except (ValueError, RuntimeError) as exc:
+            verify_markers()
+        except Exception as exc:
+            record_setup("FAILED", type(exc).__name__ + ": " + str(exc))
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
+        reveal_markers(context)
+        record_setup("READY", "All 6 markers are present in the active scene.")
         self.report({"INFO"}, "Ready. Adjust SEAT_COUCH / LOOK_COUCH / CAM_COUCH, then export with Custom Properties.")
         return {"FINISHED"}
 
@@ -390,9 +459,12 @@ class PFLOUNGE_OT_auto_setup(bpy.types.Operator):
     def execute(self, context):
         settings = context.scene.portfolio_lounge
         try:
+            record_setup("RUNNING", "Detecting the selected couch and fireplace")
             couch, fireplace, flame = automatic_targets(settings)
             create_markers(couch, fireplace, flame, settings.initial_on, reset_positions=True)
-        except (ValueError, RuntimeError) as exc:
+            verify_markers()
+        except Exception as exc:
+            record_setup("FAILED", type(exc).__name__ + ": " + str(exc))
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
         settings.couch, settings.fireplace, settings.flame = couch, fireplace, flame
@@ -401,9 +473,8 @@ class PFLOUNGE_OT_auto_setup(bpy.types.Operator):
         marker = bpy.data.objects["SEAT_COUCH"]
         marker.select_set(True)
         context.view_layer.objects.active = marker
-        for area in context.screen.areas if context.screen else ():
-            if area.type == "VIEW_3D":
-                area.spaces.active.show_region_ui = True
+        reveal_markers(context)
+        record_setup("READY", "All 6 markers are present in the active scene.", (couch, fireplace, flame))
         self.report({"INFO"}, "Markers placed. SEAT_COUCH is selected. Review cushion contact and camera placement.")
         return {"FINISHED"}
 
@@ -418,6 +489,14 @@ class PFLOUNGE_PT_setup(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         settings = context.scene.portfolio_lounge
+        status = layout.box()
+        count = sum(context.scene.objects.get(name) is not None for name in MARKERS)
+        status.label(text="Status: " + settings.status)
+        status.label(text="Markers: " + str(count) + " / " + str(len(MARKERS)))
+        for line in textwrap.wrap(settings.detail, 40):
+            status.label(text=line)
+        if settings.report_name:
+            status.label(text="Text: " + settings.report_name)
         layout.operator("portfolio_lounge.auto_setup")
         layout.label(text="Choose a mesh or parent/root.")
         layout.prop(settings, "couch")
@@ -453,7 +532,8 @@ def register():
     if hasattr(bpy.types.Scene, "portfolio_lounge"):
         for scene in bpy.data.scenes:
             p = scene.portfolio_lounge
-            saved.append((scene, p.couch, p.fireplace, p.flame, p.initial_on))
+            saved.append((scene, p.couch, p.fireplace, p.flame, p.initial_on,
+                          getattr(p, "status", "NOT RUN"), getattr(p, "detail", ""), getattr(p, "report_name", "")))
         del bpy.types.Scene.portfolio_lounge
     for cls in reversed(CLASSES):
         if issubclass(cls, bpy.types.Operator):
@@ -468,9 +548,10 @@ def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.Scene.portfolio_lounge = bpy.props.PointerProperty(type=PFLOUNGE_PG_settings)
-    for scene, couch, fireplace, flame, initial in saved:
+    for scene, couch, fireplace, flame, initial, status, detail, report_name in saved:
         p = scene.portfolio_lounge
         p.couch, p.fireplace, p.flame, p.initial_on = couch, fireplace, flame, initial
+        p.status, p.detail, p.report_name = status, detail, report_name
     p = bpy.context.scene.portfolio_lounge
     if p.couch is None:
         p.couch = bpy.data.objects.get("SEC_LOUNGE_Couch") or bpy.data.objects.get("Couch")
@@ -483,11 +564,15 @@ def register():
 
 
 if __name__ == "__main__":
-    register()
-    if AUTO_SETUP_ON_RUN:
-        try:
+    try:
+        register()
+        record_setup("NOT RUN", "Script loaded. Select the couch before automatic setup.")
+        if AUTO_SETUP_ON_RUN:
             result = bpy.ops.portfolio_lounge.auto_setup()
             if "FINISHED" in result:
-                show_message("Setup complete. The markers are placed and SEAT_COUCH is selected. Review the seat and camera, then export with Custom Properties enabled.")
-        except RuntimeError as exc:
-            show_message(str(exc), error=True)
+                show_message("READY: all 6 markers exist. SEAT_COUCH is selected. Review the seat and camera before export.")
+            else:
+                show_message("Setup did not finish. Open PORTFOLIO_LOUNGE_REPORT in the Text Editor for the reason.", error=True)
+    except Exception as exc:
+        record_setup("FAILED", type(exc).__name__ + ": " + str(exc))
+        show_message(str(exc) + " See PORTFOLIO_LOUNGE_REPORT in the Text Editor.", error=True)

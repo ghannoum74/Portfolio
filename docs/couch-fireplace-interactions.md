@@ -60,6 +60,25 @@ after reopening Blender if you want its controls. Saved marker custom properties
 remain in the .blend. Manual Create / Update preserves adjusted positions;
 automatic setup recalculates them from the current furniture geometry.
 
+## When the markers are missing
+
+The green text.run_script message confirms Python execution. It does not mean
+that furniture detection or marker creation succeeded.
+
+Open the complete downloaded .py file directly using Text Editor → Open. Select
+the fireplace, then Shift-select the couch frame last, and run the script.
+Automatic detection skips coffee tables such as Table_Large as couch targets.
+
+The N → Portfolio panel shows the persistent setup status and a live marker
+count. READY is recorded only after all six markers exist in the active scene.
+Successful setup clears the Outliner search and exposes Empty objects.
+
+For a failure, use the Text Editor's text dropdown to open
+PORTFOLIO_LOUNGE_REPORT. It contains the exact error, Blender/script versions,
+active/selected object names, candidate names and PRESENT/MISSING for each
+marker. This report remains available after the popup closes. It is not exported
+as runtime geometry.
+
 ## Game integration
 
 The companion game code is required; Blender Python does not become executable
@@ -88,13 +107,16 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
 - The eight new regressions use the shipped avatar's actual skeleton and skinned
   vertices, repeat seating/restoration, check physics/mixer suspension, camera
   transitions, fireplace/light release, shader preparation, teardown and names.
-- Native Blender 4.5.3 LTS fixture passes: repeated registration, operator use,
+- Native Blender 4.5.3 LTS and 5.1.2 fixtures pass: repeated registration, operator use,
   mirrored/scaled geometry, unchanged source transforms/mesh/materials/colliders,
   preserved edited markers, original-flame binding, owned-fire replacement, and
   GLB export with exact custom properties and converted Y-up marker positions.
   The automatic Text Editor entry also passes detection from the selected couch,
   exact cushion-surface placement, anonymous two-object selection, ambiguous
   selection rejection and repeated recalculation without marker drift/duplicates.
+  The coffee-table selection case produces a persistent failure report when
+  detection cannot resolve the furniture; a rerun never binds the table as the
+  couch. READY is verified against all six marker objects.
 - The fixture is disposable. No owner .blend or runtime house GLB was modified.
 - Native browser appearance, cushion contact, camera clearance and updated
   house-export culling baselines remain to be reviewed after the owner's export.
