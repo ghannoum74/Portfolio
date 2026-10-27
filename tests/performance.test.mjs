@@ -1208,7 +1208,7 @@ test('only flat workshop and map rings request a single double-sided transparenc
   assert.equal(glow.glowRune.material.forceSinglePass, true);
   assert.equal(glow.glowRune.material.side, THREE.DoubleSide);
   const journey = Object.create(JourneyMapExperience.prototype);
-  Object.assign(journey, { root: new THREE.Group(), stops: [], glowTexture: new THREE.Texture() });
+  Object.assign(journey, { root: new THREE.Group(), stops: [], hitTargets: [], glowTexture: new THREE.Texture() });
   journey.createStop({}, new THREE.Vector3(), 0);
   assert.equal(journey.stops[0].ring.material.forceSinglePass, true);
   assert.equal(journey.stops[0].ring.material.side, THREE.DoubleSide);

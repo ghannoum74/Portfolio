@@ -28,6 +28,11 @@ export class JourneyMapExperience {
   private readonly stops: Stop[] = [];
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
+  private readonly intersections: THREE.Intersection[] = [];
+  private readonly hitTargets: THREE.Object3D[] = [];
+  private readonly hintPosition = new THREE.Vector3();
+  private hintLeft = Number.NaN;
+  private hintTop = Number.NaN;
   private readonly baseRoute: THREE.Line;
   private readonly activeRoute: THREE.Line;
   private readonly glowTexture: THREE.CanvasTexture;
@@ -265,15 +270,20 @@ export class JourneyMapExperience {
       }
     }
     if (this.state !== "active") return;
-    this.hovered = this.pointerInside ? this.pick(this.pointerX, this.pointerY) : null;
+    // Read layout once before hover DOM writes; moving camera/targets are still picked each frame.
+    const rect = this.pointerInside ? this.canvas.getBoundingClientRect() : null;
+    this.hovered = rect ? this.pick(this.pointerX, this.pointerY, rect) : null;
     const over = this.hovered !== null;
     this.setCursor(over);
-    this.hint.classList.toggle("is-visible", over);
-    if (over) {
-      const pos = this.stops[this.hovered!].group.getWorldPosition(new THREE.Vector3()).project(this.camera);
-      const rect = this.canvas.getBoundingClientRect();
-      this.hint.style.left = `${THREE.MathUtils.clamp(rect.left + (pos.x + 1) * rect.width / 2, 75, window.innerWidth - 75)}px`;
-      this.hint.style.top = `${THREE.MathUtils.clamp(rect.top + (1 - pos.y) * rect.height / 2 - 72, 35, window.innerHeight - 60)}px`;
+    if (this.hint.classList.contains("is-visible") !== over)
+      this.hint.classList.toggle("is-visible", over);
+    if (over && rect) {
+      const pos = this.stops[this.hovered!].group.getWorldPosition(this.hintPosition).project(this.camera);
+      const left = THREE.MathUtils.clamp(rect.left + (pos.x + 1) * rect.width / 2, 75, window.innerWidth - 75);
+      const top = THREE.MathUtils.clamp(rect.top + (1 - pos.y) * rect.height / 2 - 72, 35, window.innerHeight - 60);
+      // Cache desired numbers: CSSOM may round a pixel string when reading it back.
+      if (this.hintLeft !== left) { this.hint.style.left = `${left}px`; this.hintLeft = left; }
+      if (this.hintTop !== top) { this.hint.style.top = `${top}px`; this.hintTop = top; }
     }
   }
 
@@ -313,6 +323,7 @@ export class JourneyMapExperience {
     hit.position.y = 0.085;
     group.add(hit);
     this.stops.push({ data, group, gem, ring, halo, hit, shine: 0 });
+    this.hitTargets.push(hit);
   }
 
   private makeOverview(): Shot {
@@ -373,15 +384,15 @@ export class JourneyMapExperience {
     this.duration = seconds;
   }
 
-  private pick(clientX: number, clientY: number): number | null {
-    const rect = this.canvas.getBoundingClientRect();
+  private pick(clientX: number, clientY: number, rect = this.canvas.getBoundingClientRect()): number | null {
     if (!rect.width || !rect.height) return null;
     this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObjects(this.stops.map(s => s.hit), false);
-    if (!hits.length) return null;
-    const index = this.stops.findIndex(s => s.hit === hits[0].object);
+    this.intersections.length = 0;
+    this.raycaster.intersectObjects(this.hitTargets, false, this.intersections);
+    const index = this.intersections.length ? this.hitTargets.indexOf(this.intersections[0].object) : -1;
+    this.intersections.length = 0;
     return index < 0 ? null : index;
   }
 
@@ -399,7 +410,10 @@ export class JourneyMapExperience {
     return new THREE.CanvasTexture(canvas);
   }
 
-  private setCursor(on: boolean): void { this.canvas.style.cursor = on ? "pointer" : ""; }
+  private setCursor(on: boolean): void {
+    const cursor = on ? "pointer" : "";
+    if (this.canvas.style.cursor !== cursor) this.canvas.style.cursor = cursor;
+  }
   private onPrevious = (): void => this.selectRelative(-1);
   private onNext = (): void => this.selectRelative(1);
   private onPointerMove = (event: PointerEvent): void => {
