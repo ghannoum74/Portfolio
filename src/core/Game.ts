@@ -4,6 +4,7 @@ import { Renderer } from "./Renderer";
 import { performanceOptions } from "./PerformanceOptions";
 import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
 import { FrameProfiler } from "./FrameProfiler";
+import { PerformanceReport, downloadPerformanceReport } from "./PerformanceReport";
 import { World } from "../world/World";
 import type { WaterShaderMode } from "../world/environment/Water";
 import { Keyboard } from "../input/Keyboard";
@@ -89,6 +90,7 @@ export class Game {
   private timer = new THREE.Timer();
   private animationLoop: VisibleAnimationLoop;
   private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
+  private readonly performanceReport = performanceOptions.perfDiag ? new PerformanceReport() : undefined;
   private readonly performanceDebugState = {
     exteriorLod: performanceOptions.exteriorLod,
     waterShader: performanceOptions.waterShader,
@@ -101,6 +103,7 @@ export class Game {
     gpuTiming: performanceOptions.gpuTiming,
     pixelRatio: performanceOptions.pixelRatio,
     restartReadings: () => this.resetPerformanceSamples(),
+    downloadReport: () => this.downloadPerformanceReport(),
   };
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -296,6 +299,7 @@ export class Game {
       this.loading.manager,
       this.loading.assetReady,
     );
+    this.setupPerformanceReport();
 
     this.cameraDebugMesh = this.createCameraDebugMesh();
 
@@ -542,7 +546,10 @@ export class Game {
     this.renderer.render(this.scene, camera);
     this.frameProfiler?.mark("render");
     const profile = this.frameProfiler?.finish(this.insideHouse ? "house" : "exterior");
-    if (profile) console.info("[Frame profile]", profile, JSON.stringify(profile));
+    if (profile) {
+      console.info("[Frame profile]", profile, JSON.stringify(profile));
+      this.performanceReport?.record("frame", profile, this.performanceReportContext());
+    }
   };
 
   private onResize = (): void => {
@@ -806,6 +813,7 @@ export class Game {
           this.resetPerformanceSamples();
         });
       performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
+      performanceFolder.add(this.performanceDebugState, "downloadReport").name("Download report");
       performanceFolder.open();
     }
 
@@ -816,6 +824,47 @@ export class Game {
     this.frameProfiler?.reset();
     this.renderer.resetPerformanceSamples();
     this.world.resetPerformanceSamples();
+    this.performanceReport?.newRun();
+  }
+
+  private setupPerformanceReport(): void {
+    if (!this.performanceReport) return;
+    this.renderer.onPerformanceSample = sample => this.performanceReport?.record("renderer", sample, this.performanceReportContext());
+    this.world.onPerformanceSample = sample => this.performanceReport?.record("physics", sample, this.performanceReportContext());
+  }
+
+  private performanceReportContext(): Record<string, unknown> {
+    const camera = this.getActiveCamera();
+    camera.updateWorldMatrix(true, false);
+    const canvas = this.renderer.instance.domElement;
+    return {
+      phase: this.phase,
+      scene: this.insideHouse ? "house" : "exterior",
+      debugView: this.debugMode,
+      bookMode: this.projectBookMode,
+      workshopMode: this.workshop?.mode ?? null,
+      awardsMode: this.awards?.mode ?? null,
+      journeyMode: this.journey?.mode ?? null,
+      furnitureControlsCamera: this.furniture?.isControllingCamera ?? false,
+      realTime: this.world.isUsingRealTime(),
+      hour: this.world.getTimeOfDay(),
+      playerPosition: this.world.player?.model?.position.toArray() ?? null,
+      camera: { type: camera.type, worldMatrix: camera.matrixWorld.toArray(), projectionMatrix: camera.projectionMatrix.toArray() },
+      viewport: { cssWidth: window.innerWidth, cssHeight: window.innerHeight,
+        framebufferWidth: canvas.width, framebufferHeight: canvas.height,
+        nativePixelRatio: window.devicePixelRatio, pixelRatio: this.renderer.instance.getPixelRatio() },
+      settings: { ...performanceOptions, pixelRatio: this.renderer.instance.getPixelRatio() },
+    };
+  }
+
+  private downloadPerformanceReport(): void {
+    if (!this.performanceReport) return;
+    downloadPerformanceReport(this.performanceReport.snapshot({
+      page: { origin: window.location.origin, pathname: window.location.pathname },
+      sourceRevision: null,
+      documentVisibility: document.visibilityState,
+      contextAtDownload: this.performanceReportContext(),
+    }));
   }
 
   private updateOverlay(): void {

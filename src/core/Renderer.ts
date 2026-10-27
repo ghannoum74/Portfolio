@@ -3,6 +3,7 @@ import type Stats from "stats-gl";
 import { getPerformanceOptions, performanceOptions } from "./PerformanceOptions";
 import { InteractionHighlight } from "./InteractionHighlight";
 import { GpuTimer } from "./GpuTimer";
+import type { PerformanceSampleListener } from "./PerformanceReport";
 
 import type { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import type { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -11,6 +12,7 @@ import type { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.
 export class Renderer {
   instance: THREE.WebGLRenderer;
   stats?: Stats;
+  onPerformanceSample?: PerformanceSampleListener;
 
   private composer?: EffectComposer;
   private renderPass?: RenderPass;
@@ -283,6 +285,7 @@ export class Renderer {
         };
         // Keep the object for existing collectors and text for browser log bridges.
         console.info("[House perf]", sample, JSON.stringify(sample));
+        this.onPerformanceSample?.(sample);
         this.perfFrames = 0;
         this.perfRenderMs = 0;
         this.perfStarted = now;

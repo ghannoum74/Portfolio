@@ -14,6 +14,7 @@ import type { Npc } from "./npc/Npc";
 import { Water, type WaterShaderMode } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
+import type { PerformanceSampleListener } from "../core/PerformanceReport";
 import { StaticMeshBatches, StaticMeshInstances, StaticTransforms } from "../optimization/StaticScene";
 
 import { HouseStoneLod, EXTERIOR_LOD_NAMES, type StoneLodData } from "./house/HouseStoneLod";
@@ -21,6 +22,7 @@ import { ClosedSurfaceCulling } from "./house/ClosedSurfaceCulling";
 
 export class World {
   model!: THREE.Group;
+  onPerformanceSample?: PerformanceSampleListener;
   private exteriorLod?: HouseStoneLod;
   private exteriorLodPromise?: Promise<void>;
   private exteriorLodEnabled = performanceOptions.exteriorLod;
@@ -230,6 +232,7 @@ export class World {
           houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
         };
         console.info("[House physics]", sample, JSON.stringify(sample));
+        this.onPerformanceSample?.(sample);
         this.physicsTimingStarted = now;
         this.physicsTimingMs = 0;
         this.physicsTimingFrames = 0;
