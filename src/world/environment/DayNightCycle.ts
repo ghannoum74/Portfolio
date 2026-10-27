@@ -14,6 +14,8 @@ export class DayNightCycle {
   private readonly timeFormatter: Intl.DateTimeFormat;
   private readonly sunShadowsEnabled: boolean;
   private elapsed = Infinity;
+  private formattedSecond = Number.NaN;
+  private formattedHour = 0;
 
   // for debbuging purposes
   private overrideHours: number | null = null;
@@ -84,7 +86,12 @@ export class DayNightCycle {
   }
 
   private getCurrentHour(): number {
-    const parts = this.timeFormatter.formatToParts(new Date());
+    const timestamp = Date.now();
+    const epochSecond = Math.floor(timestamp / 1000);
+    // Formatting returns whole seconds. Reuse only within that wall-clock second,
+    // including when the clock moves backward or jumps while updates are paused.
+    if (epochSecond === this.formattedSecond) return this.formattedHour;
+    const parts = this.timeFormatter.formatToParts(timestamp);
 
     const getPart = (type: Intl.DateTimeFormatPartTypes): number => {
       const value = parts.find((part) => part.type === type)?.value;
@@ -96,7 +103,9 @@ export class DayNightCycle {
     const minute = getPart("minute");
     const second = getPart("second");
 
-    return hour + minute / 60 + second / 3600;
+    this.formattedHour = hour + minute / 60 + second / 3600;
+    this.formattedSecond = epochSecond;
+    return this.formattedHour;
   }
 
   private applyTime(hour: number): void {
