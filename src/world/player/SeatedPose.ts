@@ -14,7 +14,7 @@ export class SeatedPose {
   private readonly focus = new THREE.Vector3();
   private saved?: {
     position: THREE.Vector3;
-    quaternion: THREE.Quaternion;
+    rotation: THREE.Euler;
     bones: SavedBone[];
     skins: { mesh: THREE.SkinnedMesh; box: THREE.Box3 | null; sphere: THREE.Sphere | null }[];
   };
@@ -54,7 +54,7 @@ export class SeatedPose {
     if (names.some(name => !bones.has(name)) || skeletons.size === 0) return false;
     this.saved = {
       position: this.model.position.clone(),
-      quaternion: this.model.quaternion.clone(),
+      rotation: this.model.rotation.clone(),
       bones: [...bones.values()].map(bone => ({
         bone, position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone(),
       })),
@@ -155,7 +155,10 @@ export class SeatedPose {
       entry.bone.scale.copy(entry.scale);
     }
     this.model.position.copy(saved.position);
-    this.model.quaternion.copy(saved.quaternion);
+    // PlayerController reads rotation.y as an unwrapped yaw. Restoring only the
+    // quaternion can turn a 180-degree yaw into X/Z half-turns with Y near zero,
+    // preserving the visible orientation while reversing W/S and A/D behavior.
+    this.model.rotation.copy(saved.rotation);
     this.model.updateMatrixWorld(true);
     for (const entry of saved.skins) {
       if (entry.box) (entry.mesh.boundingBox ??= new THREE.Box3()).copy(entry.box);

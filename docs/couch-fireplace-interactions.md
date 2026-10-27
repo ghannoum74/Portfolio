@@ -92,6 +92,11 @@ The seated pose uses the loaded avatar's neutral local bone transforms without a
 extra animation download. This avoids retaining an interrupted walking pose or
 the idle clip's different bone translations. The original animated pose is saved
 and restored on standing; the Armature scale remains intact.
+The player's complete Euler rotation, including its unwrapped yaw and order, is
+preserved through successful and declined seating. Movement reads that yaw;
+quaternion-only restoration can recode a turned-around heading into X/Z rotations
+and make W/S disagree with the visible avatar. Follow resumes after the original
+player heading is restored.
 
 The Blender couch can consist of separate scene-level frame, cushion, back and
 pillow meshes. The runtime assembles a bounded, touching set of support meshes
@@ -131,6 +136,10 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
   They also compare seating after real idle/walking clips, verify a deep cushion's
   knee clearance and outward leg pose, mirrored/scaled support, separate hidden
   cushions with a frame-only marker, clean cancellation and adjusted camera aim.
+  The real player controller and follow camera are also checked after repeated
+  sitting at both turn-around headings, side angles and multiple full turns: W/S
+  retain their camera-relative directions, A/D keep their turn directions, and a
+  declined seat preserves the original movement heading.
 - Native Blender 4.5.3 LTS and 5.1.2 fixtures pass: repeated registration, operator use,
   mirrored/scaled geometry, unchanged source transforms/mesh/materials/colliders,
   preserved edited markers, original-flame binding, owned-fire replacement, and

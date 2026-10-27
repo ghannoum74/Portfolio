@@ -13,6 +13,8 @@ await build({ stdin: {
   contents: "export { SeatedPose } from './src/world/player/SeatedPose';" +
     "export { createCouchSupport } from './src/world/player/CouchSeat';" +
     "export { Player } from './src/world/player/Player';" +
+    "export { PlayerController } from './src/world/player/PlayerController';" +
+    "export { ThirdPersonCamera } from './src/camera/ThirdPersonCamera';" +
     "export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
@@ -20,7 +22,7 @@ await build({ stdin: {
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, createCouchSupport, Player, HouseFurnitureInteractions, performanceOptions } = loaded;
+const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, HouseFurnitureInteractions, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -211,7 +213,8 @@ test('an unsupported seat cancels cleanly and restores the interrupted animated 
   const model = await avatar(), pose = new SeatedPose(model);
   const clip = (await readGeometryGLB(new URL('../public/assets/models/player/animations/idle.glb', import.meta.url))).animations[0];
   const mixer = new THREE.AnimationMixer(model); mixer.clipAction(clip).play(); mixer.update(0.7);
-  model.position.set(2, -30, 4); model.rotation.y = 0.9; model.updateMatrixWorld(true);
+  model.position.set(2, -30, 4); model.rotation.y = 2.6; model.updateMatrixWorld(true);
+  const heading = model.rotation.toArray();
   const before = [];
   model.traverse(object => { if (object.isBone || object === model) before.push([object, object.position.toArray(), object.quaternion.toArray(), object.scale.toArray()]); });
   assert.equal(pose.begin(new THREE.Vector3(0, 0.65, 0), new THREE.Vector3(0, 0.65, 1), new THREE.Group()), false);
@@ -219,6 +222,7 @@ test('an unsupported seat cancels cleanly and restores the interrupted animated 
   for (const [object, p, q, s] of before) {
     close(object.position.toArray(), p); close(object.quaternion.toArray(), q); close(object.scale.toArray(), s);
   }
+  assert.deepEqual(model.rotation.toArray(), heading, 'a declined seat must preserve the heading read by movement');
 });
 
 test('player pauses movement and animation while seated and returns physics to the clear approach point', async () => {
@@ -243,6 +247,56 @@ test('player pauses movement and animation while seated and returns physics to t
   assert.equal(physics, 1); assert.equal(animation, 1);
   player.body.isGrounded = false;
   assert.equal(player.beginSitting(new THREE.Vector3(), new THREE.Vector3(0, 0, 1)), false);
+});
+
+test('standing after approaching from either side preserves W/S direction, A/D turns and the follow camera', async () => {
+  const addEventListener = globalThis.window.addEventListener;
+  globalThis.window.addEventListener = () => {};
+  try {
+    for (const heading of [Math.PI, -Math.PI, 2.6, -2.6, 3 * Math.PI, -3 * Math.PI, 0.7]) {
+      const model = await avatar(), player = Object.create(Player.prototype), feet = new THREE.Vector3(4, -30, 2);
+      model.position.copy(feet); model.rotation.set(0, heading, 0);
+      const movement = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+      const keyboard = { forward: false, backward: false, left: false, right: false, run: false, consumeJump: () => false };
+      const body = {
+        isGrounded: true, isFalling: false, isJumping: false,
+        getFeetPosition: out => out.copy(feet), teleport() {}, syncModel() {},
+        update(direction, yaw) { movement.set(0, 0, direction).applyAxisAngle(up, yaw); },
+      };
+      const animations = { isLocked: () => false, play() {}, playOnce() {}, setPlaybackSpeed() {} };
+      const controller = new PlayerController(model, keyboard, animations, body, { isAscending: () => false });
+      Object.assign(player, { model, body, controller, seatedPose: new SeatedPose(model), standingFeet: new THREE.Vector3() });
+      const camera = new THREE.PerspectiveCamera();
+      const follow = new ThirdPersonCamera(camera, model, { addEventListener() {} }, {
+        rapier: { Ball: class {}, QueryFilterFlags: { ONLY_FIXED: 1 } },
+        world: { castShape: () => null }, staticColliderRevision: 0,
+      });
+      follow.setInteriorMode(true); follow.snap();
+      const cameraPosition = camera.position.toArray(), cameraRotation = camera.quaternion.toArray();
+      const originalForward = new THREE.Vector3(0, 0, 1).applyQuaternion(model.quaternion);
+      for (let repetition = 0; repetition < 2; repetition++) {
+        assert.ok(player.beginSitting(new THREE.Vector3(0, -29.35, 0), new THREE.Vector3(0, -29.35, 1)));
+        // Match the E/Esc exit order: restore the player, then resume follow.
+        player.endSitting(); follow.snap();
+        close(camera.position.toArray(), cameraPosition); close(camera.quaternion.toArray(), cameraRotation);
+        const cameraForward = camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
+        keyboard.forward = true; controller.update(1 / 60);
+        assert.ok(movement.dot(originalForward) > 0.99999, 'W must retain its pre-seat world direction at heading ' + heading);
+        assert.ok(movement.dot(cameraForward) > 0.99999, 'W must move forward in the follow camera');
+        keyboard.forward = false; keyboard.backward = true; controller.update(1 / 60);
+        assert.ok(movement.dot(cameraForward) < -0.99999, 'S must move backward in the follow camera');
+        keyboard.backward = false; keyboard.left = true; controller.update(0.1);
+        const left = new THREE.Vector3(0, 0, 1).applyQuaternion(model.quaternion);
+        assert.ok(left.dot(originalForward.clone().applyAxisAngle(up, 0.4)) > 0.99999, 'A must turn without flipping the avatar');
+        keyboard.left = false; keyboard.right = true; controller.update(0.1);
+        assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(model.quaternion).dot(originalForward) > 0.99999, 'D must undo the left turn');
+        keyboard.right = false;
+      }
+    }
+  } finally {
+    if (addEventListener === undefined) delete globalThis.window.addEventListener;
+    else globalThis.window.addEventListener = addEventListener;
+  }
 });
 
 function domFixture() {
