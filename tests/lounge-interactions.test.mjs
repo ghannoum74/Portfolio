@@ -11,6 +11,7 @@ const temporary = await mkdtemp(new URL('../.perf-test-lounge-', import.meta.url
 const bundle = temporary + '/suite.mjs';
 await build({ stdin: {
   contents: "export { SeatedPose } from './src/world/player/SeatedPose';" +
+    "export { createCouchSupport } from './src/world/player/CouchSeat';" +
     "export { Player } from './src/world/player/Player';" +
     "export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
@@ -19,7 +20,7 @@ await build({ stdin: {
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, Player, HouseFurnitureInteractions, performanceOptions } = loaded;
+const { SeatedPose, createCouchSupport, Player, HouseFurnitureInteractions, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -46,7 +47,9 @@ test('shipped avatar sits at the authored cushion, bends both knees, and restore
   for (let repetition = 0; repetition < 3; repetition++) {
     assert.equal(pose.begin(seat, look), true);
     assert.equal(pose.isActive, true);
-    close(bones.get('hips').getWorldPosition(new THREE.Vector3()).toArray(), [1, -29.45, -2]);
+    const pelvis = bones.get('hips').getWorldPosition(new THREE.Vector3());
+    close([pelvis.x, pelvis.z], [seat.x, seat.z]);
+    assert.ok(pelvis.y > seat.y + 0.08 && pelvis.y < seat.y + 0.25);
     const skinBounds = new THREE.Box3(), vertex = new THREE.Vector3();
     model.traverse(object => {
       if (!object.isSkinnedMesh) return;
@@ -94,6 +97,130 @@ test('unsupported rigs and invalid seat directions decline without changing the 
   close(model.matrixWorld.toArray(), before);
 });
 
+test('sitting produces the same relaxed avatar after idle and walking, then restores the interrupted animation pose', async () => {
+  const samples = [];
+  for (const animation of ['idle', 'walking']) {
+    const model = await avatar(), pose = new SeatedPose(model);
+    const clip = (await readGeometryGLB(new URL('../public/assets/models/player/animations/' + animation + '.glb', import.meta.url))).animations[0];
+    const mixer = new THREE.AnimationMixer(model);
+    mixer.clipAction(clip).play(); mixer.update(0.7);
+    model.updateMatrixWorld(true);
+    const before = [];
+    model.traverse(object => { if (object.isBone) before.push([object, object.position.toArray(), object.quaternion.toArray(), object.scale.toArray()]); });
+    assert.equal(pose.begin(new THREE.Vector3(0, 0.65, 0), new THREE.Vector3(0, 0.65, 1)), true);
+    const vertices = [];
+    model.traverse(mesh => {
+      if (!mesh.isSkinnedMesh) return;
+      for (let i = 0; i < mesh.geometry.attributes.position.count; i++) {
+        vertices.push(...mesh.getVertexPosition(i, new THREE.Vector3()).applyMatrix4(mesh.matrixWorld).toArray());
+      }
+    });
+    samples.push(vertices);
+    pose.end();
+    for (const [bone, p, q, s] of before) {
+      close(bone.position.toArray(), p); close(bone.quaternion.toArray(), q); close(bone.scale.toArray(), s);
+    }
+  }
+  close(samples[0], samples[1]);
+});
+
+function couchFixture(mirrored = false) {
+  const couch = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  const add = (size, position) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+    mesh.position.set(...position); couch.add(mesh); return mesh;
+  };
+  add([2.2, 0.18, 1.4], [0, 0.56, 0]); // Cushion top 0.65, front edge +0.7.
+  add([2.3, 0.8, 0.18], [0, 0.93, -0.68]);
+  add([0.18, 0.6, 1.4], [-1.1, 0.65, 0]);
+  add([0.18, 0.6, 1.4], [1.1, 0.65, 0]);
+  add([2.2, 0.35, 1.35], [0, 0.3, 0]);
+  const collider = add([15, 12, 15], [0, 0, 0]); collider.name = 'COL_BOX_COUCH';
+  if (mirrored) { couch.position.set(4, -30, -2); couch.rotation.y = 0.9; couch.scale.set(1.3, 0.9, -1.1); }
+  couch.updateMatrixWorld(true);
+  return {
+    couch, seat: couch.localToWorld(new THREE.Vector3(0, 0.65, 0)),
+    forward: new THREE.Vector3(0, 0, 1).transformDirection(couch.matrixWorld),
+    front: couch.localToWorld(new THREE.Vector3(0, 0.65, 0.7)),
+    right: new THREE.Vector3(1, 0, 0).transformDirection(couch.matrixWorld),
+  };
+}
+
+test('the shipped avatar clears a deep cushion with supported thighs and outward knees, including a mirrored couch', async () => {
+  for (const mirrored of [false, true]) {
+    const { couch, seat, forward, front, right } = couchFixture(mirrored);
+    const model = await avatar(), pose = new SeatedPose(model), source = couch.toJSON();
+    assert.equal(pose.begin(seat, seat.clone().add(forward), couch), true);
+    const bones = new Map();
+    model.traverse(o => { if (o.isBone) bones.set(o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase(), o); });
+    for (const side of ['left', 'right']) {
+      const hip = bones.get(side + 'upleg').getWorldPosition(new THREE.Vector3());
+      const knee = bones.get(side + 'leg').getWorldPosition(new THREE.Vector3());
+      const foot = bones.get(side + 'foot').getWorldPosition(new THREE.Vector3());
+      assert.ok(knee.clone().sub(front).dot(forward) >= 0.06, 'knee and calf must clear the front of the cushion');
+      assert.ok(knee.y > seat.y + 0.08, 'the thigh must rest above the cushion');
+      assert.ok(foot.y < seat.y - 0.1, 'the lower leg must hang down in front');
+      const lateral = hip.clone().sub(model.getObjectByName('mixamorigHips').getWorldPosition(new THREE.Vector3())).dot(right);
+      assert.ok(knee.clone().sub(hip).dot(right) * lateral > 0, 'knees must spread outward rather than cross inward');
+    }
+    assert.deepEqual(couch.toJSON(), source, 'sitting must preserve the source couch and collider');
+    pose.end();
+  }
+});
+
+test('a couch back and arms correct a generated sideways look marker toward the open cushion edge', async () => {
+  const { couch, seat, right, forward, front } = couchFixture();
+  const model = await avatar(), pose = new SeatedPose(model);
+  assert.equal(pose.begin(seat, seat.clone().add(right), couch), true);
+  const knee = model.getObjectByName('mixamorigLeftLeg').getWorldPosition(new THREE.Vector3());
+  assert.ok(knee.clone().sub(front).dot(forward) >= 0.06);
+  assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(model.quaternion).dot(forward) > 0.98);
+  pose.end();
+});
+
+test('a frame-only marker uses separate batch-hidden cushions without moving or drawing source parts', async () => {
+  const { couch, right, forward, front } = couchFixture();
+  const room = new THREE.Group();
+  // Match the Blender arrangement: every couch part is a scene-level sibling.
+  for (const child of [...couch.children]) room.attach(child);
+  const frame = room.children[4];
+  const seed = new THREE.Vector3(0, 0.475, 0);
+  for (const part of room.children.slice(0, 4)) part.visible = false; // Static batches draw these instead.
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(20, 0.1, 20)); floor.position.y = -0.05; room.add(floor);
+  const table = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 1)); table.position.set(0, 0.3, 1.5); room.add(table);
+  const batch = new THREE.Mesh(room.children[0].geometry, room.children[0].material);
+  batch.name = 'STATIC_BATCH_1'; batch.position.copy(room.children[0].position); room.add(batch);
+  const zone = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1, 1.6));
+  zone.name = 'ZONE_DECOR'; zone.position.y = 0.5; zone.visible = false; room.add(zone);
+  room.updateMatrixWorld(true);
+  const before = room.toJSON(), support = createCouchSupport(room, frame);
+  assert.equal(support.parent, null);
+  assert.equal(support.children.length, 5, 'only the five touching couch parts belong to the support');
+  assert.ok(!support.children.some(part => part.geometry === floor.geometry || part.geometry === table.geometry));
+  const model = await avatar(), pose = new SeatedPose(model);
+  assert.equal(pose.begin(seed, seed.clone().add(right), support), true);
+  const hips = model.getObjectByName('mixamorigHips').getWorldPosition(new THREE.Vector3());
+  const knee = model.getObjectByName('mixamorigLeftLeg').getWorldPosition(new THREE.Vector3());
+  assert.ok(hips.y > 0.73, 'the pelvis must sit over the cushion, not the lower frame');
+  assert.ok(knee.clone().sub(front).dot(forward) > 0.06);
+  assert.deepEqual(room.toJSON(), before);
+  pose.end();
+});
+
+test('an unsupported seat cancels cleanly and restores the interrupted animated player', async () => {
+  const model = await avatar(), pose = new SeatedPose(model);
+  const clip = (await readGeometryGLB(new URL('../public/assets/models/player/animations/idle.glb', import.meta.url))).animations[0];
+  const mixer = new THREE.AnimationMixer(model); mixer.clipAction(clip).play(); mixer.update(0.7);
+  model.position.set(2, -30, 4); model.rotation.y = 0.9; model.updateMatrixWorld(true);
+  const before = [];
+  model.traverse(object => { if (object.isBone || object === model) before.push([object, object.position.toArray(), object.quaternion.toArray(), object.scale.toArray()]); });
+  assert.equal(pose.begin(new THREE.Vector3(0, 0.65, 0), new THREE.Vector3(0, 0.65, 1), new THREE.Group()), false);
+  assert.equal(pose.isActive, false);
+  for (const [object, p, q, s] of before) {
+    close(object.position.toArray(), p); close(object.quaternion.toArray(), q); close(object.scale.toArray(), s);
+  }
+});
+
 test('player pauses movement and animation while seated and returns physics to the clear approach point', async () => {
   const model = await avatar(), player = Object.create(Player.prototype);
   const teleports = [];
@@ -104,7 +231,9 @@ test('player pauses movement and animation while seated and returns physics to t
       teleport: position => teleports.push(position.toArray()), syncModel() {} },
     controller: { update() { physics++; } }, mixer: { update() { animation++; } },
   });
-  assert.equal(player.beginSitting(new THREE.Vector3(1, -29.55, -2), new THREE.Vector3(1, -29.55, -1)), true);
+  const target = player.beginSitting(new THREE.Vector3(1, -29.55, -2), new THREE.Vector3(1, -29.55, -1));
+  assert.ok(target instanceof THREE.Vector3);
+  close(target.toArray(), [1, -29, -2]);
   player.updatePhysics(1 / 60); player.updateAnimation(1 / 60); player.syncFromPhysics();
   assert.equal(physics, 0); assert.equal(animation, 0);
   assert.deepEqual(teleports, [[4, -30, 2]]);
@@ -177,6 +306,22 @@ test('authored couch uses the normal interaction path, shows the seated player a
       close(f.camera.position.toArray(), position); close(f.camera.quaternion.toArray(), rotation);
     }
     assert.deepEqual(f.counts(), { starts: 2, ends: 2, sits: 2, stands: 2, showPlayer: true });
+    f.furniture.destroy();
+  } finally { restore(); }
+});
+
+test('the couch camera aims at the fitted avatar while preserving the authored camera location and return', () => {
+  const restore = domFixture();
+  try {
+    const target = new THREE.Vector3(0, -28.6, 0.5);
+    const f = furnitureFixture({ onSitStart: () => target });
+    const original = f.camera.position.toArray();
+    f.interactions[0].interact(); f.tick(1.1);
+    close(f.camera.position.toArray(), [1.6, -28.4, 2]);
+    const view = new THREE.Vector3(0, 0, -1).applyQuaternion(f.camera.quaternion);
+    assert.ok(view.dot(target.clone().sub(f.camera.position).normalize()) > 0.99999);
+    f.furniture.leaveFocus(); f.tick(1);
+    close(f.camera.position.toArray(), original);
     f.furniture.destroy();
   } finally { restore(); }
 });

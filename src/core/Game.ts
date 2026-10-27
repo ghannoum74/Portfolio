@@ -1377,7 +1377,7 @@ export class Game {
             !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
           );
         },
-        onSitStart: (seat, look) => this.world.player.beginSitting(seat, look),
+        onSitStart: (seat, look, couch) => this.world.player.beginSitting(seat, look, couch),
         onSitEnd: () => this.world.player.endSitting(),
         isMuted: () => this.worldAudio.isMuted,
       },

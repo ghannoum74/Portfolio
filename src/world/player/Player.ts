@@ -141,13 +141,13 @@ export class Player {
     this.body.syncModel(this.model, this.modelBottomY);
   }
 
-  beginSitting(seat: THREE.Vector3, look: THREE.Vector3): boolean {
+  beginSitting(seat: THREE.Vector3, look: THREE.Vector3, couch?: THREE.Object3D): THREE.Vector3 | false {
     if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive) return false;
     this.body.getFeetPosition(this.standingFeet);
-    if (!this.seatedPose.begin(seat, look)) return false;
+    if (!this.seatedPose.begin(seat, look, couch)) return false;
     // Keep the physics capsule at the clear approach point, outside the sofa.
     this.body.teleport(this.standingFeet);
-    return true;
+    return this.seatedPose.getCameraTarget(new THREE.Vector3());
   }
 
   endSitting(): void {

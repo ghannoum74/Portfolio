@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { performanceOptions } from "../../../core/PerformanceOptions";
 import type { Interactable } from "../../../interactions/Interactable";
+import { createCouchSupport } from "../../player/CouchSeat";
 
 /**
  * All small, tactile furniture interactions in one system.
@@ -67,7 +68,7 @@ type FurnitureNode = {
   phase: number;
   effectSize: number;
   interactionAnchor?: THREE.Object3D;
-  seat?: { position: THREE.Object3D; look: THREE.Object3D; camera: THREE.Object3D };
+  seat?: { position: THREE.Object3D; look: THREE.Object3D; camera: THREE.Object3D; support: THREE.Group };
   hearth?: { visual: THREE.Object3D; scale: THREE.Vector3; visible: boolean };
 };
 
@@ -78,7 +79,8 @@ export type FurnitureOptions = {
   onFocusStart: (showPlayer?: boolean) => boolean;
   /** Called only after the camera has returned to the saved position. */
   onFocusEnd: () => void;
-  onSitStart?: (seat: THREE.Vector3, look: THREE.Vector3) => boolean;
+  /** A successful sit can return an adjusted world-space camera target. */
+  onSitStart?: (seat: THREE.Vector3, look: THREE.Vector3, couch: THREE.Object3D) => boolean | THREE.Vector3;
   onSitEnd?: () => void;
   isMuted?: () => boolean;
 };
@@ -210,7 +212,9 @@ export class HouseFurnitureInteractions {
     if (def.kind === "fireplace" && (!visual || !flameAnchor)) return;
     const node = this.makeNode(def, model);
     node.interactionAnchor = marker;
-    if (position && look && camera && def.kind === "seat") node.seat = { position, look, camera };
+    if (position && look && camera && def.kind === "seat") node.seat = {
+      position, look, camera, support: createCouchSupport(this.house, model),
+    };
     if (visual && flameAnchor && def.kind === "fireplace") {
       node.hearth = { visual, scale: visual.scale.clone(), visible: visual.visible };
       node.anchor.position.copy(houseWorldToLocal(this.house, flameAnchor.getWorldPosition(new THREE.Vector3())));
@@ -511,15 +515,16 @@ export class HouseFurnitureInteractions {
     if (![...seat.toArray(), ...look.toArray(), ...camera.toArray()].every(Number.isFinite) ||
         Math.hypot(look.x - seat.x, look.z - seat.z) < 0.01 || camera.distanceToSquared(seat) < 0.04) return;
     if (!this.options.onFocusStart(true)) return;
-    if (!this.options.onSitStart(seat, look)) {
+    const sitting = this.options.onSitStart(seat, look, node.seat.support);
+    if (!sitting) {
       this.options.onFocusEnd();
-      this.showMessage("Stand still on the floor before sitting.", 2);
+      this.showMessage("Move onto clear floor in front of the couch and try again.", 2);
       return;
     }
     this.camera.updateWorldMatrix(true, false);
     this.savedPosition.copy(this.camera.position);
     this.savedRotation.copy(this.camera.quaternion);
-    const target = seat.clone().add(new THREE.Vector3(0, 0.55, 0));
+    const target = sitting instanceof THREE.Vector3 ? sitting : seat.clone().add(new THREE.Vector3(0, 0.55, 0));
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(camera, target, new THREE.Vector3(0, 1, 0)),
     );

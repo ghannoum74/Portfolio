@@ -46,7 +46,9 @@ this tool's generated fire, so two fire sources do not remain overlaid.
 
    Defaults use evaluated world bounds, including rotated, mirrored and scaled
    furniture. Cushion and camera placement still need an artist's visual check.
-   The game places the pelvis 0.1 world units above SEAT_COUCH. Markers are
+   The game fits the pelvis above the cushion using the avatar's actual skinned
+   pelvis/thigh clearance and moves toward the open cushion edge so the calves
+   hang outside the sofa. Markers are
    independent world objects to avoid shear under mirrored/nonuniform furniture;
    move them as well if you later relocate the furniture.
 
@@ -86,7 +88,26 @@ website logic when exported. The game uses the existing E-key proximity and thin
 border systems. Original or incomplete house exports retain existing behavior;
 the new controls appear only when the prepared markers and custom properties exist.
 
-The seated pose uses the current Mixamo rig without an extra animation download.
+The seated pose uses the loaded avatar's neutral local bone transforms without an
+extra animation download. This avoids retaining an interrupted walking pose or
+the idle clip's different bone translations. The original animated pose is saved
+and restored on standing; the Armature scale remains intact.
+
+The Blender couch can consist of separate scene-level frame, cushion, back and
+pillow meshes. The runtime assembles a bounded, touching set of support meshes
+around the tagged furniture. It uses non-rendered wrappers sharing the original
+geometry and materials, including originals hidden by static batches. It excludes
+colliders, optimization batches, floors and disconnected furniture. Source objects
+are never reparented or made visible. A small surface index prepares behind the
+house entry cover; fitting and skin contact run only when sitting begins.
+
+Seat height is recovered from the cushion when a frame-only marker is too low.
+For a recognizable broad back, a generated sideways/backward LOOK direction is
+corrected toward the open side. Ambiguous shapes retain the authored direction;
+an unsupported or blocked seat declines cleanly. The authored camera position
+remains, with its aim adjusted to the fitted avatar. The owner's actual export
+still needs a visual check for cushion contact and nearby camera obstructions.
+
 Movement and mixer updates pause during sitting. The physics capsule stays at the
 clear approach point and returns there when standing, avoiding a capsule inside
 the couch. Unsupported rigs and airborne players decline sitting.
@@ -103,10 +124,13 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
 
 ## Validation and remaining review
 
-- 129 Node regressions, TypeScript checking and production build pass.
-- The eight new regressions use the shipped avatar's actual skeleton and skinned
+- Node regressions, TypeScript checking and production build pass.
+- The interaction regressions use the shipped avatar's actual skeleton and skinned
   vertices, repeat seating/restoration, check physics/mixer suspension, camera
   transitions, fireplace/light release, shader preparation, teardown and names.
+  They also compare seating after real idle/walking clips, verify a deep cushion's
+  knee clearance and outward leg pose, mirrored/scaled support, separate hidden
+  cushions with a frame-only marker, clean cancellation and adjusted camera aim.
 - Native Blender 4.5.3 LTS and 5.1.2 fixtures pass: repeated registration, operator use,
   mirrored/scaled geometry, unchanged source transforms/mesh/materials/colliders,
   preserved edited markers, original-flame binding, owned-fire replacement, and
