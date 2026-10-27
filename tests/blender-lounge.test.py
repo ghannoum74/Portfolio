@@ -5,6 +5,7 @@ Uses a disposable synthetic scene, never the owner's source .blend or runtime GL
 import importlib.util
 import json
 import math
+import runpy
 import struct
 import sys
 from pathlib import Path
@@ -71,9 +72,29 @@ def main():
     repeat_spec.loader.exec_module(repeated)
     repeated.register()  # A new Text Editor execution creates new Python class objects.
     assert bpy.context.scene.portfolio_lounge.couch == couch
+    settings = bpy.context.scene.portfolio_lounge
+    settings.couch, settings.fireplace = None, None
+    bpy.ops.object.select_all(action="DESELECT")
+    couch.select_set(True)
+    bpy.context.view_layer.objects.active = couch
+    runpy.run_path(str(spec.origin), run_name="__main__")
+    assert bpy.context.scene.portfolio_lounge.couch == couch
+    assert bpy.context.scene.portfolio_lounge.fireplace == fireplace
+    bpy.context.view_layer.update()
+    expected_cushion_top = max((seat.matrix_world @ Vector(v.co)).z for v in seat.data.vertices)
+    assert abs(bpy.data.objects["SEAT_COUCH"].matrix_world.translation.z - expected_cushion_top) < 1e-5
+    auto_positions = {name: list(bpy.data.objects[name].matrix_world.translation) for name in tool.MARKERS}
+    generated_count = len(bpy.data.objects)
+    assert bpy.ops.portfolio_lounge.auto_setup() == {"FINISHED"}
+    bpy.context.view_layer.update()
+    assert len(bpy.data.objects) == generated_count
+    assert {name: list(bpy.data.objects[name].matrix_world.translation) for name in tool.MARKERS} == auto_positions
     assert bpy.ops.portfolio_lounge.build() == {"FINISHED"}
     bpy.context.view_layer.update()
     assert snapshot(originals) == before
+    # Referencing the generated root itself must remain valid in the manual panel.
+    tool.create_markers(couch, fireplace, bpy.data.objects[tool.FIRE_ROOT])
+    assert len(bpy.data.objects) == generated_count
     assert len([o for o in bpy.data.objects if o.type == "LIGHT"]) == 0
     assert all(bpy.data.objects[name].type == "EMPTY" for name in tool.MARKERS)
     flame = bpy.data.objects[tool.FIRE_ROOT]
@@ -137,10 +158,38 @@ def main():
     assert len(bpy.data.objects) == count
     assert snapshot(originals) == before
 
+    # Anonymous object names are supported by explicit two-object selection.
+    from types import SimpleNamespace
+    original_names = couch.name, fireplace.name
+    try:
+        couch.name, fireplace.name = "Furniture_A", "Furniture_B"
+        bpy.ops.object.select_all(action="DESELECT")
+        couch.select_set(True)
+        fireplace.select_set(True)
+        bpy.context.view_layer.objects.active = couch
+        detected = tool.automatic_targets(SimpleNamespace(couch=None, fireplace=None, flame=None))
+        assert detected[:2] == (couch, fireplace)
+        bpy.ops.object.select_all(action="DESELECT")
+        try:
+            tool.automatic_targets(SimpleNamespace(couch=None, fireplace=None, flame=None))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Ambiguous furniture must request selection instead of guessing")
+        assert len(bpy.data.objects) == count
+    finally:
+        couch.name, fireplace.name = original_names
+    assert snapshot(originals) == before
+
     result = {
         "blender": bpy.app.version_string,
         "script": "scripts/blender/setup_couch_fireplace.py",
         "sourceFurnitureTransformsMeshesMaterialsPreserved": True,
+        "automaticTextEditorRunPassed": True,
+        "cushionSurfaceRaycastPassed": True,
+        "automaticRerunHasNoDriftOrDuplicates": True,
+        "anonymousSelectedFurnitureDetected": True,
+        "ambiguousFurnitureDeclinedWithoutMutation": True,
         "collidersPreserved": True,
         "rerunPreservesAdjustedMarkers": True,
         "textEditorReregistrationPassed": True,

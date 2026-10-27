@@ -1,7 +1,9 @@
 """Portfolio couch + fireplace authoring tool, Blender 4.x / 5.x.
 
-Run in Blender's Text Editor. In the 3D View press N > Portfolio.
-Choose the couch and fireplace with the eyedroppers, then Create / Update.
+Select the couch, then run in Blender's Text Editor. Automatic setup finds the
+fireplace and places the markers. If both objects have anonymous names, select
+both with the couch active (selected last). Review the generated positions.
+The optional N > Portfolio panel still supports manual settings.
 This adds named Empty markers and custom properties for the matching game code.
 It never saves, exports, deletes furniture, applies transforms, or adds colliders.
 
@@ -11,11 +13,18 @@ Esc also leaves the couch. These controls require the companion TypeScript code.
 """
 
 import math
+import re
+import textwrap
 import bpy
 from mathutils import Vector, Matrix
 
 
 OWNER = "portfolio.couch-fireplace.v1"
+AUTO_SETUP_ON_RUN = True
+# Optional exact-name overrides. Leave empty for selection/name detection.
+COUCH_OBJECT_NAME = ""
+FIREPLACE_OBJECT_NAME = ""
+FLAME_OBJECT_NAME = ""
 MARKERS = (
     "INTERACT_COUCH", "SEAT_COUCH", "LOOK_COUCH", "CAM_COUCH",
     "INTERACT_FIREPLACE", "ANCHOR_FIREPLACE_FLAME",
@@ -30,7 +39,8 @@ def visual_bounds(root):
     points = []
     depsgraph = bpy.context.evaluated_depsgraph_get()
     for obj in (root, *root.children_recursive):
-        if obj.type != "MESH" or obj.name.startswith(PREFIXES) or obj.get("portfolioHelper"):
+        generated_fire = root.name == FIRE_ROOT and root.get("portfolioOwner") == OWNER
+        if obj.type != "MESH" or obj.name.startswith(PREFIXES) or (obj.get("portfolioHelper") and not generated_fire):
             continue
         evaluated = obj.evaluated_get(depsgraph)
         if not evaluated.data.vertices:
@@ -43,6 +53,104 @@ def visual_bounds(root):
     if not all(math.isfinite(v) for p in (low, high) for v in p):
         raise ValueError("Furniture has non-finite bounds.")
     return low, high
+
+
+def cushion_surface(couch, fallback, forward):
+    """Find an upward cushion surface near the center; otherwise retain bounds."""
+    low, high = visual_bounds(couch)
+    size = high - low
+    depth = max(0.1, min(size.x, size.y))
+    right = Vector((-forward.y, forward.x, 0))
+    # A thin cushion-only selection can legitimately have its seat at max Z.
+    upper = high.z + 0.001 if size.z < depth * 0.45 else low.z + size.z * 0.85
+    hits = []
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    for front in (0.0, 0.12, 0.24):
+        for sideways in (0.0, -0.12, 0.12):
+            point = fallback + forward * (front * depth) + right * (sideways * depth)
+            point.z = high.z + max(0.3, size.z * 0.2)
+            for obj in (couch, *couch.children_recursive):
+                if obj.type != "MESH" or obj.name.startswith(PREFIXES) or obj.get("portfolioHelper"):
+                    continue
+                evaluated = obj.evaluated_get(depsgraph)
+                if abs(evaluated.matrix_world.determinant()) < 1e-10:
+                    continue
+                inverse = evaluated.matrix_world.inverted()
+                direction = (inverse.to_3x3() @ Vector((0, 0, -1))).normalized()
+                found, location, normal, _ = evaluated.ray_cast(inverse @ point, direction)
+                if not found:
+                    continue
+                world = evaluated.matrix_world @ location
+                world_normal = (inverse.transposed().to_3x3() @ normal).normalized()
+                if world_normal.z > 0.6 and low.z + size.z * 0.12 <= world.z <= upper:
+                    hits.append(world)
+    return min(hits, key=lambda p: (p - fallback).length_squared) if hits else fallback
+
+
+def automatic_targets(settings):
+    scene = bpy.context.scene
+
+    def eligible(obj):
+        if obj is None or obj.name not in scene.objects or obj.library or obj.name.startswith(PREFIXES):
+            return False
+        if obj.get("portfolioHelper"):
+            return False
+        try:
+            visual_bounds(obj)
+            return True
+        except ValueError:
+            return False
+
+    def exact(name):
+        if not name:
+            return None
+        obj = scene.objects.get(name)
+        if not eligible(obj):
+            raise ValueError("Exact object override is missing or is not visual furniture: " + name)
+        return obj
+
+    def named(names, pattern, exclude=()):
+        for name in names:
+            obj = scene.objects.get(name)
+            if obj not in exclude and eligible(obj):
+                return obj
+        matches = [o for o in scene.objects if o not in exclude and re.search(pattern, o.name, re.I) and eligible(o)]
+        roots = [o for o in matches if not any(o in parent.children_recursive for parent in matches if parent != o)]
+        return roots[0] if len(roots) == 1 else None
+
+    fireplace = exact(FIREPLACE_OBJECT_NAME)
+    if fireplace is None and eligible(settings.fireplace):
+        fireplace = settings.fireplace
+    fireplace = fireplace or named(("SEC_HEARTH_Fireplace", "Fireplace", "FIREPLACE_STAND"), r"fireplace")
+    selected = [o for o in bpy.context.selected_objects if eligible(o)]
+    couch = exact(COUCH_OBJECT_NAME)
+    active = bpy.context.view_layer.objects.active
+    selected_couch = [o for o in selected if o != fireplace and
+                      not re.search(r"fireplace|flame|(^|[_ .-])(floor|wall|roof|ceiling|ground)($|[_ .-])", o.name, re.I)]
+    if couch is None:
+        if len(selected_couch) == 1:
+            couch = selected_couch[0]
+        elif len(selected) == 2 and active in selected_couch:
+            couch = active
+    if couch is None and eligible(settings.couch):
+        couch = settings.couch
+    couch = couch or named(("SEC_LOUNGE_Couch", "Couch", "Sofa"), r"couch|sofa", (fireplace,))
+    if fireplace is None and couch is not None and len(selected) == 2:
+        fireplace = next((o for o in selected if o != couch), None)
+    if couch is None or fireplace is None:
+        raise ValueError("Select the couch and run again. If the fireplace has no recognizable name, select both objects with the couch active.")
+    previous = scene.objects.get("INTERACT_FIREPLACE")
+    previous_flame = scene.objects.get(previous.get("flameObject", "")) if previous else None
+    flame = exact(FLAME_OBJECT_NAME) if FLAME_OBJECT_NAME else None
+    for candidate in (settings.flame, previous_flame, scene.objects.get("FIRE_FLAME"), scene.objects.get("Flame")):
+        if flame is None and candidate not in (couch, fireplace) and eligible(candidate):
+            flame = candidate
+    # Reuse this tool's generated fire through the normal generation/reuse path,
+    # so recalculating its origin cannot accumulate an upward offset each run.
+    if flame and flame.name == FIRE_ROOT and flame.get("portfolioOwner") == OWNER:
+        flame = None
+    validate_targets(couch, fireplace, flame)
+    return couch, fireplace, flame
 
 
 def validate_targets(couch, fireplace, flame=None):
@@ -92,7 +200,7 @@ def validate_targets(couch, fireplace, flame=None):
                 raise ValueError("Flame material name already in use: " + mat.name)
 
 
-def ensure_empty(name, position):
+def ensure_empty(name, position, reset=False):
     obj = bpy.data.objects.get(name)
     owned = obj is not None and obj.get("portfolioOwner") == OWNER
     if obj is None:
@@ -100,7 +208,7 @@ def ensure_empty(name, position):
         bpy.context.scene.collection.objects.link(obj)
     elif obj.name not in bpy.context.scene.objects:
         raise ValueError(name + " exists outside the active scene. Use unique helper names.")
-    if not owned:
+    if not owned or reset:
         # Independent world markers avoid shear under mirrored/nonuniform furniture.
         obj.parent = None
         obj.matrix_world = Matrix.Translation(position)
@@ -189,7 +297,7 @@ def remove_generated_flame(root):
             bpy.data.materials.remove(mat)
 
 
-def create_markers(couch, fireplace, flame=None, initial_on=False):
+def create_markers(couch, fireplace, flame=None, initial_on=False, reset_positions=False):
     validate_targets(couch, fireplace, flame)
     couch_low, couch_high = visual_bounds(couch)
     fire_low, fire_high = visual_bounds(fireplace)
@@ -205,6 +313,7 @@ def create_markers(couch, fireplace, flame=None, initial_on=False):
     if forward.length_squared < 0.0001:
         forward = Vector((0, -1, 0))
     forward.normalize()
+    seat = cushion_surface(couch, seat, forward)
     right = Vector((-forward.y, forward.x, 0))
     reach = min(couch_high.x - couch_low.x, couch_high.y - couch_low.y) * 0.5 + 0.45
     approach = seat + forward * reach
@@ -212,12 +321,12 @@ def create_markers(couch, fireplace, flame=None, initial_on=False):
     look = seat + forward
     look.z += 0.45
     camera = seat + forward * 2.0 + right * 1.6 + Vector((0, 0, 1.15))
-    couch_marker = ensure_empty("INTERACT_COUCH", approach)
-    ensure_empty("SEAT_COUCH", seat)
-    ensure_empty("LOOK_COUCH", look)
-    ensure_empty("CAM_COUCH", camera)
-    fire_marker = ensure_empty("INTERACT_FIREPLACE", fire - forward + Vector((0, 0, 0.25)))
-    origin = ensure_empty("ANCHOR_FIREPLACE_FLAME", fire)
+    couch_marker = ensure_empty("INTERACT_COUCH", approach, reset_positions)
+    ensure_empty("SEAT_COUCH", seat, reset_positions)
+    ensure_empty("LOOK_COUCH", look, reset_positions)
+    ensure_empty("CAM_COUCH", camera, reset_positions)
+    fire_marker = ensure_empty("INTERACT_FIREPLACE", fire - forward + Vector((0, 0, 0.25)), reset_positions)
+    origin = ensure_empty("ANCHOR_FIREPLACE_FLAME", fire, reset_positions)
     generated = bpy.data.objects.get(FIRE_ROOT)
     if flame is not None and generated is not None and flame != generated:
         remove_generated_flame(generated)
@@ -272,6 +381,33 @@ class PFLOUNGE_OT_build(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class PFLOUNGE_OT_auto_setup(bpy.types.Operator):
+    bl_idname = "portfolio_lounge.auto_setup"
+    bl_label = "Auto Detect + Place Markers"
+    bl_description = "Find furniture and recalculate marker positions; Undo restores previous placements"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        settings = context.scene.portfolio_lounge
+        try:
+            couch, fireplace, flame = automatic_targets(settings)
+            create_markers(couch, fireplace, flame, settings.initial_on, reset_positions=True)
+        except (ValueError, RuntimeError) as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        settings.couch, settings.fireplace, settings.flame = couch, fireplace, flame
+        for obj in context.selected_objects:
+            obj.select_set(False)
+        marker = bpy.data.objects["SEAT_COUCH"]
+        marker.select_set(True)
+        context.view_layer.objects.active = marker
+        for area in context.screen.areas if context.screen else ():
+            if area.type == "VIEW_3D":
+                area.spaces.active.show_region_ui = True
+        self.report({"INFO"}, "Markers placed. SEAT_COUCH is selected. Review cushion contact and camera placement.")
+        return {"FINISHED"}
+
+
 class PFLOUNGE_PT_setup(bpy.types.Panel):
     bl_label = "Couch and Fireplace"
     bl_idname = "PFLOUNGE_PT_setup"
@@ -282,6 +418,7 @@ class PFLOUNGE_PT_setup(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         settings = context.scene.portfolio_lounge
+        layout.operator("portfolio_lounge.auto_setup")
         layout.label(text="Choose a mesh or parent/root.")
         layout.prop(settings, "couch")
         layout.prop(settings, "fireplace")
@@ -297,7 +434,18 @@ class PFLOUNGE_PT_setup(bpy.types.Panel):
         layout.label(text="Website: E interact, Esc stand up")
 
 
-CLASSES = (PFLOUNGE_PG_settings, PFLOUNGE_OT_build, PFLOUNGE_PT_setup)
+CLASSES = (PFLOUNGE_PG_settings, PFLOUNGE_OT_build, PFLOUNGE_OT_auto_setup, PFLOUNGE_PT_setup)
+
+
+def show_message(message, error=False):
+    if bpy.app.background:
+        print("[Portfolio]", message)
+        return
+    def draw(self, context):
+        for line in textwrap.wrap(message, 65):
+            self.layout.label(text=line)
+    bpy.context.window_manager.popup_menu(
+        draw, title="Couch and Fireplace", icon="ERROR" if error else "INFO")
 
 
 def register():
@@ -336,3 +484,10 @@ def register():
 
 if __name__ == "__main__":
     register()
+    if AUTO_SETUP_ON_RUN:
+        try:
+            result = bpy.ops.portfolio_lounge.auto_setup()
+            if "FINISHED" in result:
+                show_message("Setup complete. The markers are placed and SEAT_COUCH is selected. Review the seat and camera, then export with Custom Properties enabled.")
+        except RuntimeError as exc:
+            show_message(str(exc), error=True)

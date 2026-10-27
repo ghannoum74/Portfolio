@@ -16,15 +16,24 @@ this tool's generated fire, so two fire sources do not remain overlaid.
 ## Run in Blender
 
 1. Open the **house** .blend and save a working copy.
-2. Choose **Scripting**. In the Text Editor, choose **Open**, select
+2. Select the couch in the 3D View. Choose **Scripting**. In the Text Editor, choose **Open**, select
    scripts/blender/setup_couch_fireplace.py, then **Run Script** (Alt+P while the
    pointer is over that editor).
-3. Return to the 3D View. Press **N**, then open **Portfolio → Couch and Fireplace**.
-4. Use the eyedroppers to select the couch and fireplace. For multipart furniture,
+3. Automatic setup detects the fireplace, creates the markers and selects
+   SEAT_COUCH. It raycasts near the cushion center to find a seat surface. Review
+   the resulting seat and camera positions. If both furniture objects have
+   anonymous names, select both with the couch active (selected last), then run
+   again. Ambiguous detection stops with a selection message.
+4. The optional panel is under **N → Portfolio → Couch and Fireplace**.
+   **Auto Detect + Place Markers** recalculates existing marker positions and
+   supports Undo. Use **Create / Update Interactions** to preserve manually
+   adjusted positions instead. Set AUTO_SETUP_ON_RUN = False at the top of the
+   script if you want it to register only the panel.
+5. Use the eyedroppers to select the couch and fireplace if you prefer manual setup. For multipart furniture,
    select its parent/root in the Outliner. Choose only the actual fire under
    **Existing Flame**, if present; the tool preselects FIRE_FLAME when available.
-5. Click **Create / Update Interactions**.
-6. In the Outliner, select and move these Empty markers as needed. Retain their names:
+6. Click **Create / Update Interactions** for manual setup.
+7. In the Outliner, select and move these Empty markers as needed. Retain their names:
 
    | Marker | Placement |
    | --- | --- |
@@ -41,14 +50,15 @@ this tool's generated fire, so two fire sources do not remain overlaid.
    independent world objects to avoid shear under mirrored/nonuniform furniture;
    move them as well if you later relocate the furniture.
 
-7. Save the working copy. Export the complete house as GLB with
+8. Save the working copy. Export the complete house as GLB with
    **Include → Custom Properties** enabled. Keep the interaction Empty objects and
    flame objects in the export. Use the existing source/export optimization
    workflow for house.glb; regenerate the house stone LOD after geometry changes.
 
 The sidebar is registered for the current Blender session. Run the script again
 after reopening Blender if you want its controls. Saved marker custom properties
-remain in the .blend; rerunning setup preserves adjusted marker positions.
+remain in the .blend. Manual Create / Update preserves adjusted positions;
+automatic setup recalculates them from the current furniture geometry.
 
 ## Game integration
 
@@ -82,6 +92,9 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
   mirrored/scaled geometry, unchanged source transforms/mesh/materials/colliders,
   preserved edited markers, original-flame binding, owned-fire replacement, and
   GLB export with exact custom properties and converted Y-up marker positions.
+  The automatic Text Editor entry also passes detection from the selected couch,
+  exact cushion-surface placement, anonymous two-object selection, ambiguous
+  selection rejection and repeated recalculation without marker drift/duplicates.
 - The fixture is disposable. No owner .blend or runtime house GLB was modified.
 - Native browser appearance, cushion contact, camera clearance and updated
   house-export culling baselines remain to be reviewed after the owner's export.
