@@ -4,14 +4,16 @@ The Blender tool prepares the existing house for two game interactions:
 
 - Couch: E sits the real player on the cushion. E or Esc restores the standing
   position, animation, input and camera.
-- Fireplace: E lights or extinguishes the authored fire. If no separate flame
-  exists, the tool creates three small flame meshes totaling 120 triangles.
+- Fireplace: a continuously burning, colored 3D fire. E near the existing
+  fireside chair seats the real player facing the hearth; E or Esc stands up.
+  The camera frames both the seated player and the fire.
 
 The tool is in [setup_couch_fireplace.py](../scripts/blender/setup_couch_fireplace.py).
 It does not save or export the .blend, move the furniture, change its materials,
 apply transforms, or add/change colliders. Its setup operator supports Undo.
-Existing authored flames are reused. Reassigning a generated fire removes only
-this tool's generated fire, so two fire sources do not remain overlaid.
+Authored flame objects provide the runtime fire's placement and size. When absent,
+the tool creates three placement meshes totaling 120 triangles. Reassigning a
+generated fire removes only this tool's generated fire.
 
 ## Run in Blender
 
@@ -41,7 +43,7 @@ this tool's generated fire, so two fire sources do not remain overlaid.
    | LOOK_COUCH | In front of the seat, toward the intended facing direction |
    | CAM_COUCH | Clear camera position inside the room, viewing the seated player |
    | INTERACT_COUCH | On the floor approach, roughly waist height |
-   | INTERACT_FIREPLACE | In front of the hearth, within comfortable reach |
+   | INTERACT_FIREPLACE | Fireplace metadata; the game places E on the nearby chair |
    | ANCHOR_FIREPLACE_FLAME | Fire/light origin inside the hearth |
 
    Defaults use evaluated world bounds, including rotated, mirrored and scaled
@@ -117,11 +119,34 @@ Movement and mixer updates pause during sitting. The physics capsule stays at th
 clear approach point and returns there when standing, avoiding a capsule inside
 the couch. Unsupported rigs and airborne players decline sitting.
 
-The fireplace uses its authored flame group, one non-shadow-casting point light
-while lit, and no extra render pass. Settled extinguished flames do not update
-their transforms. With decorative lights disabled, the fire still toggles without
-adding a light. Fire material/light-count variants warm behind the existing cover.
-Workshop inspection lighting retains its existing behavior.
+The fireplace uses seven instanced 3D flame tongues and eight rising embers.
+The flame shader combines height-based red/orange/gold/cream heat, surface shading,
+upward-flowing noise, alpha breakup and independent curling tips. A time uniform
+animates the effect; source meshes, instance matrices and vertex buffers stay
+unchanged each frame. The fire and embers use two draws, verified in WebGL.
+Only the fire materials bypass tone mapping to retain their
+color; the renderer settings remain. One existing non-shadow-casting light warms
+the hearth, or the colored fire renders without a light when decorative lights
+are disabled. House visibility suspends its animation outside. Shader/light-count
+variants prepare behind the entry cover; workshop inspection lighting remains.
+
+The authored fire and a recognized nearby imported flame (including geometry_0
+with its old stone material) are hidden for the runtime effect. Their geometry,
+materials, transforms and original visibility are retained and restored on teardown;
+only the effect's own geometries and materials are disposed.
+
+The fire stays burning while the visitor sits or stands. Older initialOn metadata
+does not toggle it. The nearest recognizable chair, armchair, pouf or stool within
+3.5 world units supplies the actual seat; this includes chair02_textured.obj in the
+house source. The interaction highlights the chair rather than the stone hearth.
+The prepared six-marker export works without another Blender export.
+
+For an explicit artist binding, INTERACT_FIREPLACE can optionally reference
+seatTargetObject (the chair's original authoring name), seatObject, lookObject and
+cameraObject. Named SEAT_FIREPLACE / LOOK_FIREPLACE / CAM_FIREPLACE markers are
+also recognized. Without these, runtime defaults derive the seat from the chair,
+face the fire and place a camera to its side. Missing or invalid explicit targets
+leave the visual fire burning without a misleading toggle prompt.
 
 Custom properties mark furniture/flames as excluded from static optimization.
 A separate authoring-name tag preserves targets whose Blender names contain
@@ -132,7 +157,7 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
 - Node regressions, TypeScript checking and production build pass.
 - The interaction regressions use the shipped avatar's actual skeleton and skinned
   vertices, repeat seating/restoration, check physics/mixer suspension, camera
-  transitions, fireplace/light release, shader preparation, teardown and names.
+  transitions, fireside seating, shader preparation, teardown and names.
   They also compare seating after real idle/walking clips, verify a deep cushion's
   knee clearance and outward leg pose, mirrored/scaled support, separate hidden
   cushions with a frame-only marker, clean cancellation and adjusted camera aim.
@@ -151,6 +176,11 @@ spaces or suffixes such as .001 after GLTFLoader sanitizes names.
   detection cannot resolve the furniture; a rerun never binds the table as the
   couch. READY is verified against all six marker objects.
 - The fixture is disposable. No owner .blend or runtime house GLB was modified.
+- A Chromium WebGL2 / ANGLE SwiftShader check renders the actual repo house,
+  avatar and fireside chair: visible warm flame colors, changed fire pixels across
+  frames, multiple viewing angles, seated camera framing and preserved heading on
+  standing. Shader and console errors are empty. This is software WebGL validation,
+  not a benchmark of the owner's Intel GPU or a test of their latest local export.
 - Native browser appearance, cushion contact, camera clearance and updated
   house-export culling baselines remain to be reviewed after the owner's export.
   The existing culling test intentionally requests review for an unknown export.

@@ -8,8 +8,8 @@ This adds named Empty markers and custom properties for the matching game code.
 It never saves, exports, deletes furniture, applies transforms, or adds colliders.
 
 Export the complete house as GLB with Include > Custom Properties enabled.
-The website uses E to sit / stand and to light / extinguish the fireplace.
-Esc also leaves the couch. These controls require the companion TypeScript code.
+The website uses E to sit on the couch or fireside chair; the fire stays burning.
+Esc also leaves either seat. These controls require the companion TypeScript code.
 """
 
 import math
@@ -20,7 +20,7 @@ from mathutils import Vector, Matrix
 
 
 OWNER = "portfolio.couch-fireplace.v1"
-SCRIPT_VERSION = "2026-10-27.3"
+SCRIPT_VERSION = "2026-10-27.4"
 REPORT_NAME = "PORTFOLIO_LOUNGE_REPORT"
 COUCH_REJECT = r"(^|[_ .-])(table|desk|floor|wall|roof|ceiling|ground)($|[_ .-])"
 AUTO_SETUP_ON_RUN = True
@@ -502,7 +502,7 @@ class PFLOUNGE_PT_setup(bpy.types.Panel):
         layout.prop(settings, "couch")
         layout.prop(settings, "fireplace")
         layout.prop(settings, "flame")
-        layout.prop(settings, "initial_on")
+        layout.label(text="Game fire burns automatically.")
         layout.operator("portfolio_lounge.build")
         box = layout.box()
         box.label(text="SEAT_COUCH: seat cushion surface")

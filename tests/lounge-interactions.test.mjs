@@ -15,6 +15,8 @@ await build({ stdin: {
     "export { Player } from './src/world/player/Player';" +
     "export { PlayerController } from './src/world/player/PlayerController';" +
     "export { ThirdPersonCamera } from './src/camera/ThirdPersonCamera';" +
+    "export { FireplaceFire } from './src/world/house/furniture/FireplaceFire';" +
+    "export { findFiresideSeat } from './src/world/house/furniture/FiresideSeat';" +
     "export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
@@ -22,7 +24,7 @@ await build({ stdin: {
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, HouseFurnitureInteractions, performanceOptions } = loaded;
+const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -309,14 +311,19 @@ function domFixture() {
   return () => { if (original === undefined) delete globalThis.document; else globalThis.document = original; };
 }
 
-function furnitureFixture(overrides = {}, authoringName) {
+function furnitureFixture(overrides = {}, authoringName, withChair = true) {
   const house = new THREE.Group(); house.position.y = -30;
   const couch = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1), new THREE.MeshStandardMaterial()); couch.name = 'MyCouch';
   if (authoringName) couch.userData.portfolioAuthoringName = authoringName;
   const fireplace = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial()); fireplace.name = 'MyHearth';
+  fireplace.position.x = 3;
   const flame = new THREE.Group(); flame.name = 'MyFlame'; flame.scale.set(1.2, 0.8, 1.1);
+  flame.position.set(3, 0.4, 0);
   flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 5), new THREE.MeshBasicMaterial()));
   house.add(couch, fireplace, flame);
+  const chair = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.9, 0.9), new THREE.MeshStandardMaterial());
+  chair.name = 'chair02_texturedobj'; chair.userData.name = 'chair02_textured.obj'; chair.position.set(3, 0.15, 1.8);
+  if (withChair) house.add(chair);
   const marker = (name, position, data = {}) => {
     const object = new THREE.Group(); object.name = name; object.position.copy(position); object.userData = data; house.add(object); return object;
   };
@@ -334,14 +341,19 @@ function furnitureFixture(overrides = {}, authoringName) {
   let starts = 0, ends = 0, sits = 0, stands = 0, showPlayer;
   const furniture = new HouseFurnitureInteractions(house, camera, {
     onFocusStart(visible) { starts++; showPlayer = visible; return true; }, onFocusEnd() { ends++; },
-    onSitStart(seat, look) { sits++; close(seat.toArray(), [0, -29.55, 0]); close(look.toArray(), [0, -29.1, 1]); return true; },
+    onSitStart(seat, look) {
+      sits++;
+      if (Math.abs(seat.x) < 0.01) { close(seat.toArray(), [0, -29.55, 0]); close(look.toArray(), [0, -29.1, 1]); }
+      else { close(seat.toArray(), [3, -29.922, 1.8]); assert.ok(look.z < seat.z); }
+      return true;
+    },
     onSitEnd() { stands++; }, isMuted: () => true, ...overrides,
   });
   const interactions = [];
   furniture.register(interaction => interactions.push(interaction));
   const light = () => { let found; house.traverse(object => { if (object.isPointLight) found = object; }); return found; };
   const tick = seconds => { for (let i = 0; i < seconds * 60; i++) furniture.update(1 / 60); };
-  return { house, couch, flame, furniture, camera, tick, light, interactions,
+  return { house, couch, chair, flame, furniture, camera, tick, light, interactions,
     counts: () => ({ starts, ends, sits, stands, showPlayer }) };
 }
 
@@ -380,25 +392,107 @@ test('the couch camera aims at the fitted avatar while preserving the authored c
   } finally { restore(); }
 });
 
-test('fireplace toggles only authored flames, releases its light slot when off and does no settled flame transforms', () => {
+test('a continuously colored fire accompanies real chair sitting, with E/Esc exit and no per-frame source or instance rewrites', () => {
   const restore = domFixture();
   try {
     const f = furnitureFixture(), scale = f.flame.scale.toArray();
-    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, false); assert.equal(f.light().castShadow, false);
-    assert.equal(f.interactions[1].getHint(), 'Light Fireplace');
+    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, true); assert.equal(f.light().castShadow, false);
+    assert.equal(f.interactions[1].getHint(), 'Sit by the Fire');
+    assert.equal(f.interactions[1].highlightTarget, f.chair);
+    const flames = f.house.getObjectByName('FIREPLACE_FLAMES'), embers = f.house.getObjectByName('FIREPLACE_EMBERS');
+    assert.ok(flames.isInstancedMesh); assert.equal(flames.count, 7); assert.equal(embers.geometry.attributes.position.count, 8);
+    assert.equal(flames.material.toneMapped, false); assert.equal(flames.material.depthWrite, false);
+    const instanceVersion = flames.instanceMatrix.version, vertices = flames.geometry.attributes.position.array.slice();
     f.interactions[1].interact(); f.tick(1);
-    assert.equal(f.interactions[1].getHint(), 'Extinguish Fireplace');
-    assert.equal(f.flame.visible, true); assert.equal(f.light().visible, true); assert.ok(f.light().intensity > 0);
-    f.interactions[1].interact(); f.tick(3);
-    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, false); assert.equal(f.light().intensity, 0);
+    assert.equal(f.furniture.isControllingCamera, true); assert.equal(f.counts().showPlayer, true);
+    assert.equal(f.interactions[1].getHint(), 'Sit by the Fire');
+    assert.equal(f.light().visible, true); assert.ok(f.light().intensity > 0);
+    f.furniture.leaveFocus(); f.tick(1);
+    assert.equal(f.furniture.isControllingCamera, false); assert.equal(f.counts().stands, 1);
+    assert.equal(f.light().visible, true); assert.ok(f.light().intensity > 0);
     let writes = 0;
     const set = f.flame.scale.set;
     f.flame.scale.set = function (...values) { writes++; return set.apply(this, values); };
     f.tick(2);
     assert.equal(writes, 0);
+    assert.ok(flames.material.uniforms.uTime.value > 3);
+    assert.equal(flames.instanceMatrix.version, instanceVersion); assert.deepEqual(flames.geometry.attributes.position.array, vertices);
+    const pausedTime = flames.material.uniforms.uTime.value;
+    f.house.visible = false; f.tick(2);
+    assert.equal(flames.material.uniforms.uTime.value, pausedTime, 'hidden houses must suspend fire animation');
+    f.house.visible = true;
     f.flame.scale.set = set;
     f.furniture.destroy();
     assert.equal(f.flame.visible, true); close(f.flame.scale.toArray(), scale);
+  } finally { restore(); }
+});
+
+test('the fire replaces only a recognized nearby stone-colored flame and releases only its own GPU resources', () => {
+  const house = new THREE.Group(), anchor = new THREE.Group(), source = new THREE.Group();
+  source.add(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 5), new THREE.MeshStandardMaterial()));
+  const material = new THREE.MeshStandardMaterial({ color: 0x777777 });
+  const gray = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.85, 7), material); gray.name = 'geometry_0'; gray.position.y = 0.425;
+  const other = gray.clone(); other.position.x = 5;
+  house.add(source, gray, other, anchor); house.updateMatrixWorld(true);
+  const vertices = gray.geometry.attributes.position.array.slice(), transform = gray.matrixWorld.toArray();
+  let disposedSource = 0;
+  gray.geometry.addEventListener('dispose', () => disposedSource++); material.addEventListener('dispose', () => disposedSource++);
+  const fire = new FireplaceFire(house, source, anchor);
+  assert.equal(source.visible, false); assert.equal(gray.visible, false); assert.equal(other.visible, true);
+  const flames = fire.root.getObjectByName('FIREPLACE_FLAMES'), embers = fire.root.getObjectByName('FIREPLACE_EMBERS');
+  const time = flames.material.uniforms.uTime.value;
+  fire.update(1 / 60); assert.ok(flames.material.uniforms.uTime.value > time);
+  assert.equal(flames.material.uniforms.uTime, embers.material.uniforms.uTime);
+  let disposedOwned = 0;
+  for (const resource of [flames, flames.geometry, flames.material, embers.geometry, embers.material]) resource.addEventListener('dispose', () => disposedOwned++);
+  fire.dispose(); fire.dispose();
+  assert.equal(disposedOwned, 5); assert.equal(disposedSource, 0); assert.equal(fire.root.parent, null);
+  assert.equal(gray.visible, true); assert.equal(source.visible, true); assert.equal(other.visible, true);
+  assert.equal(gray.material, material); assert.deepEqual(gray.geometry.attributes.position.array, vertices); close(gray.matrixWorld.toArray(), transform);
+});
+
+test('missing chairs leave the fire burning without a misleading fireplace toggle, and disabling decorative lights retains colored fire', () => {
+  const restore = domFixture(), decorativeLights = performanceOptions.decorativeLights;
+  try {
+    const missing = furnitureFixture({}, undefined, false);
+    assert.equal(missing.interactions.length, 1); assert.equal(missing.furniture.activeCount, 1);
+    assert.ok(missing.house.getObjectByName('FIREPLACE_FLAMES')); assert.equal(missing.light().visible, true);
+    missing.furniture.destroy();
+    performanceOptions.decorativeLights = false;
+    const unlit = furnitureFixture();
+    assert.equal(unlit.light(), undefined); assert.ok(unlit.house.getObjectByName('FIREPLACE_FLAMES'));
+    assert.equal(unlit.interactions[1].getHint(), 'Sit by the Fire');
+    unlit.furniture.destroy();
+  } finally { performanceOptions.decorativeLights = decorativeLights; restore(); }
+});
+
+test('explicit fireside chair and pose markers override proximity guessing, including sanitized authoring names', () => {
+  const restore = domFixture();
+  try {
+    const f = furnitureFixture(), marker = f.house.getObjectByName('INTERACT_FIREPLACE');
+    f.chair.userData.portfolioAuthoringName = 'Hearth Chair.001'; marker.userData.seatTargetObject = 'Hearth Chair.001';
+    const named = (name, position) => { const object = new THREE.Object3D(); object.name = name; object.position.copy(position); f.house.add(object); return object; };
+    const position = named('SEAT_FIREPLACE', new THREE.Vector3(3, 0.2, 1.8));
+    const look = named('LOOK_FIREPLACE', new THREE.Vector3(3, 0.5, 0));
+    const camera = named('CAM_FIREPLACE', new THREE.Vector3(1, 1.5, 2.5));
+    const binding = findFiresideSeat(f.house, marker, new THREE.Vector3(3, -29.6, 0));
+    assert.equal(binding.model, f.chair); assert.equal(binding.seat.position, position); assert.equal(binding.seat.look, look); assert.equal(binding.seat.camera, camera);
+    marker.userData.seatTargetObject = 'Missing explicit chair';
+    assert.equal(findFiresideSeat(f.house, marker, new THREE.Vector3(3, -29.6, 0)), undefined);
+    f.furniture.destroy();
+  } finally { restore(); }
+});
+
+test('declined fireside sitting restores control immediately and leaves the colored fire and camera intact', () => {
+  const restore = domFixture();
+  try {
+    const f = furnitureFixture({ onSitStart: () => false });
+    const position = f.camera.position.toArray(), rotation = f.camera.quaternion.toArray();
+    f.interactions[1].interact();
+    assert.equal(f.furniture.isControllingCamera, false); assert.equal(f.counts().ends, 1);
+    assert.equal(f.light().visible, true); assert.equal(f.house.getObjectByName('FIREPLACE_FIRE_RUNTIME').visible, true);
+    close(f.camera.position.toArray(), position); close(f.camera.quaternion.toArray(), rotation);
+    f.furniture.destroy();
   } finally { restore(); }
 });
 
@@ -407,13 +501,14 @@ test('shader preparation includes fire materials at every light count and restor
   try {
     const f = furnitureFixture(), scale = f.flame.scale.toArray(), counts = [];
     await f.furniture.prepareLightingVariants(async () => {
-      assert.equal(f.flame.visible, true);
+      assert.equal(f.flame.visible, false);
+      assert.equal(f.house.getObjectByName('FIREPLACE_FIRE_RUNTIME').visible, true);
       counts.push(f.light().visible ? 1 : 0);
     });
     assert.deepEqual(counts, [0, 1]);
-    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, false);
+    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, true);
     await assert.rejects(f.furniture.prepareLightingVariants(async () => { throw new Error('compile failure'); }), /compile failure/);
-    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, false); close(f.flame.scale.toArray(), scale);
+    assert.equal(f.flame.visible, false); assert.equal(f.light().visible, true); close(f.flame.scale.toArray(), scale);
     f.furniture.destroy();
   } finally { restore(); }
 });
