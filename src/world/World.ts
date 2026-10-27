@@ -11,12 +11,23 @@ import { ASSETS } from "../loaders/AssetManifest";
 import { DayNightCycle } from "./environment/DayNightCycle";
 import { NpcManager } from "./npc/NpcManager";
 import type { Npc } from "./npc/Npc";
-import { Water } from "./environment/Water";
+import { Water, type WaterShaderMode } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 import { performanceOptions } from "../core/PerformanceOptions";
+import type { PerformanceSampleListener } from "../core/PerformanceReport";
+import { StaticMeshBatches, StaticMeshInstances, StaticTransforms } from "../optimization/StaticScene";
+
+import { HouseStoneLod, EXTERIOR_LOD_NAMES, type StoneLodData } from "./house/HouseStoneLod";
+import { ClosedSurfaceCulling } from "./house/ClosedSurfaceCulling";
 
 export class World {
   model!: THREE.Group;
+  onPerformanceSample?: PerformanceSampleListener;
+  private exteriorLod?: HouseStoneLod;
+  private exteriorLodPromise?: Promise<void>;
+  private exteriorLodEnabled = performanceOptions.exteriorLod;
+  private exteriorSurfaceCulling?: ClosedSurfaceCulling;
+  private surfaceCullingEnabled = performanceOptions.surfaceCulling;
   private meshes: THREE.Mesh[] = [];
   private bounds = new THREE.Box3();
   player!: Player;
@@ -44,6 +55,13 @@ export class World {
   private readonly npcManager: NpcManager;
   private water!: Water;
   private houseInterior?: HouseInterior;
+  private staticBatches?: StaticMeshBatches;
+  private staticInstances?: StaticMeshInstances;
+  private staticTransforms?: StaticTransforms;
+  private staticBatchingEnabled = performanceOptions.staticBatching;
+  private staticTransformsEnabled = performanceOptions.staticTransforms;
+  private environmentAnimations: THREE.AnimationClip[] = [];
+  private readonly staticObjects = new Set<THREE.Object3D>();
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -63,15 +81,11 @@ export class World {
     this.npcManager = new NpcManager(this.scene, this.loadingManager);
   }
   async init(): Promise<void> {
-    await this.physics.init();
-
-    // Start optional interior assets alongside the exterior without delaying
-    void this.loadHouseInterior().catch((error) => {
-      console.warn(
-        "House preload failed; entering the house will retry:",
-        error,
-      );
-    });
+    // Independent network/decoder work starts together behind the loading screen.
+    const [, asset] = await Promise.all([
+      this.physics.init(),
+      new AssetLoader(this.loadingManager, this.onAssetReady).loadGLB(ASSETS.world),
+    ]);
 
     // Rapier exists now, so debug renderer can safely use it.
     this.physicsDebugRenderer = new PhysicsDebugRenderer(
@@ -82,15 +96,13 @@ export class World {
     /*
      *load the world and create colliders for it.
      */
-    const asset = await new AssetLoader(
-      this.loadingManager,
-      this.onAssetReady,
-    ).loadGLB(ASSETS.world);
     this.model = asset.scene;
+    this.environmentAnimations = asset.animations;
 
     this.model.scale.setScalar(0.25);
 
     this.model.traverse((child) => {
+      this.staticObjects.add(child);
       if (!(child instanceof THREE.Mesh)) {
         return;
       }
@@ -101,7 +113,7 @@ export class World {
 
       this.meshes.push(child);
     });
-    this.water = new Water(this.model);
+    this.water = new Water(this.model, performanceOptions.waterShader);
     this.scene.add(this.model);
     this.model.updateMatrixWorld(true);
     this.bounds.setFromObject(this.model);
@@ -119,9 +131,49 @@ export class World {
       this.stairDetector,
       this.onAssetReady,
     );
-    await this.player.load();
+    // Start player downloads before the cooperatively sliced surface audit.
+    await Promise.all([this.player.load(), this.prepareExteriorSurfaceCulling()]);
+
+    // Keep front-/double-sided materials distinct, including shared batch materials.
+    if (this.staticBatchingEnabled) this.staticBatches = new StaticMeshBatches(this.model, asset.animations, this.staticObjects);
+    if (this.staticBatchingEnabled) this.staticInstances = new StaticMeshInstances(this.model, asset.animations, this.staticObjects);
+    if (this.staticTransformsEnabled) this.staticTransforms = new StaticTransforms(this.model, asset.animations, this.staticObjects);
+    if (performanceOptions.perfDiag) console.info("[World static scene]", {
+      batching: this.staticBatches?.stats, instancing: this.staticInstances?.stats,
+      frozenLocalTransforms: this.staticTransforms?.count ?? 0,
+    });
 
     this.initialized = true;
+    if (this.exteriorLodEnabled) this.loadExteriorLods();
+  }
+
+  private async prepareExteriorSurfaceCulling(): Promise<void> {
+    try {
+      // Dense rocks retain their authored material without a costly topology scan.
+      this.exteriorSurfaceCulling = await ClosedSurfaceCulling.create(
+        this.model, this.surfaceCullingEnabled, this.environmentAnimations, { maxTriangles: 10_000 });
+      this.exteriorSurfaceCulling.setEnabled(this.surfaceCullingEnabled);
+      if (this.perfDiag) {
+        const sample = this.exteriorSurfaceCulling.stats;
+        console.info("[Exterior surface culling]", sample, JSON.stringify(sample));
+      }
+    } catch (error) {
+      console.warn("Exterior surface culling unavailable; keeping authored materials:", error);
+    }
+  }
+
+  private loadExteriorLods(): void {
+    if (!this.initialized || this.exteriorLod || this.exteriorLodPromise) return;
+    this.exteriorLodPromise = new THREE.FileLoader().setResponseType("json").loadAsync(ASSETS.exteriorLods)
+      .then(data => HouseStoneLod.create(this.model, data as unknown as StoneLodData, EXTERIOR_LOD_NAMES, 3))
+      .then(lod => {
+        this.exteriorLod = lod;
+        // The diagnostic switch may change while download/hash checks run.
+        lod.setEnabled(this.exteriorLodEnabled);
+        if (this.perfDiag) console.info("[Exterior LOD]", JSON.stringify(lod.stats));
+      })
+      .catch(error => console.warn("Exterior LOD unavailable; using authored geometry:", error))
+      .finally(() => { this.exteriorLodPromise = undefined; });
   }
 
   get npcs(): readonly Npc[] {
@@ -173,10 +225,14 @@ export class World {
         const sample = {
           physicsCpuMsPerFrame: +(this.physicsTimingMs / this.physicsTimingFrames).toFixed(2),
           physicsStepsPerFrame: +(this.physicsStepCount / this.physicsTimingFrames).toFixed(2),
+          exteriorLod: exteriorActive ? this.exteriorLod?.stats : undefined,
+          exteriorSurfaceCulling: exteriorActive ? this.exteriorSurfaceCulling?.stats : undefined,
+          waterShader: exteriorActive ? this.water?.stats : undefined,
           houseStoneLod: exteriorActive ? undefined : this.houseInterior?.stoneLodStats,
           houseSurfaceCulling: exteriorActive ? undefined : this.houseInterior?.surfaceCullingStats,
         };
         console.info("[House physics]", sample, JSON.stringify(sample));
+        this.onPerformanceSample?.(sample);
         this.physicsTimingStarted = now;
         this.physicsTimingMs = 0;
         this.physicsTimingFrames = 0;
@@ -198,15 +254,44 @@ export class World {
   }
 
   updateLod(camera: THREE.Camera, viewportHeight: number): void {
+    if (this.model?.visible && this.model.parent) this.exteriorLod?.update(camera, viewportHeight);
     this.houseInterior?.updateLod(camera, viewportHeight);
+  }
+
+  setExteriorLodEnabled(enabled: boolean): void {
+    this.exteriorLodEnabled = enabled;
+    this.exteriorLod?.setEnabled(enabled);
+    if (enabled) this.loadExteriorLods();
+  }
+
+  setWaterShaderMode(mode: WaterShaderMode): void {
+    this.water?.setShaderMode(mode);
   }
 
   setHouseStoneLodEnabled(enabled: boolean): void {
     this.houseInterior?.setStoneLodEnabled(enabled);
   }
 
-  setHouseSurfaceCullingEnabled(enabled: boolean): void {
+  setSurfaceCullingEnabled(enabled: boolean): void {
+    this.surfaceCullingEnabled = enabled;
+    this.exteriorSurfaceCulling?.setEnabled(enabled);
     this.houseInterior?.setSurfaceCullingEnabled(enabled);
+  }
+
+  setStaticBatchingEnabled(enabled: boolean): void {
+    this.staticBatchingEnabled = enabled;
+    if (enabled && this.model && !this.staticBatches) this.staticBatches = new StaticMeshBatches(this.model, this.environmentAnimations, this.staticObjects);
+    if (enabled && this.model && !this.staticInstances) this.staticInstances = new StaticMeshInstances(this.model, this.environmentAnimations, this.staticObjects);
+    this.staticBatches?.setEnabled(enabled);
+    this.staticInstances?.setEnabled(enabled);
+    this.houseInterior?.setStaticBatchingEnabled(enabled);
+  }
+
+  setStaticTransformsEnabled(enabled: boolean): void {
+    this.staticTransformsEnabled = enabled;
+    if (enabled && this.model && !this.staticTransforms) this.staticTransforms = new StaticTransforms(this.model, this.environmentAnimations, this.staticObjects);
+    this.staticTransforms?.setEnabled(enabled);
+    this.houseInterior?.setStaticTransformsEnabled(enabled);
   }
 
   resetPerformanceSamples(): void {
@@ -274,9 +359,17 @@ export class World {
       );
     }
 
+    this.houseInterior.setSurfaceCullingEnabled(this.surfaceCullingEnabled);
     await this.houseInterior.load();
 
     return this.houseInterior;
+  }
+
+  preloadHouseInterior(): void {
+    // Optional downloads begin after the essential world/player loading screen.
+    void this.loadHouseInterior().catch(error => {
+      console.warn("House preload failed; entering the house will retry:", error);
+    });
   }
 
   setExteriorVisible(visible: boolean): void {

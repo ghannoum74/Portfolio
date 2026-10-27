@@ -1,0 +1,117 @@
+{
+  "baselineCommit": "ee223af1aa96933a40ab984bbecbdba3e75c2286",
+  "encoding": "lossless WebP; original dimensions; exact decoded RGBA",
+  "assets": [
+    {
+      "source": "world.glb",
+      "output": "world.glb",
+      "originalBytes": 5362764,
+      "optimizedBytes": 5044436,
+      "savedBytes": 318328,
+      "sourceGitSha": "6f75592987c96ad3f846b02c4f2560ac6527f5c9",
+      "outputGitSha": "97e2f5e33ea4b50f3424db0f0b23f9dd39f88525",
+      "images": [
+        {
+          "index": 0,
+          "name": "PathRocks_Diffuse",
+          "width": 1024,
+          "height": 1024,
+          "originalBytes": 807550,
+          "optimizedBytes": 643742,
+          "rgbaSha256": "995437a3d1942464a9f7a037872524d5a82c679168112adc782d1f0e83ba9626",
+          "exactPixels": true
+        },
+        {
+          "index": 1,
+          "name": "Image_0",
+          "width": 1024,
+          "height": 1024,
+          "originalBytes": 476349,
+          "optimizedBytes": 323290,
+          "rgbaSha256": "47dda331b6064ba57b6b10226f61801514de981bf9ad3869271dcac13fa6ea02",
+          "exactPixels": true
+        },
+        {
+          "index": 2,
+          "name": "tiny_treats_texture_1",
+          "width": 1024,
+          "height": 1024,
+          "originalBytes": 20167,
+          "optimizedBytes": 18562,
+          "rgbaSha256": "4e0021c56ed025a6aa8d010d5832c4ddcbe4f98d7412b989b80306b0edd01a9b",
+          "exactPixels": true
+        }
+      ],
+      "path": "public/assets/models/environment/world.glb",
+      "decodedSourceSha256": "3b77fba97f9b29c960a0b70950da667f325e426ee6b427c709c0f4d8d69ef4c5",
+      "decodedWithSourceImageBytesSha256": "3b77fba97f9b29c960a0b70950da667f325e426ee6b427c709c0f4d8d69ef4c5"
+    },
+    {
+      "source": "project-one.png",
+      "output": "project-one.webp",
+      "originalBytes": 980146,
+      "optimizedBytes": 664422,
+      "savedBytes": 315724,
+      "sourceGitSha": "d75f19ab235da351bf69382092459fb0a89749c7",
+      "outputGitSha": "9f604a139b3296c6050e6fb1e547170a3912fe7d",
+      "images": [
+        {
+          "name": "project-one.png",
+          "width": 5800,
+          "height": 3197,
+          "originalBytes": 980146,
+          "optimizedBytes": 664422,
+          "rgbaSha256": "259a5644eca0aeeca9f0e517ab160ed2c949633f3ad86eb65ed80e53c4bfc783",
+          "exactPixels": true
+        }
+      ],
+      "path": "public/assets/projects/project-one.webp"
+    },
+    {
+      "source": "project-two.png",
+      "output": "project-two.webp",
+      "originalBytes": 980146,
+      "optimizedBytes": 664422,
+      "savedBytes": 315724,
+      "sourceGitSha": "d75f19ab235da351bf69382092459fb0a89749c7",
+      "outputGitSha": "9f604a139b3296c6050e6fb1e547170a3912fe7d",
+      "images": [
+        {
+          "name": "project-two.png",
+          "width": 5800,
+          "height": 3197,
+          "originalBytes": 980146,
+          "optimizedBytes": 664422,
+          "rgbaSha256": "259a5644eca0aeeca9f0e517ab160ed2c949633f3ad86eb65ed80e53c4bfc783",
+          "exactPixels": true
+        }
+      ],
+      "path": "public/assets/projects/project-two.webp"
+    }
+  ],
+  "totalSavedBytes": 949776,
+  "validation": {
+    "nodeTestsPassed": 91,
+    "nodeTestsFailed": 0,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "independentPillowPixelComparison": "all five images match",
+    "combinedEnvironmentPipeline": [
+      {
+        "name": "house.glb",
+        "bytes": 12459804,
+        "matchesShippedAsset": true
+      },
+      {
+        "name": "world.glb",
+        "bytes": 5044436,
+        "matchesShippedAsset": true
+      },
+      {
+        "name": "book.glb",
+        "bytes": 892140,
+        "matchesShippedAsset": true
+      }
+    ]
+  }
+}

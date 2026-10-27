@@ -7,6 +7,7 @@ import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { PlayerBody } from "./PlayerBody";
 import { StairDetector } from "../StairDetector";
 import { ASSETS } from "../../loaders/AssetManifest";
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export class Player {
   model!: THREE.Group;
@@ -32,7 +33,14 @@ export class Player {
   }
 
   async load() {
-    const playerAsset = await this.loader.loadGLB(ASSETS.player);
+    const [playerAsset, animationAssets] = await Promise.all([
+      this.loader.loadGLB(ASSETS.player),
+      Promise.all([
+        ASSETS.animations.idle, ASSETS.animations.walking, ASSETS.animations.walkingBackward,
+        ASSETS.animations.running, ASSETS.animations.runningBackward, ASSETS.animations.jump,
+        ASSETS.animations.ascendingStairs,
+      ].map(url => this.loader.loadGLB(url))),
+    ]);
 
     this.model = playerAsset.scene;
 
@@ -58,7 +66,7 @@ export class Player {
 
     this.animations = new PlayerAnimations(this.mixer);
 
-    await this.loadAnimations();
+    this.loadAnimations(animationAssets);
 
     this.controller = new PlayerController(
       this.model,
@@ -71,7 +79,7 @@ export class Player {
     this.animations.play("idle");
   }
 
-  private async loadAnimations() {
+  private loadAnimations(assets: readonly GLTF[]): void {
     const [
       idle,
       walking,
@@ -82,25 +90,7 @@ export class Player {
       ascendingStairs,
       // leftTurn,
       // rightTurn,
-    ] = await Promise.all([
-      this.loader.loadGLB(ASSETS.animations.idle),
-
-      this.loader.loadGLB(ASSETS.animations.walking),
-
-      this.loader.loadGLB(ASSETS.animations.walkingBackward),
-
-      this.loader.loadGLB(ASSETS.animations.running),
-
-      this.loader.loadGLB(ASSETS.animations.runningBackward),
-
-      this.loader.loadGLB(ASSETS.animations.jump),
-
-      this.loader.loadGLB(ASSETS.animations.ascendingStairs),
-
-      // this.loader.loadGLB("/assets/models/player/animations/left-turn.glb"),
-
-      // this.loader.loadGLB("/assets/models/player/animations/right-turn.glb"),
-    ]);
+    ] = assets;
 
     this.animations.add("idle", idle.animations[0]);
 

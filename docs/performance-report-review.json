@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-27",
+  "baselineCommit": "10cff3e2898eb52c41e74e7f25979443f929da9a",
+  "feature": "Diagnostic-only JSON download of existing performance summaries and window-end context",
+  "gate": "perfdiag=1",
+  "streams": ["frame", "renderer", "physics"],
+  "maximumWindowsPerStream": 120,
+  "evictionCountsReported": true,
+  "historyRetainedAcrossProducerResets": true,
+  "extraGpuSamplesDrainedByExport": 0,
+  "gpuTimingEnabledByExport": false,
+  "settingsChangedByExport": false,
+  "sourceRevisionReported": null,
+  "windowConditionsIndependentlyVerified": false,
+  "automaticUpload": false,
+  "urlQueryAndHashIncluded": false,
+  "validation": {
+    "testsPassed": 121,
+    "newRegressions": 6,
+    "typecheck": true,
+    "productionBuild": true,
+    "whitespace": true,
+    "liveNativeDownloadReviewed": false,
+    "freshHardwareProfileReceived": false,
+    "hardwareFpsGainMeasured": false
+  },
+  "build": {
+    "entryMinifiedKB": 1022.71,
+    "entryGzipKB": 272.25,
+    "entryIncreaseMinifiedKB": 3.24,
+    "entryIncreaseGzipKB": 1.0,
+    "physicsMinifiedKB": 2855.12,
+    "physicsGzipKB": 1078.39
+  },
+  "limits": [
+    "Three streams have independent reporting windows; contexts show only window-end state",
+    "Controlled renderer/GPU/DOM/download fixtures do not prove a native browser download or laptop performance",
+    "Sampling, context capture and copying add opt-in diagnostic work",
+    "No running-checkout fingerprint is available; sourceRevision remains null",
+    "Local house-dependent tests still use the earlier export",
+    "The earlier owner-reported functional passes do not validate this subsequent download control"
+  ]
+}

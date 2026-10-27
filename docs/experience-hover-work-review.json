@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-27",
+  "baselineCommit": "71781bb167d89ae5192c684d3d43c6ecc79f1203",
+  "method": "CPU execution of production experiences with configured data, named synthetic Three.js geometry, real raycasts and DOM/canvas test doubles with pixel-string serialization",
+  "unchangedHoveredFramesPerExperience": 120,
+  "previousSourceDerivedPerExperience": {
+    "hoverDomWrites": 480,
+    "canvasRectangleReads": 240
+  },
+  "awardsExecuted": {
+    "configuredEntries": 3,
+    "hoverDomWritesAfterPriming": 0,
+    "canvasRectangleReads": 120,
+    "raycastCalls": 360,
+    "distinctResultArrays": 1,
+    "resultRecordsRetainedAfterPick": 0,
+    "glimmerAnimationContinued": true
+  },
+  "journeyExecuted": {
+    "configuredEntries": 4,
+    "hoverDomWritesAfterPriming": 0,
+    "canvasRectangleReads": 120,
+    "raycastCalls": 120,
+    "distinctResultArrays": 1,
+    "distinctHitTargetLists": 1,
+    "resultRecordsRetainedAfterPick": 0,
+    "waypointAnimationContinued": true
+  },
+  "validation": {
+    "testsPassed": 111,
+    "newRegressions": 4,
+    "typecheck": true,
+    "productionBuild": true,
+    "whitespace": true,
+    "liveBrowserReview": false,
+    "ownerReportedManualInspectorReview": true,
+    "fullWalkingRouteReviewed": true,
+    "walkingRouteReviewMethod": "owner-reported manual check",
+    "hardwareFpsGainMeasured": false,
+    "gpuGainMeasured": false
+  },
+  "manualGameplayReview": {
+    "date": "2026-10-27",
+    "reporter": "owner",
+    "result": "all passed",
+    "expectedSourceCommit": "880507c4a1e87a012c395663b1a5108476130343",
+    "sourceCommitIndependentlyVerified": false,
+    "requestedChecks": [
+      "Awards Hall hover/click, three entries, both arrow directions, E inspection/overview, resize and Esc return/reopen",
+      "Journey map hover/click, four chapters, both arrow directions, route/waypoint animation, label and camera return",
+      "Complete outside/house walking and collision route, including doors, stairs and furniture"
+    ],
+    "assistantOperatedBrowser": false,
+    "screenshotsSupplied": false,
+    "consoleCaptureSupplied": false,
+    "renderingSettingsIndependentlyCaptured": false,
+    "beforeAfterTimingsSupplied": false
+  },
+  "build": {
+    "entryMinifiedKB": 1019.28,
+    "entryGzipKB": 271.19,
+    "physicsMinifiedKB": 2855.12,
+    "physicsGzipKB": 1078.39
+  },
+  "browserBlocker": "Browser access requires the originating browser context",
+  "limits": [
+    "Previous counts are derived from unconditional source calls, not an executed timing baseline",
+    "Work counts are not measured wall-time, heap, GPU or FPS savings",
+    "Picking still runs every active frame; Three.js can allocate internal hit records and temporaries",
+    "Synthetic geometry and DOM/canvas fixtures do not establish the current house layout or browser pixel equality",
+    "Local house-dependent checks use the earlier house export",
+    "The manual inspector/walking pass is owner-reported; no independent browser, console/settings, source fingerprint or timing capture was obtained"
+  ]
+}

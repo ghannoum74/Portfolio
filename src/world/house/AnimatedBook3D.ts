@@ -41,6 +41,7 @@ export class AnimatedBook3D {
   private pendingScreenshot: THREE.Texture | null = null;
   private turnDirection: 1 | -1 = 1;
   private pagesReady = false;
+  private poseRevisionValue = 0;
 
   constructor(gltf: BookGLTF) {
     this.model = gltf.scene;
@@ -312,7 +313,7 @@ export class AnimatedBook3D {
       this.state = "turning";
       action.play();
       // Sample the first frame at the correct endpoint before rendering.
-      this.mixer.update(0);
+      this.samplePose(0);
     } catch (error) {
       console.error("Could not prepare book page:", error);
       this.pendingIndex = null;
@@ -376,7 +377,12 @@ export class AnimatedBook3D {
   update(delta: number): void {
     // Clamped actions retain their final pose without reapplying every morph.
     if (this.state !== "opening" && this.state !== "turning") return;
-    this.mixer.update(Math.min(delta, 0.05));
+    this.samplePose(Math.min(delta, 0.05));
+  }
+
+  private samplePose(delta: number): void {
+    this.mixer.update(delta);
+    this.poseRevisionValue++;
   }
 
   // =======================================================
@@ -385,6 +391,11 @@ export class AnimatedBook3D {
 
   get currentState(): BookState {
     return this.state;
+  }
+
+  /** Changes after animation sampling, including the initial page-turn endpoint. */
+  get poseRevision(): number {
+    return this.poseRevisionValue;
   }
 
   get currentProjectIndex(): number {

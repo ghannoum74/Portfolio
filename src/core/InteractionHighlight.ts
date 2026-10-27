@@ -26,6 +26,10 @@ export class InteractionHighlight {
   private readonly replacements: Replacement[] = [];
   private readonly masks = new Map<THREE.Material, { material: THREE.Material; version: number }>();
   private readonly rims = new Map<THREE.MeshBasicMaterial, SurfaceMaterial>();
+  private readonly rimCache = new Map<SurfaceMaterial, Map<number, THREE.MeshBasicMaterial>>();
+  private readonly materialOrder = new Map<THREE.Material, true>();
+  private readonly activeSources = new Set<THREE.Material>();
+  private readonly activeRims = new Set<THREE.MeshBasicMaterial>();
   private readonly viewport = { value: new THREE.Vector2(1, 1) };
   private readonly width = { value: 2 };
   private readonly matrix = new THREE.Matrix4();
@@ -47,7 +51,7 @@ export class InteractionHighlight {
 
   setTarget(target: THREE.Object3D | null): void {
     if (target === this.target) return;
-    this.clear();
+    this.releaseTarget();
     this.target = target;
     target?.traverseVisible(object => {
       if (!(object instanceof THREE.Mesh) || (object as THREE.BatchedMesh).isBatchedMesh ||
@@ -99,6 +103,7 @@ export class InteractionHighlight {
       parent.add(this.root);
     }
     this.update();
+    this.trimMaterials();
   }
 
   private supported(source: THREE.Material): boolean {
@@ -109,6 +114,7 @@ export class InteractionHighlight {
 
   private maskMaterial(source: THREE.Material): THREE.Material {
     if (!this.supported(source)) return source;
+    this.touchMaterial(source);
     let entry = this.masks.get(source);
     if (!entry) {
       entry = { material: source.clone(), version: source.version };
@@ -118,6 +124,12 @@ export class InteractionHighlight {
   }
 
   private rimMaterial(source: SurfaceMaterial, direction: number): THREE.MeshBasicMaterial {
+    this.touchMaterial(source);
+    const cached = this.rimCache.get(source)?.get(direction);
+    if (cached) {
+      this.activeRims.add(cached);
+      return cached;
+    }
     const rim = new THREE.MeshBasicMaterial({
       color: 0xf3e7c2, toneMapped: false, fog: false,
       transparent: true, blending: THREE.NoBlending, forceSinglePass: true,
@@ -150,11 +162,38 @@ gl_Position.xy += rimOffset * borderWidth * 2.0 / borderViewport * gl_Position.w
     };
     rim.customProgramCacheKey = () => "interaction-stencil-border-v1";
     this.rims.set(rim, source);
+    const variants = this.rimCache.get(source) ?? new Map<number, THREE.MeshBasicMaterial>();
+    variants.set(direction, rim);
+    this.rimCache.set(source, variants);
+    this.activeRims.add(rim);
     return rim;
   }
 
+  private touchMaterial(source: THREE.Material): void {
+    this.activeSources.add(source);
+    this.materialOrder.delete(source);
+    this.materialOrder.set(source, true);
+  }
+
+  private trimMaterials(): void {
+    // Keep programs across focus changes, but cap inactive source-material entries.
+    for (const source of this.materialOrder.keys()) {
+      if (this.materialOrder.size <= 64) break;
+      if (this.activeSources.has(source)) continue;
+      this.masks.get(source)?.material.dispose();
+      this.masks.delete(source);
+      for (const rim of this.rimCache.get(source)?.values() ?? []) {
+        rim.dispose(); this.rims.delete(rim);
+      }
+      this.rimCache.delete(source);
+      this.materialOrder.delete(source);
+    }
+  }
+
   update(): void {
+    if (!this.active) return;
     for (const [source, entry] of this.masks) {
+      if (!this.activeSources.has(source)) continue;
       // Preserve the surface, including authored opacity/color animation.
       entry.material.copy(source);
       entry.material.stencilWrite = true;
@@ -171,6 +210,7 @@ gl_Position.xy += rimOffset * borderWidth * 2.0 / borderViewport * gl_Position.w
       }
     }
     for (const [rim, source] of this.rims) {
+      if (!this.activeRims.has(rim)) continue;
       const changed = rim.map !== (source.map ?? null) || rim.alphaMap !== (source.alphaMap ?? null) ||
         rim.side !== source.side || rim.alphaHash !== source.alphaHash;
       rim.map = source.map ?? null;
@@ -219,7 +259,7 @@ gl_Position.xy += rimOffset * borderWidth * 2.0 / borderViewport * gl_Position.w
     }
   }
 
-  clear(): void {
+  private releaseTarget(): void {
     this.root.removeFromParent();
     for (const { mesh, original, masked, proxies } of this.replacements) {
       if (mesh.material === masked) mesh.material = original;
@@ -228,11 +268,15 @@ gl_Position.xy += rimOffset * borderWidth * 2.0 / borderViewport * gl_Position.w
       }
     }
     this.root.clear();
+    this.replacements.length = 0;
+    this.activeSources.clear(); this.activeRims.clear();
+    this.target = null;
+  }
+
+  clear(): void {
+    this.releaseTarget();
     for (const entry of this.masks.values()) entry.material.dispose();
     for (const rim of this.rims.keys()) rim.dispose();
-    this.replacements.length = 0;
-    this.masks.clear();
-    this.rims.clear();
-    this.target = null;
+    this.masks.clear(); this.rims.clear(); this.rimCache.clear(); this.materialOrder.clear();
   }
 }

@@ -17,6 +17,10 @@ const GOLD = new THREE.Color("#efcf83");
 export class AwardsExperience {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
+  private readonly intersections: THREE.Intersection[] = [];
+  private readonly hintPosition = new THREE.Vector3();
+  private hintLeft = Number.NaN;
+  private hintTop = Number.NaN;
   private readonly exhibits: Exhibit[] = [];
   private readonly decorations = new THREE.Group();
   private readonly texture: THREE.CanvasTexture;
@@ -283,18 +287,23 @@ export class AwardsExperience {
       }
     }
     if (this.modeState !== "active") return;
-    this.hoveredIndex = this.pointerIn
-      ? this.pick(this.pointerX, this.pointerY)
+    // Read layout once before hover DOM writes; picking still runs for every active frame.
+    const rect = this.pointerIn ? this.canvas.getBoundingClientRect() : null;
+    this.hoveredIndex = rect
+      ? this.pick(this.pointerX, this.pointerY, rect)
       : null;
     const hovering = this.hoveredIndex !== null;
     this.setCursor(hovering);
-    this.hint.classList.toggle("is-visible", hovering);
-    if (hovering) {
+    if (this.hint.classList.contains("is-visible") !== hovering)
+      this.hint.classList.toggle("is-visible", hovering);
+    if (hovering && rect) {
       const exhibit = this.exhibits[this.hoveredIndex!];
-      const screen = exhibit.center.clone().project(this.camera);
-      const rect = this.canvas.getBoundingClientRect();
-      this.hint.style.left = `${THREE.MathUtils.clamp(rect.left + ((screen.x + 1) * rect.width) / 2, 60, innerWidth - 60)}px`;
-      this.hint.style.top = `${THREE.MathUtils.clamp(rect.top + ((1 - screen.y) * rect.height) / 2 - 72, 30, innerHeight - 60)}px`;
+      const screen = this.hintPosition.copy(exhibit.center).project(this.camera);
+      const left = THREE.MathUtils.clamp(rect.left + ((screen.x + 1) * rect.width) / 2, 60, innerWidth - 60);
+      const top = THREE.MathUtils.clamp(rect.top + ((1 - screen.y) * rect.height) / 2 - 72, 30, innerHeight - 60);
+      // Cache desired numbers: CSSOM may round a pixel string when reading it back.
+      if (this.hintLeft !== left) { this.hint.style.left = `${left}px`; this.hintLeft = left; }
+      if (this.hintTop !== top) { this.hint.style.top = `${top}px`; this.hintTop = top; }
     }
   }
 
@@ -417,8 +426,7 @@ export class AwardsExperience {
     this.duration = duration;
   }
 
-  private pick(x: number, y: number): number | null {
-    const rect = this.canvas.getBoundingClientRect();
+  private pick(x: number, y: number, rect = this.canvas.getBoundingClientRect()): number | null {
     if (!rect.width || !rect.height) return null;
     this.pointer.set(
       ((x - rect.left) / rect.width) * 2 - 1,
@@ -429,20 +437,25 @@ export class AwardsExperience {
     let closest = Number.POSITIVE_INFINITY;
     let result: number | null = null;
     for (let i = 0; i < this.exhibits.length; i++) {
-      const hit = this.raycaster.intersectObject(
+      this.intersections.length = 0;
+      this.raycaster.intersectObject(
         this.exhibits[i].target,
         true,
-      )[0];
+        this.intersections,
+      );
+      const hit = this.intersections[0];
       if (hit && hit.distance < closest) {
         closest = hit.distance;
         result = i;
       }
     }
+    this.intersections.length = 0;
     return result;
   }
 
   private setCursor(value: boolean): void {
-    this.canvas.style.cursor = value ? "pointer" : "";
+    const cursor = value ? "pointer" : "";
+    if (this.canvas.style.cursor !== cursor) this.canvas.style.cursor = cursor;
   }
   private onPrevious = (): void => this.selectRelative(-1);
   private onNext = (): void => this.selectRelative(1);

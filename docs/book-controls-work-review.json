@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-26",
+  "baselineCommit": "dc0df244ac89286874e8833800a2ca0b2b386017",
+  "asset": {
+    "path": "public/assets/models/environment/book.glb",
+    "bytes": 892140,
+    "gitBlobSha": "316f42b2e1f18cc59354fe9857d561a190160c2c"
+  },
+  "method": "CPU execution of production AnimatedBook3D and BookPageControls against the shipped book geometry/morph animation, with DOM and texture-delivery test doubles",
+  "firstLayout": {
+    "vertexReads": 7426
+  },
+  "unchangedReading": {
+    "updates": 120,
+    "vertexReadsAfterPriming": 0,
+    "domWritesAfterPriming": 0,
+    "previousTraversalVertexReadsDerived": 891120
+  },
+  "validation": {
+    "testsPassed": 107,
+    "typecheck": true,
+    "build": true,
+    "whitespace": true,
+    "liveBrowserReview": false,
+    "ownerReportedManualBookReview": true,
+    "hardwareFpsGainMeasured": false,
+    "gpuGainMeasured": false
+  },
+  "manualBookReview": {
+    "date": "2026-10-27",
+    "reporter": "owner",
+    "result": "all passed",
+    "sourceCommitNotIndependentlyVerified": "44d1dad7420a4d9a7db9cab71c911f9072f8dd9a",
+    "requestedChecks": [
+      "All four spreads and forward/backward turns",
+      "Arrow/counter and first/last-page states",
+      "Controls hide during page curl",
+      "Window resizing",
+      "Esc, return and reopening",
+      "Page text and screenshots"
+    ],
+    "assistantOperatedBrowser": false,
+    "browserBlocker": "Browser access requires the originating browser context",
+    "screenshotsSupplied": false,
+    "consoleErrorsIndependentlyChecked": false,
+    "renderingSettingsIndependentlyCaptured": false,
+    "beforeAfterTimingsSupplied": false
+  },
+  "build": {
+    "entryMinifiedKB": 1018.53,
+    "entryGzipKB": 271.04,
+    "physicsMinifiedKB": 2855.12,
+    "physicsGzipKB": 1078.39
+  },
+  "limits": [
+    "Work counts are not measured wall-time, heap, GPU or FPS savings",
+    "A DOM test double does not establish browser CSS/font/pixel equality",
+    "Bounds caching relies on AnimatedBook3D owning internal pose changes",
+    "Local house-dependent checks use the earlier house; the actual book/world assets are current"
+  ]
+}

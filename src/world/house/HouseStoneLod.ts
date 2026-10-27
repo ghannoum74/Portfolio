@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
+export const EXTERIOR_LOD_NAMES = ["Cube_Material002_0", "Cube_Material002_0001"] as const;
 // GLTFLoader sanitizes the Blender name Damage_Stone.001 to Damage_Stone001.
 export const HOUSE_STONE_NAMES = ["Damage_Stone", "Damage_Stone001"] as const;
 export interface StoneLodData {
@@ -64,16 +65,21 @@ export class HouseStoneLod {
   private readonly center = new THREE.Vector3();
   private enabled = true;
 
-  static async create(root: THREE.Object3D, data: StoneLodData): Promise<HouseStoneLod> {
+  private closeupDistance = 0;
+
+  static async create(root: THREE.Object3D, data: StoneLodData,
+    allowedNames: readonly string[] = HOUSE_STONE_NAMES, closeupDistance = 0): Promise<HouseStoneLod> {
     const lod = new HouseStoneLod();
+    if (!Number.isFinite(closeupDistance) || closeupDistance < 0) throw new Error("Invalid close-up distance");
+    lod.closeupDistance = closeupDistance;
     try {
-      if (data?.version !== 1 || !Array.isArray(data.meshes) || data.meshes.length !== HOUSE_STONE_NAMES.length) {
+      if (data?.version !== 1 || !Array.isArray(data.meshes) || data.meshes.length !== allowedNames.length) {
         throw new Error("Unsupported house stone LOD data");
       }
       await MeshoptDecoder.ready;
       const names = new Set<string>();
       for (const source of data.meshes) {
-        if (!HOUSE_STONE_NAMES.some(name => name === source.name) || names.has(source.name)) {
+        if (!allowedNames.includes(source.name) || names.has(source.name)) {
           throw new Error("Unexpected house stone LOD target");
         }
         names.add(source.name);
@@ -140,6 +146,8 @@ export class HouseStoneLod {
       // so small camera movements do not repeatedly flip detail levels.
       while (selected > 0 && entry.levels[selected].error * pixelsPerLocalUnit > 1) selected--;
       while (selected + 1 < entry.levels.length && entry.levels[selected + 1].error * pixelsPerLocalUnit < 0.75) selected++;
+      // Optional exterior policy keeps authored geometry near the complete bounds.
+      if (this.closeupDistance > 0 && this.center.length() - entry.radius * scale < this.closeupDistance) selected = 0;
       entry.selected = selected;
       entry.mesh.geometry = entry.levels[selected].geometry;
     }

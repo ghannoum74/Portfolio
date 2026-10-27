@@ -5,6 +5,8 @@ export class WorldColliders {
   constructor(private physics: PhysicsWorld) {}
 
   createFromEnvironment(environment: THREE.Object3D): void {
+    // Invalidate before construction as a failed import may still add some colliders.
+    this.physics.invalidateStaticQueries();
     environment.updateMatrixWorld(true);
 
     environment.traverse((child) => {

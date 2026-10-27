@@ -1,0 +1,807 @@
+{
+  "startedAt": "2026-10-26T18:39:00.248Z",
+  "initialDOM": "- main\n- button \"Turn sound off\":\n- dialog:\n  - paragraph\n  - button:\n    - generic: Continue\n    - generic: E\n    - generic: ▼\n- button \"Open world controls\":\n  - generic: \"?\"\n- generic: E\n- button \"▾ Controls\" [expanded]\n- generic: Debug view\n- checkbox \"Debug view\"\n- button \"▾ Day / Night\" [expanded]\n- generic: Preview hour\n- spinbutton \"Preview hour\": \"7.15\"\n- generic: Real time\n- checkbox \"Real time\"\n- button \"▾ Performance\" [expanded]\n- generic: Border highlight\n- checkbox \"Border highlight\" [checked]: ✓\n- generic: Shadows\n- checkbox \"Shadows\" [checked]: ✓\n- generic: GPU timing\n- checkbox \"GPU timing\"\n- generic: Water shader\n- combobox \"Water shader\" [active]:\n  - option \"Original\" [selected]\n  - option \"Vertex phases\"\n  - option \"Depth only (diagnostic)\"\n- generic: Original ↕\n- generic: Exterior LOD\n- checkbox \"Exterior LOD\" [checked]: ✓\n- generic: Stone LOD\n- checkbox \"Stone LOD\" [checked]: ✓\n- generic: Backface culling\n- checkbox \"Backface culling\" [checked]: ✓\n- generic: Static batching\n- checkbox \"Static batching\" [checked]: ✓\n- generic: Static transforms\n- checkbox \"Static transforms\" [checked]: ✓\n- generic: Pixel ratio\n- spinbutton \"Pixel ratio\": \"1.100000023841858\"\n- button \"Restart readings\":\n  - generic: Restart readings",
+  "initialDimensions": {
+    "canvases": [
+      [
+        1919,
+        910
+      ]
+    ],
+    "viewport": [
+      1745,
+      828
+    ],
+    "visibility": "visible"
+  },
+  "conditions": [
+    {
+      "id": "A1",
+      "enabled": true,
+      "startedAt": "2026-10-26T18:40:14.523Z",
+      "summary": {
+        "id": "A1",
+        "enabled": true,
+        "gpuMsMedianOfWindowMeans": 19.46,
+        "gpuWindowMeans": [
+          19.46,
+          19.65,
+          19.55,
+          19.24,
+          19.35
+        ],
+        "rendererCpuMsMedian": 5.24,
+        "fpsMedian": 25,
+        "completedQueries": 38,
+        "draws": [
+          129
+        ],
+        "triangles": [
+          200224
+        ]
+      },
+      "renderer": [
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":25,\"rendererCpuMsApprox\":5.24,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":7,\"gpuRenderMsMean\":19.46,\"gpuRenderMsP50\":19.43,\"gpuRenderMsP95\":19.91,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:40:19.302Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":25,\"rendererCpuMsApprox\":5.63,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":19.65,\"gpuRenderMsP50\":19.54,\"gpuRenderMsP95\":20.61,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:40:22.336Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":26,\"rendererCpuMsApprox\":5.39,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":19.55,\"gpuRenderMsP50\":19.59,\"gpuRenderMsP95\":19.74,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:40:25.366Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":26,\"rendererCpuMsApprox\":4.9,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":7,\"gpuRenderMsMean\":19.24,\"gpuRenderMsP50\":19.26,\"gpuRenderMsP95\":19.49,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:40:28.397Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":25,\"rendererCpuMsApprox\":4.55,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":19.35,\"gpuRenderMsP50\":19.17,\"gpuRenderMsP95\":20.15,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:40:31.431Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        }
+      ],
+      "physics": [
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.21,\"physicsStepsPerFrame\":2.08,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:40:20.363Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.27,\"physicsStepsPerFrame\":2.03,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:40:23.397Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.22,\"physicsStepsPerFrame\":2.06,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:40:26.411Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.22,\"physicsStepsPerFrame\":2.08,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:40:29.428Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.18,\"physicsStepsPerFrame\":2.03,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:40:32.460Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        }
+      ],
+      "profiles": [
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":77,\"elapsedMs\":3005.8,\"callbackCpuMs\":{\"samples\":77,\"mean\":6.46,\"p50\":6.2,\"p95\":10},\"callbackIntervalMs\":{\"samples\":77,\"mean\":39.39,\"p50\":33.3,\"p95\":34.1},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":0.71,\"camera\":0.02,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.02,\"render\":5.66}}",
+          "timestamp": "2026-10-26T18:40:22.368Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":78,\"elapsedMs\":3003.1,\"callbackCpuMs\":{\"samples\":78,\"mean\":6.12,\"p50\":5.8,\"p95\":10.9},\"callbackIntervalMs\":{\"samples\":78,\"mean\":38.88,\"p50\":33.4,\"p95\":34.2},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.63,\"camera\":0.02,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.03,\"render\":5.39}}",
+          "timestamp": "2026-10-26T18:40:25.399Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":78,\"elapsedMs\":3003.8,\"callbackCpuMs\":{\"samples\":78,\"mean\":5.67,\"p50\":5.2,\"p95\":9.8},\"callbackIntervalMs\":{\"samples\":78,\"mean\":38.88,\"p50\":33.4,\"p95\":34.4},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.66,\"camera\":0.03,\"effectsUi\":0.02,\"interaction\":0,\"lod\":0.02,\"render\":4.92}}",
+          "timestamp": "2026-10-26T18:40:28.430Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":77,\"elapsedMs\":3002.8,\"callbackCpuMs\":{\"samples\":77,\"mean\":5.23,\"p50\":4.5,\"p95\":8.3},\"callbackIntervalMs\":{\"samples\":77,\"mean\":39.39,\"p50\":33.3,\"p95\":33.9},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.6,\"camera\":0.02,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.02,\"render\":4.55}}",
+          "timestamp": "2026-10-26T18:40:31.463Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":78,\"elapsedMs\":3002.3,\"callbackCpuMs\":{\"samples\":78,\"mean\":3.93,\"p50\":3.7,\"p95\":5.8},\"callbackIntervalMs\":{\"samples\":78,\"mean\":38.88,\"p50\":33.3,\"p95\":34},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.48,\"camera\":0.02,\"effectsUi\":0.01,\"interaction\":0,\"lod\":0.02,\"render\":3.38}}",
+          "timestamp": "2026-10-26T18:40:34.496Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        }
+      ],
+      "dimensions": {
+        "canvases": [
+          [
+            1919,
+            910
+          ]
+        ],
+        "viewport": [
+          1745,
+          828
+        ],
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "B",
+      "enabled": false,
+      "startedAt": "2026-10-26T18:40:59.380Z",
+      "summary": {
+        "id": "B",
+        "enabled": false,
+        "gpuMsMedianOfWindowMeans": 22.07,
+        "gpuWindowMeans": [
+          20.79,
+          22.07,
+          21.53,
+          22.2,
+          22.2
+        ],
+        "rendererCpuMsMedian": 7.51,
+        "fpsMedian": 25,
+        "completedQueries": 35,
+        "draws": [
+          129
+        ],
+        "triangles": [
+          200224
+        ]
+      },
+      "renderer": [
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":26,\"rendererCpuMsApprox\":5.22,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":7,\"gpuRenderMsMean\":20.79,\"gpuRenderMsP50\":21.23,\"gpuRenderMsP95\":22.21,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:04.181Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":25,\"rendererCpuMsApprox\":7.51,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":22.07,\"gpuRenderMsP50\":21.8,\"gpuRenderMsP95\":23.92,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:07.195Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":25,\"rendererCpuMsApprox\":6,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":7,\"gpuRenderMsMean\":21.53,\"gpuRenderMsP50\":21.62,\"gpuRenderMsP95\":21.82,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:10.251Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":22,\"rendererCpuMsApprox\":10.31,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":7,\"gpuRenderMsMean\":22.2,\"gpuRenderMsP50\":22.12,\"gpuRenderMsP95\":23.04,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:13.252Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":21,\"rendererCpuMsApprox\":9.14,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":6,\"gpuRenderMsMean\":22.2,\"gpuRenderMsP50\":22.09,\"gpuRenderMsP95\":22.94,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:16.367Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        }
+      ],
+      "physics": [
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.28,\"physicsStepsPerFrame\":2.12,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:05.223Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.2,\"physicsStepsPerFrame\":2.07,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:08.258Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.36,\"physicsStepsPerFrame\":2.4,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:11.599Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.56,\"physicsStepsPerFrame\":2.67,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:14.352Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.44,\"physicsStepsPerFrame\":2.54,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:17.327Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        }
+      ],
+      "profiles": [
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":75,\"elapsedMs\":3020.7,\"callbackCpuMs\":{\"samples\":75,\"mean\":8.32,\"p50\":8.6,\"p95\":12.3},\"callbackIntervalMs\":{\"samples\":75,\"mean\":40.66,\"p50\":33.3,\"p95\":49.7},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.73,\"camera\":0.03,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.03,\"render\":7.47}}",
+          "timestamp": "2026-10-26T18:41:07.261Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":75,\"elapsedMs\":3026.9,\"callbackCpuMs\":{\"samples\":75,\"mean\":6.95,\"p50\":6,\"p95\":11.7},\"callbackIntervalMs\":{\"samples\":75,\"mean\":40.68,\"p50\":33.4,\"p95\":50.3},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.72,\"camera\":0.02,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.04,\"render\":6.13}}",
+          "timestamp": "2026-10-26T18:41:10.377Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":68,\"elapsedMs\":3039.2,\"callbackCpuMs\":{\"samples\":68,\"mean\":12.11,\"p50\":11.5,\"p95\":18.1},\"callbackIntervalMs\":{\"samples\":68,\"mean\":45.32,\"p50\":47.4,\"p95\":67.3},\"stagesCpuMsMean\":{\"setup\":0.03,\"world\":1.4,\"camera\":0.05,\"effectsUi\":0.04,\"interaction\":0.01,\"lod\":0.04,\"render\":10.54}}",
+          "timestamp": "2026-10-26T18:41:13.471Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":67,\"elapsedMs\":3026.4,\"callbackCpuMs\":{\"samples\":67,\"mean\":10.4,\"p50\":10,\"p95\":14.3},\"callbackIntervalMs\":{\"samples\":67,\"mean\":46.01,\"p50\":49.1,\"p95\":66},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":1.28,\"camera\":0.03,\"effectsUi\":0.05,\"interaction\":0.02,\"lod\":0.04,\"render\":8.96}}",
+          "timestamp": "2026-10-26T18:41:16.943Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":68,\"elapsedMs\":3031.8,\"callbackCpuMs\":{\"samples\":68,\"mean\":11.8,\"p50\":11,\"p95\":21.3},\"callbackIntervalMs\":{\"samples\":68,\"mean\":45.1,\"p50\":48.8,\"p95\":68.5},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":1.24,\"camera\":0.04,\"effectsUi\":0.05,\"interaction\":0.01,\"lod\":0.04,\"render\":10.38}}",
+          "timestamp": "2026-10-26T18:41:19.562Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        }
+      ],
+      "dimensions": {
+        "canvases": [
+          [
+            1919,
+            910
+          ]
+        ],
+        "viewport": [
+          1745,
+          828
+        ],
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "A2",
+      "enabled": true,
+      "startedAt": "2026-10-26T18:41:44.470Z",
+      "summary": {
+        "id": "A2",
+        "enabled": true,
+        "gpuMsMedianOfWindowMeans": 19.5,
+        "gpuWindowMeans": [
+          16.96,
+          19.5,
+          19.42,
+          20.14,
+          20.42
+        ],
+        "rendererCpuMsMedian": 6.73,
+        "fpsMedian": 26,
+        "completedQueries": 38,
+        "draws": [
+          129
+        ],
+        "triangles": [
+          200224
+        ]
+      },
+      "renderer": [
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":28,\"rendererCpuMsApprox\":6.73,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":16.96,\"gpuRenderMsP50\":16.68,\"gpuRenderMsP95\":18.04,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:49.388Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":20,\"rendererCpuMsApprox\":5.58,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":6,\"gpuRenderMsMean\":19.5,\"gpuRenderMsP50\":19.39,\"gpuRenderMsP95\":19.74,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:52.391Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":29,\"rendererCpuMsApprox\":6.04,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":19.42,\"gpuRenderMsP50\":19.36,\"gpuRenderMsP95\":19.77,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:55.405Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":24,\"rendererCpuMsApprox\":10.14,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":20.14,\"gpuRenderMsP50\":19.91,\"gpuRenderMsP95\":20.96,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:41:58.412Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":26,\"rendererCpuMsApprox\":12.74,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":20.42,\"gpuRenderMsP50\":20.06,\"gpuRenderMsP95\":22.33,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:01.497Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        }
+      ],
+      "physics": [
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.24,\"physicsStepsPerFrame\":2.22,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:53.451Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.38,\"physicsStepsPerFrame\":2.22,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:56.481Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.6,\"physicsStepsPerFrame\":2.56,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:41:59.522Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.78,\"physicsStepsPerFrame\":2.09,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:02.526Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.92,\"physicsStepsPerFrame\":2.22,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:05.552Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        }
+      ],
+      "profiles": [
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":63,\"elapsedMs\":3021.4,\"callbackCpuMs\":{\"samples\":63,\"mean\":6.32,\"p50\":6.1,\"p95\":9.5},\"callbackIntervalMs\":{\"samples\":63,\"mean\":49.73,\"p50\":33.3,\"p95\":133.4},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.65,\"camera\":0.03,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.02,\"render\":5.58}}",
+          "timestamp": "2026-10-26T18:41:52.555Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":88,\"elapsedMs\":3029.8,\"callbackCpuMs\":{\"samples\":88,\"mean\":7.15,\"p50\":6.6,\"p95\":12.9},\"callbackIntervalMs\":{\"samples\":88,\"mean\":34.65,\"p50\":33.3,\"p95\":49.6},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.77,\"camera\":0.04,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.03,\"render\":6.26}}",
+          "timestamp": "2026-10-26T18:41:55.649Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":73,\"elapsedMs\":3013.8,\"callbackCpuMs\":{\"samples\":73,\"mean\":12.3,\"p50\":11.2,\"p95\":21.1},\"callbackIntervalMs\":{\"samples\":73,\"mean\":41.55,\"p50\":33.6,\"p95\":66.6},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":1.4,\"camera\":0.05,\"effectsUi\":0.05,\"interaction\":0.01,\"lod\":0.06,\"render\":10.7}}",
+          "timestamp": "2026-10-26T18:41:58.653Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":80,\"elapsedMs\":3021.2,\"callbackCpuMs\":{\"samples\":80,\"mean\":15.21,\"p50\":14.2,\"p95\":22.4},\"callbackIntervalMs\":{\"samples\":80,\"mean\":38.17,\"p50\":33.5,\"p95\":52},\"stagesCpuMsMean\":{\"setup\":0.03,\"world\":1.71,\"camera\":0.06,\"effectsUi\":0.05,\"interaction\":0.01,\"lod\":0.04,\"render\":13.31}}",
+          "timestamp": "2026-10-26T18:42:01.732Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":84,\"elapsedMs\":3028.9,\"callbackCpuMs\":{\"samples\":84,\"mean\":18.84,\"p50\":17.2,\"p95\":28.9},\"callbackIntervalMs\":{\"samples\":84,\"mean\":36.27,\"p50\":33.4,\"p95\":49.9},\"stagesCpuMsMean\":{\"setup\":0.03,\"world\":2.22,\"camera\":0.08,\"effectsUi\":0.13,\"interaction\":0.01,\"lod\":0.07,\"render\":16.3}}",
+          "timestamp": "2026-10-26T18:42:04.750Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        }
+      ],
+      "dimensions": {
+        "canvases": [
+          [
+            1919,
+            910
+          ]
+        ],
+        "viewport": [
+          1745,
+          828
+        ],
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "B2",
+      "enabled": false,
+      "startedAt": "2026-10-26T18:42:34.837Z",
+      "summary": {
+        "id": "B2",
+        "enabled": false,
+        "gpuMsMedianOfWindowMeans": 21.55,
+        "gpuWindowMeans": [
+          21.62,
+          21.43,
+          21.68,
+          21.55,
+          21.45
+        ],
+        "rendererCpuMsMedian": 7.3,
+        "fpsMedian": 30,
+        "completedQueries": 44,
+        "draws": [
+          129
+        ],
+        "triangles": [
+          200224
+        ]
+      },
+      "renderer": [
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":30,\"rendererCpuMsApprox\":7.17,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":21.62,\"gpuRenderMsP50\":21.55,\"gpuRenderMsP95\":21.88,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:39.604Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":30,\"rendererCpuMsApprox\":7.98,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":10,\"gpuRenderMsMean\":21.43,\"gpuRenderMsP50\":21.36,\"gpuRenderMsP95\":22.06,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:42.642Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":29,\"rendererCpuMsApprox\":7.3,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":21.68,\"gpuRenderMsP50\":21.48,\"gpuRenderMsP95\":22.8,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:45.647Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":30,\"rendererCpuMsApprox\":6.44,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":9,\"gpuRenderMsMean\":21.55,\"gpuRenderMsP50\":21.5,\"gpuRenderMsP95\":22.09,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:48.651Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":30,\"rendererCpuMsApprox\":7.32,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":9,\"gpuRenderMsMean\":21.45,\"gpuRenderMsP50\":21.41,\"gpuRenderMsP95\":21.94,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":false,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:42:51.662Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        }
+      ],
+      "physics": [
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.27,\"physicsStepsPerFrame\":2,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:40.661Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.27,\"physicsStepsPerFrame\":2,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:43.663Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.23,\"physicsStepsPerFrame\":2.05,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:46.678Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.28,\"physicsStepsPerFrame\":1.99,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:49.709Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.24,\"physicsStepsPerFrame\":2.04,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":false,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:42:52.742Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        }
+      ],
+      "profiles": [
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":91,\"elapsedMs\":3013.8,\"callbackCpuMs\":{\"samples\":91,\"mean\":8.97,\"p50\":8.5,\"p95\":14.2},\"callbackIntervalMs\":{\"samples\":91,\"mean\":33.33,\"p50\":33.3,\"p95\":33.7},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.78,\"camera\":0.03,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.03,\"render\":8.07}}",
+          "timestamp": "2026-10-26T18:42:42.676Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":89,\"elapsedMs\":3022.8,\"callbackCpuMs\":{\"samples\":89,\"mean\":7.98,\"p50\":7,\"p95\":13.8},\"callbackIntervalMs\":{\"samples\":89,\"mean\":34.26,\"p50\":33.3,\"p95\":33.8},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":0.67,\"camera\":0.02,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.02,\"render\":7.22}}",
+          "timestamp": "2026-10-26T18:42:45.716Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":91,\"elapsedMs\":3010.3,\"callbackCpuMs\":{\"samples\":91,\"mean\":7.34,\"p50\":7.2,\"p95\":11.3},\"callbackIntervalMs\":{\"samples\":91,\"mean\":33.33,\"p50\":33.3,\"p95\":33.9},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":0.75,\"camera\":0.02,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.02,\"render\":6.49}}",
+          "timestamp": "2026-10-26T18:42:48.753Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":90,\"elapsedMs\":3020.5,\"callbackCpuMs\":{\"samples\":90,\"mean\":8.13,\"p50\":7.8,\"p95\":12.2},\"callbackIntervalMs\":{\"samples\":90,\"mean\":33.88,\"p50\":33.3,\"p95\":34.1},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.78,\"camera\":0.03,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.03,\"render\":7.24}}",
+          "timestamp": "2026-10-26T18:42:51.795Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":87,\"elapsedMs\":3009.9,\"callbackCpuMs\":{\"samples\":87,\"mean\":7.97,\"p50\":7.8,\"p95\":12.3},\"callbackIntervalMs\":{\"samples\":87,\"mean\":34.87,\"p50\":33.3,\"p95\":50.1},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":1.04,\"camera\":0.04,\"effectsUi\":0.03,\"interaction\":0.02,\"lod\":0.04,\"render\":6.79}}",
+          "timestamp": "2026-10-26T18:42:54.834Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        }
+      ],
+      "dimensions": {
+        "canvases": [
+          [
+            1919,
+            910
+          ]
+        ],
+        "viewport": [
+          1745,
+          828
+        ],
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "A3",
+      "enabled": true,
+      "startedAt": "2026-10-26T18:46:18.295Z",
+      "summary": {
+        "id": "A3",
+        "enabled": true,
+        "gpuMsMedianOfWindowMeans": 19.5,
+        "gpuWindowMeans": [
+          19.93,
+          19.33,
+          19.46,
+          19.61,
+          19.5
+        ],
+        "rendererCpuMsMedian": 5.59,
+        "fpsMedian": 28,
+        "completedQueries": 40,
+        "draws": [
+          129
+        ],
+        "triangles": [
+          200224
+        ]
+      },
+      "renderer": [
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":19,\"rendererCpuMsApprox\":12.07,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":5,\"gpuRenderMsMean\":19.93,\"gpuRenderMsP50\":19.89,\"gpuRenderMsP95\":20.18,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:46:23.057Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":28,\"rendererCpuMsApprox\":5.59,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":9,\"gpuRenderMsMean\":19.33,\"gpuRenderMsP50\":19.28,\"gpuRenderMsP95\":19.77,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:46:26.084Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":29,\"rendererCpuMsApprox\":3.93,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":9,\"gpuRenderMsMean\":19.46,\"gpuRenderMsP50\":19.42,\"gpuRenderMsP95\":19.73,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:46:29.086Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":28,\"rendererCpuMsApprox\":6.26,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":8,\"gpuRenderMsMean\":19.61,\"gpuRenderMsP50\":19.6,\"gpuRenderMsP95\":19.75,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:46:32.118Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        },
+        {
+          "level": "info",
+          "message": "[House perf] Object {\"fpsApprox\":29,\"rendererCpuMsApprox\":3.97,\"drawCallsLastFrame\":129,\"trianglesLastFrame\":200224,\"gpuTextures\":44,\"gpuGeometries\":170,\"highlightActive\":false,\"highlightMode\":\"border\",\"outlineActive\":false,\"postprocessOutlineActive\":false,\"lowFx\":false,\"shadows\":true,\"pixelRatio\":1.100000023841858,\"stats\":false,\"gpuStats\":false,\"gpuTiming\":true,\"gpuTimingStatus\":\"ready\",\"gpuTimingSamples\":9,\"gpuRenderMsMean\":19.5,\"gpuRenderMsP50\":19.52,\"gpuRenderMsP95\":19.68,\"gpuTimingPending\":1,\"gpuTimingDisjointEvents\":0,\"decorativeLights\":true,\"workshopLights\":\"inspect\",\"beamBatching\":true,\"staticBatching\":true,\"staticTransforms\":true,\"exteriorLod\":true,\"waterShader\":\"original\",\"stoneLod\":true,\"surfaceCulling\":true,\"activeLightsOnly\":true,\"pointLights\":0}",
+          "timestamp": "2026-10-26T18:46:35.149Z",
+          "url": "http://localhost:5173/src/core/Renderer.ts?t=1793036799590"
+        }
+      ],
+      "physics": [
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.54,\"physicsStepsPerFrame\":2.54,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:46:24.116Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.17,\"physicsStepsPerFrame\":2.07,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:46:27.145Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.19,\"physicsStepsPerFrame\":2.08,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:46:30.166Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.22,\"physicsStepsPerFrame\":2.1,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:46:33.179Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.15,\"physicsStepsPerFrame\":2.2,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+          "timestamp": "2026-10-26T18:46:36.194Z",
+          "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+        }
+      ],
+      "profiles": [
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":67,\"elapsedMs\":3005.6,\"callbackCpuMs\":{\"samples\":67,\"mean\":12.97,\"p50\":10,\"p95\":31.3},\"callbackIntervalMs\":{\"samples\":66,\"mean\":45.45,\"p50\":46.3,\"p95\":69.6},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":1.24,\"camera\":0.03,\"effectsUi\":0.05,\"interaction\":0.01,\"lod\":0.03,\"render\":11.59}}",
+          "timestamp": "2026-10-26T18:46:23.371Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":88,\"elapsedMs\":3021.8,\"callbackCpuMs\":{\"samples\":88,\"mean\":5.73,\"p50\":4.7,\"p95\":11.1},\"callbackIntervalMs\":{\"samples\":88,\"mean\":35.04,\"p50\":33.3,\"p95\":50},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.56,\"camera\":0.02,\"effectsUi\":0.03,\"interaction\":0.01,\"lod\":0.02,\"render\":5.09}}",
+          "timestamp": "2026-10-26T18:46:26.453Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":88,\"elapsedMs\":3006.9,\"callbackCpuMs\":{\"samples\":88,\"mean\":4.71,\"p50\":4.3,\"p95\":7.5},\"callbackIntervalMs\":{\"samples\":88,\"mean\":34.46,\"p50\":33.3,\"p95\":49.7},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.5,\"camera\":0.01,\"effectsUi\":0.01,\"interaction\":0.01,\"lod\":0.02,\"render\":4.14}}",
+          "timestamp": "2026-10-26T18:46:29.488Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":86,\"elapsedMs\":3006.6,\"callbackCpuMs\":{\"samples\":86,\"mean\":6.98,\"p50\":6.7,\"p95\":13.2},\"callbackIntervalMs\":{\"samples\":86,\"mean\":35.27,\"p50\":33.4,\"p95\":49.9},\"stagesCpuMsMean\":{\"setup\":0.02,\"world\":0.71,\"camera\":0.02,\"effectsUi\":0.02,\"interaction\":0.01,\"lod\":0.02,\"render\":6.19}}",
+          "timestamp": "2026-10-26T18:46:32.519Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        },
+        {
+          "level": "info",
+          "message": "[Frame profile] Object {\"scene\":\"exterior\",\"frames\":88,\"elapsedMs\":3002.9,\"callbackCpuMs\":{\"samples\":88,\"mean\":4.41,\"p50\":3.9,\"p95\":7.1},\"callbackIntervalMs\":{\"samples\":88,\"mean\":34.46,\"p50\":33.4,\"p95\":49.8},\"stagesCpuMsMean\":{\"setup\":0.01,\"world\":0.49,\"camera\":0.01,\"effectsUi\":0.02,\"interaction\":0,\"lod\":0.01,\"render\":3.85}}",
+          "timestamp": "2026-10-26T18:46:35.547Z",
+          "url": "http://localhost:5173/src/core/Game.ts?t=1793039335242"
+        }
+      ],
+      "dimensions": {
+        "canvases": [
+          [
+            1919,
+            910
+          ]
+        ],
+        "viewport": [
+          1745,
+          828
+        ],
+        "visibility": "visible"
+      }
+    }
+  ],
+  "visualChecks": [
+    {
+      "view": "unchanged normal cottage-deck gameplay camera",
+      "cullingOn": "cullingOnShot26",
+      "cullingOff": "cullingOffShot26",
+      "finding": "No obvious missing deck/rail/cottage surfaces or shading discrepancy in the matched view; characters and water continued animating"
+    },
+    {
+      "view": "unchanged wide Debug view orbit camera",
+      "cullingOn": "cullingWideOnShot26",
+      "cullingOff": "cullingWideOffShot26",
+      "finding": "No obvious missing ground, path, stair, tree-trunk, deck or cottage surfaces; physics/light overlays were present"
+    }
+  ],
+  "restoredDOM": "- main\n- button \"Turn sound off\":\n- dialog:\n  - paragraph\n  - button:\n    - generic: Continue\n    - generic: E\n    - generic: ▼\n- button \"Open world controls\":\n  - generic: \"?\"\n- generic: E\n- button \"▾ Controls\" [expanded]\n- generic: Debug view\n- checkbox \"Debug view\" [active]\n- button \"▾ Day / Night\" [expanded]\n- generic: Preview hour\n- spinbutton \"Preview hour\": \"7.15\"\n- generic: Real time\n- checkbox \"Real time\"\n- button \"▾ Performance\" [expanded]\n- generic: Border highlight\n- checkbox \"Border highlight\" [checked]: ✓\n- generic: Shadows\n- checkbox \"Shadows\" [checked]: ✓\n- generic: GPU timing\n- checkbox \"GPU timing\"\n- generic: Water shader\n- combobox \"Water shader\":\n  - option \"Original\" [selected]\n  - option \"Vertex phases\"\n  - option \"Depth only (diagnostic)\"\n- generic: Original ↕\n- generic: Exterior LOD\n- checkbox \"Exterior LOD\" [checked]: ✓\n- generic: Stone LOD\n- checkbox \"Stone LOD\" [checked]: ✓\n- generic: Backface culling\n- checkbox \"Backface culling\" [checked]: ✓\n- generic: Static batching\n- checkbox \"Static batching\" [checked]: ✓\n- generic: Static transforms\n- checkbox \"Static transforms\" [checked]: ✓\n- generic: Pixel ratio\n- spinbutton \"Pixel ratio\": \"1.100000023841858\"\n- button \"Restart readings\":\n  - generic: Restart readings",
+  "completedAt": "2026-10-26T18:48:43.435Z",
+  "finalDimensions": {
+    "canvases": [
+      [
+        1919,
+        910
+      ]
+    ],
+    "viewport": [
+      1745,
+      828
+    ],
+    "visibility": "visible"
+  },
+  "errors": [],
+  "restoredPhysics": [
+    {
+      "level": "info",
+      "message": "[House physics] Object {\"physicsCpuMsPerFrame\":0.17,\"physicsStepsPerFrame\":2.19,\"exteriorLod\":{\"meshes\":2,\"sourceTriangles\":219904,\"selectedTriangles\":87960},\"exteriorSurfaceCulling\":{\"enabled\":true,\"meshes\":104,\"triangles\":6828,\"materials\":8},\"waterShader\":{\"mode\":\"original\",\"meshes\":1}}",
+      "timestamp": "2026-10-26T18:48:43.344Z",
+      "url": "http://localhost:5173/src/world/World.ts?t=1793039335242"
+    }
+  ],
+  "method": {
+    "url": "http://localhost:5173/?perfdiag=1",
+    "expectedSourceRevision": "6fc1e56b2f6c0613dee8b8ec0c8abd5f351c063d",
+    "sourceFingerprintVerified": false,
+    "camera": "Unchanged normal cottage-deck gameplay camera during all timing conditions; no player or camera inputs",
+    "previewHour": 7.15,
+    "realTime": false,
+    "viewport": [
+      1745,
+      828
+    ],
+    "framebuffer": [
+      1919,
+      910
+    ],
+    "pixelRatio": 1.100000023841858,
+    "debugViewDuringTiming": false,
+    "shadows": true,
+    "borderHighlight": true,
+    "exteriorLod": true,
+    "stoneLod": true,
+    "staticBatching": true,
+    "staticTransforms": true,
+    "waterShader": "original",
+    "restartWarmupMs": 2000,
+    "captureWaitMs": 18000,
+    "windowsPerCondition": 5,
+    "animationsContinued": true,
+    "sequence": [
+      "on",
+      "off",
+      "on",
+      "off",
+      "on"
+    ],
+    "metric": "Median of five GPU reporting-window means, not pooled per-frame median",
+    "externalLoad": "Another deployed portfolio tab remained open; external load and GPU clocks uncontrolled",
+    "interruption": "One browser request timed out before the final on transition. A fresh DOM snapshot still showed culling off, with only four conditions recorded. The on transition was performed successfully and A3 was captured after a new Restart readings; no timed-out sample is included."
+  },
+  "summary": {
+    "rendererWindows": 25,
+    "physicsWindows": 25,
+    "callbackWindows": 25,
+    "completedReadyGpuQueries": 195,
+    "disjointEvents": 0,
+    "maxPendingQueries": 1,
+    "draws": [
+      129
+    ],
+    "triangles": [
+      200224
+    ],
+    "onGpuMs": [
+      19.46,
+      19.5,
+      19.5
+    ],
+    "offGpuMs": [
+      22.07,
+      21.55
+    ],
+    "supportedConclusion": "About 2.05–2.61 ms (9.5–11.8%) lower GPU render time with culling on in this one fixed view; no consistent FPS gain established",
+    "visualLimit": "No obvious missing surface or shading discrepancy in the inspected gameplay and wide debug views. Animated frames with overlays are not pixel equality or all-angle/near-collision coverage. House/workshop/book traversal was not repeated.",
+    "restored": {
+      "backfaceCulling": true,
+      "gpuTiming": false,
+      "debugView": false,
+      "previewHour": 7.15,
+      "realTime": false,
+      "waterShader": "original",
+      "pixelRatio": 1.100000023841858,
+      "shadows": true,
+      "exteriorLod": true
+    }
+  }
+}

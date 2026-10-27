@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-27",
+  "baselineCommit": "7dbdac750a9c4b762080b6e5c6ba72e7e1be6885",
+  "method": "CPU execution of production DayNightCycle with real Three.js lights/scene, an instrumented Date.now and Intl formatter, and an independent Intl.format HH:mm:ss oracle",
+  "clockCache": {
+    "key": "UTC epoch second from the captured Date.now timestamp",
+    "precision": "existing whole-second hour value",
+    "forwardsAndBackwardsClockJumpsRefresh": true,
+    "previewHoursBypassClock": true,
+    "lightingUpdateIntervalUnchanged": true
+  },
+  "executedSequence": {
+    "frames": 240,
+    "frameRate": 60,
+    "distinctWallClockSeconds": 4,
+    "currentHourRequestsIncludingConstructorAndLighting": 245,
+    "formats": 4,
+    "previousUnconditionalFormatsDerived": 245,
+    "returnedHoursMatchOracle": true
+  },
+  "timeZonesExercised": ["system", "UTC", "Asia/Beirut", "America/New_York"],
+  "validation": {
+    "testsPassed": 115,
+    "newRegressions": 4,
+    "typecheck": true,
+    "productionBuild": true,
+    "whitespace": true,
+    "liveBrowserAudioReview": false,
+    "latestInspectorManualReview": true,
+    "fullWalkingRouteReviewed": true,
+    "gameplayReviewMethod": "owner-reported manual check",
+    "hardwareFpsGainMeasured": false,
+    "gpuGainMeasured": false
+  },
+  "manualGameplayReviewEvidence": "experience-hover-work-review.json:manualGameplayReview",
+  "build": {
+    "entryMinifiedKB": 1019.47,
+    "entryGzipKB": 271.25,
+    "physicsMinifiedKB": 2855.12,
+    "physicsGzipKB": 1078.39
+  },
+  "limits": [
+    "Prior format count is derived from the preceding unconditional source call, not a separately timed baseline",
+    "Counts are not measured wall-time, heap, GPU or FPS savings",
+    "Timezone comparisons use the host Intl data and do not audit timezone rules",
+    "No new live rendering, audio, console, setting or hardware profile capture was obtained",
+    "Local house-dependent checks use the earlier house export"
+  ]
+}

@@ -19,6 +19,10 @@ export class InteractionSystem {
     this.interactables.push(interactable);
   }
 
+  get highlightTargets(): THREE.Object3D[] {
+    return [...new Set(this.interactables.map(interactable => interactable.highlightTarget))];
+  }
+
   update(playerPositin: THREE.Vector3): void {
     let closest: Interactable | null = null;
     let closesDistance = Infinity;

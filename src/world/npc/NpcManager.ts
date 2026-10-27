@@ -7,6 +7,7 @@ import { NPC_DEFINITIONS, type NpcDefinition } from "./NpcData";
 import type { Npc } from "./Npc";
 import { ASSETS } from "../../loaders/AssetManifest";
 import { NpcAnimationClips, NpcAnimator } from "./NpcAnimator";
+import { mapConcurrent } from "../../loaders/mapConcurrent";
 
 export class NpcManager {
   readonly npcs: Npc[] = [];
@@ -18,6 +19,7 @@ export class NpcManager {
   private readonly shadowDistance = 12;
   private readonly shadowDistanceSq = this.shadowDistance * this.shadowDistance;
   private visible = true;
+  private loadPromise?: Promise<void>;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -27,14 +29,20 @@ export class NpcManager {
     this.loader = new AssetLoader(loadingManager);
   }
 
-  async load(): Promise<void> {
+  load(): Promise<void> {
+    this.loadPromise ??= this.loadAssets().catch(error => {
+      this.loadPromise = undefined;
+      throw error;
+    });
+    return this.loadPromise;
+  }
+
+  private async loadAssets(): Promise<void> {
     const animationClips = await this.loadAnimations();
-
-    for (const definition of NPC_DEFINITIONS) {
-      const asset = await this.loader.loadGLB(definition.asset);
-
-      this.createNpc(definition, asset.scene, animationClips);
-    }
+    // Two model decodes/downloads overlap without starting every NPC at once.
+    // Create only after all models succeed, so retry cannot duplicate a partial scene.
+    const assets = await mapConcurrent(NPC_DEFINITIONS, 2, definition => this.loader.loadGLB(definition.asset));
+    assets.forEach((asset, index) => this.createNpc(NPC_DEFINITIONS[index], asset.scene, animationClips));
   }
 
   private createNpc(

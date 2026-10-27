@@ -9,8 +9,10 @@ import { readGeometryGLB } from './read-geometry-glb.mjs';
 
 // Only an optional index sidecar is written. Never rewrite the source GLB.
 const project = fileURLToPath(new URL('..', import.meta.url));
-const input = resolve(process.argv[2] ?? `${project}/public/assets/models/environment/house.glb`);
-const output = resolve(process.argv[3] ?? `${project}/public/assets/models/environment/house-stone-lods.json`);
+const exterior = process.argv.includes('--exterior');
+const args = process.argv.slice(2).filter(arg => arg !== '--exterior');
+const input = resolve(args[0] ?? `${project}/public/assets/models/environment/${exterior ? "world" : "house"}.glb`);
+const output = resolve(args[1] ?? `${project}/public/assets/models/environment/${exterior ? "exterior" : "house-stone"}-lods.json`);
 assert.notEqual(input, output);
 const temporary = await mkdtemp(`${project}/.perf-test-lod-`);
 let helpers;
@@ -22,7 +24,7 @@ try {
 await Promise.all([MeshoptEncoder.ready, MeshoptSimplifier.ready, MeshoptDecoder.ready]);
 const gltf = await readGeometryGLB(input);
 const result = { version: 1, meshes: [] }, report = [];
-for (const name of helpers.HOUSE_STONE_NAMES) {
+for (const name of exterior ? helpers.EXTERIOR_LOD_NAMES : helpers.HOUSE_STONE_NAMES) {
   const mesh = gltf.scene.getObjectByName(name), geometry = mesh?.geometry;
   assert.ok(geometry?.index && !geometry.groups.length && !Object.keys(geometry.morphAttributes).length, name);
   const streams = helpers.geometryStreams(geometry);
