@@ -19,6 +19,8 @@ export type WorldTextureManifest = {
 const BASIS = "KHR_texture_basisu";
 const WEBP = "EXT_texture_webp";
 const fail = (message: string): never => { throw new Error(message); };
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message
+  : typeof error === "object" && error !== null && "message" in error ? String(error.message) : String(error);
 
 // Change only image references in a temporary GLB copy. In particular, never
 // rewrite/re-encode Meshopt data, geometry, materials, names, colliders or LODs.
@@ -50,7 +52,9 @@ export async function prepareKtx2WorldSource(source: ArrayBuffer, value: unknown
     converted.add(texture.image);
     const image = json.images[texture.image];
     delete image.bufferView;
-    image.uri = texture.uri;
+    // GLTFLoader concatenates root-relative bases with image URIs. Keep sidecars
+    // relative to world.glb's folder so /assets/... is never prepended twice.
+    image.uri = texture.uri.slice("/assets/models/environment/".length);
     image.mimeType = "image/ktx2";
   }
   const used = new Set<number>();
@@ -81,7 +85,7 @@ export async function prepareKtx2WorldSource(source: ArrayBuffer, value: unknown
   return result.buffer;
 }
 
-type Backend = { loader: GLTFLoader; ktx2: KTX2Loader };
+type Backend = { loader: GLTFLoader; ktx2: KTX2Loader; textureErrors?: { url: string; message: string }[] };
 type Dependencies = {
   createBackend: (renderer: THREE.WebGLRenderer) => Promise<Backend>;
   readManifest: (url: string) => Promise<unknown>;
@@ -101,8 +105,15 @@ async function createBackend(renderer: THREE.WebGLRenderer): Promise<Backend> {
   manager.setURLModifier(url => url === "basis_transcoder.js" ? js.default
     : url === "basis_transcoder.wasm" ? wasm.default : url);
   const ktx2 = new KTX2Loader(manager).setWorkerLimit(2).detectSupport(renderer);
+  const textureErrors: { url: string; message: string }[] = [];
+  const load = ktx2.load.bind(ktx2);
+  ktx2.load = (url, onLoad, onProgress, onError) => load(url, onLoad, onProgress, error => {
+    // GLTFLoader otherwise catches the image failure and resolves a null map.
+    textureErrors.push({ url, message: errorMessage(error) });
+    onError?.(error);
+  });
   const loader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder).setKTX2Loader(ktx2);
-  return { loader, ktx2 };
+  return { loader, ktx2, textureErrors };
 }
 
 const dependencies: Dependencies = {
@@ -147,6 +158,8 @@ export async function loadKtx2World(
     const manifest = await deps.readManifest(manifestUrl) as WorldTextureManifest;
     const patched = await prepareKtx2WorldSource(source, manifest);
     candidate = await backend.loader.parseAsync(patched, path);
+    const failedTexture = backend.textureErrors?.[0];
+    if (failedTexture) fail(`KTX2 texture load failed: ${failedTexture.url}: ${failedTexture.message}`);
     const maps = new Set<THREE.Texture>();
     for (const scene of candidate.scenes) scene.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return;
@@ -166,14 +179,14 @@ export async function loadKtx2World(
       }
       dimensions.splice(index, 1);
     }
-    if (maps.size !== manifest.textures.length || [...maps].some(map => !((map as THREE.CompressedTexture).isCompressedTexture) ||
+    if (maps.size !== manifest.textures.length) fail(`Only ${maps.size}/${manifest.textures.length} world textures loaded`);
+    if ([...maps].some(map => !((map as THREE.CompressedTexture).isCompressedTexture) ||
         map.colorSpace !== THREE.SRGBColorSpace || (map.format !== THREE.RGBA_BPTC_Format && map.format !== THREE.RGBA_ASTC_4x4_Format)) ||
         formats.size !== 1) fail("Unexpected transcoded world texture format");
     const format = formats.has(THREE.RGBA_BPTC_Format) ? "bc7" : "astc4x4";
     return { asset: candidate, state: { requested: true, mode: "ktx2-uastc", reason: "active", images: maps.size, format } };
   } catch (error) {
-    reason = error instanceof Error ? error.message
-      : typeof error === "object" && error !== null && "message" in error ? String(error.message) : String(error);
+    reason = errorMessage(error);
     if (candidate) disposeCandidate(candidate);
   } finally {
     backend?.ktx2.dispose();

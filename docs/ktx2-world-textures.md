@@ -72,6 +72,8 @@ or `ktx2-uastc`; its disabled appearance is intentional. The **KTX2 status** tex
 field is read-only but selectable/copyable. It distinguishes a missing
 `&ktx2=1` flag from loading, an active target and the actual fallback reason.
 Worker error-event messages and optional module-load errors are retained.
+Texture callback failures are captured before GLTFLoader can replace a failed
+map with null, so a missing/bad asset reports its URL and underlying error.
 The downloadable report records `worldTextureCompression`,
 including actual format or fallback reason. The requested URL flag alone is
 not proof that compression was used. This field describes the exterior asset
@@ -113,14 +115,36 @@ conversion retains the previous manifest and removes temporary public files.
 Content-hashed filenames avoid reusing cached images from an older conversion.
 Older sidecars are not deleted automatically.
 
+### Root-relative model folder fix
+
+The first comparison used image URIs beginning `/assets/models/environment/`
+and passed that same root-relative folder to `GLTFLoader.parseAsync`. Three.js
+concatenated them, requesting paths such as
+`/assets/models/environment//assets/models/environment/ktx2/world-2-….ktx2`.
+The dev server could then return HTML instead of image bytes. GLTFLoader logged
+the missing texture, swallowed the image rejection, and returned a model with
+missing maps; the later validation incorrectly labeled this a format error.
+
+The temporary GLB now uses model-relative `ktx2/world-….ktx2` image URIs. The
+manifest retains its canonical URLs. The exact previous console/status error
+was reproduced before this change, and the same root-relative loading test now
+loads all three textures. The format checks remain strict. Missing-map counts
+and texture fetch/decode errors have separate messages.
+
 ## Validation and remaining review
 
-The 131-test local suite, typecheck, production build and whitespace checks
+The 132-test local suite, typecheck, production build and whitespace checks
 passed. The new tests cover source/geometry identity, flag independence,
 ordinary asset loading, fail-open startup, invalid/stale manifests, BC7/ASTC
 selection, worker/candidate cleanup, encoder failure, numerical quality gates,
 real asset hashes and the runtime Basis WASM's mip-by-mip compatibility.
-DOM/renderer/optional-loader test doubles do not prove native WebGL operation.
+An additional HTTP regression uses the production GLTF/KTX2 loaders and Basis
+worker program, with VM message transport and browser-like Request/fetch URL
+resolution on the CPU. It checks all three canonical requests, successful BC7
+materials, forced HTTP 404 and HTTP-200 HTML responses, accurate fallback errors,
+a peak of two workers, and worker cleanup after every condition. This test and
+the existing DOM/renderer/optional-loader test doubles do not prove native WebGL
+operation or an FPS gain.
 Existing house tests still use the older execution-workspace house fixture;
 this pass does not replace or claim to retest the owner's newer house export.
 

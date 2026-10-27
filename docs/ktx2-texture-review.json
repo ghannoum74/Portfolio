@@ -12,7 +12,7 @@
   "nativeWebGLReviewed": false,
   "fpsGainMeasured": false,
   "validation": {
-    "localTestsPassed": 131,
+    "localTestsPassed": 132,
     "typecheckPassed": true,
     "productionBuildPassed": true,
     "whitespaceCheckPassed": true,
@@ -22,7 +22,11 @@
     "nativeWebGLAppearanceReviewed": false,
     "normalDefaultChanged": false,
     "ordinaryLoaderStaticGraphExcludesKtx2": true,
-    "workerErrorEventLikeMessagesPreserved": true
+    "workerErrorEventLikeMessagesPreserved": true,
+    "rootRelativeLoadingVerifiedWithProductionLoaders": true,
+    "http404AndHtmlResponsesPreserveAssetErrors": true,
+    "httpIntegrationWorkerTransportSimulated": true,
+    "httpIntegrationPeakWorkers": 2
   },
   "images": [
     {

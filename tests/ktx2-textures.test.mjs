@@ -7,12 +7,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname } from 'node:path';
 import vm from 'node:vm';
 import { build } from 'esbuild';
+import { createServer } from 'vite';
 import sharp from 'sharp';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { readTextureGLB } from '../scripts/pack-lossless-textures.mjs';
 import { readGeometryGLB } from '../scripts/read-geometry-glb.mjs';
 import { compareTexturePixels, inspectWorldColorImages, verifyKtx2, generateWorldKtx2 } from '../scripts/generate-world-ktx2.mjs';
+import { installKtx2WorkerFixture } from './helpers/Ktx2WorkerFixture.mjs';
 
 globalThis.window = { location: { search: '' }, devicePixelRatio: 1 };
 const temporary = await mkdtemp(new URL('../.ktx2-test-', import.meta.url));
@@ -56,7 +58,10 @@ test('real world patch preserves BIN bytes, hierarchy, materials, sampling, coll
     assert.equal(texture.sampler, before.json.textures[i].sampler);
     assert.deepEqual(texture.extensions.KHR_texture_basisu, { source: i });
     assert.equal(texture.extensions.EXT_texture_webp, undefined);
-    assert.equal(after.json.images[i].uri, manifest.textures[i].uri);
+    const uri = after.json.images[i].uri;
+    assert.ok(uri.startsWith('ktx2/'));
+    assert.equal(THREE.LoaderUtils.resolveURL(uri, '/assets/models/environment/'), manifest.textures[i].uri);
+    assert.equal(THREE.LoaderUtils.resolveURL(uri, 'https://example.com/assets/models/environment/'), `https://example.com${manifest.textures[i].uri}`);
     assert.equal(after.json.images[i].bufferView, undefined);
   }
   const temp = await mkdtemp(new URL('../.ktx2-test-', import.meta.url));
@@ -267,4 +272,81 @@ test('shipped textures match the source and transcode every mip to BC7/ASTC with
   assert.equal(compressedBytes, review.bc7OrAstc4x4MipBytesEstimate);
   assert.equal(rgbaBytes, review.rgba8MipBytesEstimate);
   assert.ok(compressedBytes < rgbaBytes);
+});
+
+test('real GLTF/KTX2 loading resolves model-relative sidecars and reports HTTP failures', async () => {
+  let failure = null;
+  const requests = [];
+  const server = await createServer({ configFile: false, server: { host: '127.0.0.1', port: 0 }, logLevel: 'silent',
+    plugins: [{ name: 'controlled-texture-responses', configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.endsWith('.ktx2')) requests.push(request.url);
+        if (request.url === manifest.textures[2].uri && failure) {
+          response.statusCode = failure === 'missing' ? 404 : 200;
+          response.setHeader('Content-Type', 'text/html');
+          response.end('<!DOCTYPE html><title>Controlled missing texture</title>');
+        } else next();
+      });
+    } }] });
+  const directory = await mkdtemp(new URL('../.ktx2-test-', import.meta.url));
+  const workers = installKtx2WorkerFixture();
+  const nativeFetch = globalThis.fetch, NativeRequest = globalThis.Request;
+  const savedConsole = { warn: console.warn, error: console.error };
+  let timer;
+  try {
+    await server.listen();
+    const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+    // Browser Request/fetch resolve root-relative URLs against the document.
+    // Keep the production loader's root-relative GLB base, rather than hiding
+    // path-joining mistakes behind an already absolute HTTP base.
+    globalThis.Request = class BrowserRequest extends NativeRequest {
+      constructor(input, options) { super(typeof input === 'string' ? new URL(input, origin).href : input, options); }
+    };
+    globalThis.fetch = (input, options) => nativeFetch(typeof input === 'string' ? new URL(input, origin).href : input, options);
+    const urls = {};
+    for (const extension of ['js', 'wasm']) {
+      const module = await (await fetch(`${origin}/node_modules/three/examples/jsm/libs/basis/basis_transcoder.${extension}?import&url`)).text();
+      const match = module.match(/export default ("[^"\n]+")/); assert.ok(match, 'Vite must expose a transcoder asset URL');
+      urls[extension] = origin + JSON.parse(match[1]);
+    }
+    const bundle = `${directory}/runtime.mjs`;
+    await build({ stdin: { contents: `export { loadKtx2World } from './src/loaders/Ktx2WorldTextures';`,
+      resolveDir: fileURLToPath(root), loader: 'ts' }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external',
+      plugins: [{ name: 'http-transcoder-assets', setup(builder) {
+        builder.onResolve({ filter: /basis_transcoder\.(js|wasm)\?url$/ }, args => ({ path: args.path, namespace: 'http-transcoder-assets' }));
+        builder.onLoad({ filter: /.*/, namespace: 'http-transcoder-assets' }, args => ({
+          contents: `export default ${JSON.stringify(args.path.includes('.wasm') ? urls.wasm : urls.js)}`, loader: 'js',
+        }));
+      } }] });
+    const runtime = await import(pathToFileURL(bundle));
+    const original = { parseAsync: async () => ({ scene: new THREE.Group(), scenes: [] }) };
+    const renderer = { extensions: { has: name => name === 'EXT_texture_compression_bptc' } };
+    const warnings = [], errors = [];
+    console.warn = (...values) => warnings.push(values);
+    console.error = (...values) => errors.push(values);
+    for (const scenario of [null, 'missing', 'html']) {
+      failure = scenario; requests.length = 0;
+      const pending = runtime.loadKtx2World(source, original, '/assets/models/environment/', renderer, '/assets/models/environment/world-ktx2.json');
+      const result = await Promise.race([pending, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Worker integration timed out')), 15000); })]);
+      clearTimeout(timer);
+      assert.deepEqual([...requests].sort(), manifest.textures.map(texture => texture.uri).sort(), 'Each sidecar must use exactly one canonical URL');
+      if (!scenario) {
+        assert.equal(result.state.mode, 'ktx2-uastc', JSON.stringify(result.state));
+        assert.equal(result.state.images, 3); assert.equal(result.state.format, 'bc7');
+        assert.equal(warnings.length, 0); assert.equal(errors.length, 0);
+      } else {
+        assert.equal(result.state.mode, 'original'); assert.equal(result.state.images, 0);
+        assert.match(result.state.reason, /^KTX2 texture load failed:/);
+        assert.ok(result.state.reason.includes(manifest.textures[2].uri));
+        assert.ok(!result.state.reason.includes('Unexpected transcoded world texture format'));
+        if (scenario === 'missing') assert.ok(result.state.reason.includes('404'));
+      }
+      assert.equal(workers.activeWorkers, 0);
+    }
+    assert.equal(workers.peakWorkers, 2);
+  } finally {
+    clearTimeout(timer); workers.cleanup(); globalThis.fetch = nativeFetch; globalThis.Request = NativeRequest;
+    console.warn = savedConsole.warn; console.error = savedConsole.error;
+    await server.close(); await rm(directory, { recursive: true, force: true });
+  }
 });
