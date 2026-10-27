@@ -6,57 +6,16 @@
     "reductionPercent": 36.4,
     "verified": true,
     "sourceGitSha": "f4b2e3e436adf1b55b27434f6881b48c657c8b7c",
-    "decodedSha256": "b7a757eef52421024a1fd6cb746c26d54300a44ba7a3c99f940712e6e27598dc",
-    "texturePacking": {
-      "meshoptBytes": 12424236,
-      "savedBytes": 0,
-      "images": []
-    }
+    "decodedSha256": "b7a757eef52421024a1fd6cb746c26d54300a44ba7a3c99f940712e6e27598dc"
   },
   {
     "name": "world.glb",
     "originalBytes": 5362764,
-    "optimizedBytes": 5044436,
-    "reductionPercent": 5.9,
+    "optimizedBytes": 5362764,
+    "reductionPercent": 0,
     "verified": true,
     "sourceGitSha": "6f75592987c96ad3f846b02c4f2560ac6527f5c9",
-    "decodedSha256": "82a4568c46b8116aa802fcc881c8d139796144ac78676ca4b024c9cf90b7f5a7",
-    "texturePacking": {
-      "meshoptBytes": 5362764,
-      "savedBytes": 318328,
-      "images": [
-        {
-          "index": 0,
-          "name": "PathRocks_Diffuse",
-          "width": 1024,
-          "height": 1024,
-          "originalBytes": 807550,
-          "optimizedBytes": 643742,
-          "rgbaSha256": "995437a3d1942464a9f7a037872524d5a82c679168112adc782d1f0e83ba9626",
-          "exactPixels": true
-        },
-        {
-          "index": 1,
-          "name": "Image_0",
-          "width": 1024,
-          "height": 1024,
-          "originalBytes": 476349,
-          "optimizedBytes": 323290,
-          "rgbaSha256": "47dda331b6064ba57b6b10226f61801514de981bf9ad3869271dcac13fa6ea02",
-          "exactPixels": true
-        },
-        {
-          "index": 2,
-          "name": "tiny_treats_texture_1",
-          "width": 1024,
-          "height": 1024,
-          "originalBytes": 20167,
-          "optimizedBytes": 18562,
-          "rgbaSha256": "4e0021c56ed025a6aa8d010d5832c4ddcbe4f98d7412b989b80306b0edd01a9b",
-          "exactPixels": true
-        }
-      ]
-    }
+    "decodedSha256": "3b77fba97f9b29c960a0b70950da667f325e426ee6b427c709c0f4d8d69ef4c5"
   },
   {
     "name": "book.glb",
@@ -65,11 +24,6 @@
     "reductionPercent": 0,
     "verified": true,
     "sourceGitSha": "316f42b2e1f18cc59354fe9857d561a190160c2c",
-    "decodedSha256": "781bc85f5f1d51fbd0f6f0934a5d487ad56cb7396fd839b631f3a4c562f56e45",
-    "texturePacking": {
-      "meshoptBytes": 892140,
-      "savedBytes": 0,
-      "images": []
-    }
+    "decodedSha256": "781bc85f5f1d51fbd0f6f0934a5d487ad56cb7396fd839b631f3a4c562f56e45"
   }
 ]
