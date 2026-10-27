@@ -131,6 +131,16 @@ was reproduced before this change, and the same root-relative loading test now
 loads all three textures. The format checks remain strict. Missing-map counts
 and texture fetch/decode errors have separate messages.
 
+### Owner's loading check — October 27, 2026
+
+The owner reports **Active (bc7)** and a `ktx` mode prefix after the path fix.
+This records a successful browser loading-status check. The expected source is
+`d67e82ad43884422cc7278c3ceadad9b27971a5d`; the running revision was not
+independently fingerprinted. No close-up appearance comparison, screenshots,
+console review or timing reports accompanied this confirmation. Those checks
+remain pending, as do measured GPU allocation and any FPS benefit. The normal
+default remains original imagery.
+
 ## Validation and remaining review
 
 The 132-test local suite, typecheck, production build and whitespace checks
