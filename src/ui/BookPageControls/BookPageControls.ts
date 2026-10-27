@@ -8,6 +8,16 @@ export class BookPageControls {
   private readonly previous: HTMLButtonElement;
   private readonly next: HTMLButtonElement;
   private readonly counter: HTMLSpanElement;
+  private readonly bounds = new THREE.Box3();
+  private readonly corner = new THREE.Vector3();
+  private readonly bookWorld = new THREE.Matrix4();
+  private readonly cameraWorld = new THREE.Matrix4();
+  private readonly projection = new THREE.Matrix4();
+  private layoutBook: AnimatedBook3D | null = null;
+  private layoutPoseRevision = -1;
+  private viewportWidth = 0;
+  private viewportHeight = 0;
+  private visible = false;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -41,47 +51,65 @@ export class BookPageControls {
 
   update(book: AnimatedBook3D | null): void {
     const enabled = !!book && book.currentState === "open";
-    this.root.classList.toggle("is-visible", enabled);
-    if (!book || !enabled) return;
+    if (!book || !enabled) { this.hide(); return; }
+    if (!this.visible) {
+      this.root.classList.add("is-visible");
+      this.visible = true;
+    }
 
-    this.previous.disabled = !book.canTurnBack;
-    this.next.disabled = !book.canTurnPage;
-    this.counter.textContent = `${String(book.currentProjectIndex + 1).padStart(2, "0")} / ${String(book.projectCount).padStart(2, "0")}`;
+    if (this.previous.disabled !== !book.canTurnBack) this.previous.disabled = !book.canTurnBack;
+    if (this.next.disabled !== !book.canTurnPage) this.next.disabled = !book.canTurnPage;
+    const label = `${String(book.currentProjectIndex + 1).padStart(2, "0")} / ${String(book.projectCount).padStart(2, "0")}`;
+    if (this.counter.textContent !== label) this.counter.textContent = label;
 
     // Place the controls on opposite sides of the projected book rather
     // than near the viewport corners. The book can have any world position.
-    const box = new THREE.Box3().setFromObject(book.model, true);
-    if (box.isEmpty()) return;
+    book.model.updateWorldMatrix(true, false);
+    const boundsChanged = book !== this.layoutBook || book.poseRevision !== this.layoutPoseRevision ||
+      !this.bookWorld.equals(book.model.matrixWorld);
+    if (boundsChanged) {
+      // Preserve precise morph-aware bounds; scan vertices only after a pose/transform change.
+      this.bounds.setFromObject(book.model, true);
+      this.layoutBook = book;
+      this.layoutPoseRevision = book.poseRevision;
+      this.bookWorld.copy(book.model.matrixWorld);
+    }
+    if (this.bounds.isEmpty()) return;
     this.camera.updateMatrixWorld();
-    const corners: THREE.Vector3[] = [];
-    for (const x of [box.min.x, box.max.x])
-      for (const y of [box.min.y, box.max.y])
-        for (const z of [box.min.z, box.max.z])
-          corners.push(new THREE.Vector3(x, y, z).project(this.camera));
-
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const minX = Math.min(...corners.map((p) => (p.x + 1) * 0.5 * vw));
-    const maxX = Math.max(...corners.map((p) => (p.x + 1) * 0.5 * vw));
-    const centerY =
-      (Math.min(...corners.map((p) => (1 - p.y) * 0.5 * vh)) +
-        Math.max(...corners.map((p) => (1 - p.y) * 0.5 * vh))) /
-      2;
+    if (!boundsChanged && vw === this.viewportWidth && vh === this.viewportHeight &&
+        this.cameraWorld.equals(this.camera.matrixWorld) && this.projection.equals(this.camera.projectionMatrix)) return;
+    this.viewportWidth = vw; this.viewportHeight = vh;
+    this.cameraWorld.copy(this.camera.matrixWorld); this.projection.copy(this.camera.projectionMatrix);
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      this.corner.set(i & 4 ? this.bounds.max.x : this.bounds.min.x,
+        i & 2 ? this.bounds.max.y : this.bounds.min.y, i & 1 ? this.bounds.max.z : this.bounds.min.z).project(this.camera);
+      const x = (this.corner.x + 1) * 0.5 * vw, y = (1 - this.corner.y) * 0.5 * vh;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    const centerY = (minY + maxY) / 2;
     const left = THREE.MathUtils.clamp(minX - 76, 62, vw - 62);
     const right = THREE.MathUtils.clamp(maxX + 76, 62, vw - 62);
     const y = THREE.MathUtils.clamp(centerY, 86, vh - 86);
 
-    this.previous.style.left = `${left}px`;
-    this.previous.style.top = `${y}px`;
-    this.next.style.left = `${right}px`;
-    this.next.style.top = `${y}px`;
+    if (this.previous.style.left !== `${left}px`) this.previous.style.left = `${left}px`;
+    if (this.previous.style.top !== `${y}px`) this.previous.style.top = `${y}px`;
+    if (this.next.style.left !== `${right}px`) this.next.style.left = `${right}px`;
+    if (this.next.style.top !== `${y}px`) this.next.style.top = `${y}px`;
   }
 
   hide(): void {
-    this.root.classList.remove("is-visible");
+    if (this.visible) this.root.classList.remove("is-visible");
+    this.visible = false;
+    this.layoutBook = null;
   }
 
   destroy(): void {
+    this.hide();
     this.previous.removeEventListener("click", this.onPreviousClick);
     this.next.removeEventListener("click", this.onNextClick);
     this.root.remove();
