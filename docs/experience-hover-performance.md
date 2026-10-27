@@ -75,16 +75,24 @@ These are avoided-work counts in CPU fixtures, not measured wall-time, heap,
 GPU, FPS or full-browser CSS/pixel results. The Browser connector still rejects
 access before a page action with "Browser access requires the originating
 browser context". No new live review, screenshot, console capture or rendering
-settings capture was obtained. The earlier owner's successful book review
-does not validate these subsequent changes.
+settings capture was obtained by the assistant. The owner subsequently reported
+the manual functional review below passed.
 
-## Remaining manual review
+## Owner's manual review — October 27, 2026
 
-After pulling, open `?perfdiag=1` and enter the house at the existing quality
-settings. In Awards Hall, hover/click the three physical exhibits, navigate both
-directions through all three, toggle inspection/overview with E, resize, return
-with Esc and reopen. On the journey map, repeat for all four chapters and
-confirm the route, waypoint animation, hover label and camera return. Check the
-console for new errors. Then traverse the complete outside/house walking route,
-including doors, stairs and furniture, to finish the outstanding collision and
-interaction review. These live checks remain pending.
+The owner reported **"all passed"** after being asked to pull the branch and
+finish the Awards Hall, journey map and walking/collision checks. The requested
+inspector checklist covered hover/click, both arrow directions through three
+awards/four chapters, E inspection/overview, resizing, Esc return/reopening,
+route/waypoint animation, hover labels and camera return. The walking checklist
+covered the complete outside/house route, including doors, stairs and furniture.
+No specific failure was reported. This completes the requested owner-operated
+functional gameplay review.
+
+This is an owner-reported result, not an assistant-operated browser check. The
+latest published runtime head was `880507c4a1e87a012c395663b1a5108476130343`;
+the tested checkout was not independently fingerprinted. No screenshots,
+console/settings capture or before/after measurements were supplied. This
+report does not establish pixel equality, exhaustive collision coverage or a
+new performance gain. The earlier book review and this inspector/walking
+review are separate reports. This follow-up changes documentation only.

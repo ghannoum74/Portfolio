@@ -58,19 +58,22 @@ warnings remain. Machine-readable counts:
 [day-night-clock-work-review.json](day-night-clock-work-review.json).
 
 These counts establish avoided formatting work in a controlled CPU fixture,
-not wall-time, heap, GPU or FPS gains. No new live browser/audio review or
-hardware profile was obtained. The latest Browser attempt failed before page
+not wall-time, heap, GPU or FPS gains. The assistant obtained no new live
+browser/audio review or hardware profile. The latest Browser attempt failed before page
 access with "Browser access requires the originating browser context".
 
-## Outstanding live checks
+## Owner's gameplay review — October 27, 2026
 
 The owner reported the book's earlier manual checklist passed on October 27.
-The subsequent Awards Hall/journey map hover change has automated coverage but
-still needs its requested manual review. Complete the
-[inspector and walking checklist](experience-hover-performance.md#remaining-manual-review)
-after pulling, retaining the existing quality settings. Exterior/world WebP
-appearance and the complete collision/interaction route remain pending.
+After this clock change, the owner also reported **"all passed"** for the
+requested Awards Hall, journey map and full walking/collision checks. This
+completes that functional gameplay checklist; see the
+[manual report and scope](experience-hover-performance.md#owners-manual-review--october-27-2026)
+and `manualGameplayReview` in the inspector's machine-readable evidence.
 
-For this clock change, optionally compare real time and a fixed preview hour,
-then return to the preferred time mode. Verify ambience and light transitions
-remain consistent; no quality or time-mode change is required to use the cache.
+The report is owner-operated, with no independently verified checkout,
+screenshots, console/settings capture or new timings. A specific real-time vs
+fixed-preview audio comparison and matched exterior/world WebP comparison were
+not separately reported. No new FPS/GPU result is inferred. This follow-up
+changes documentation only; the 115-test/typecheck/build results above remain
+the prior executed checks for the unchanged runtime.

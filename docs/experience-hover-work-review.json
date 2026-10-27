@@ -33,9 +33,28 @@
     "productionBuild": true,
     "whitespace": true,
     "liveBrowserReview": false,
-    "fullWalkingRouteReviewed": false,
+    "ownerReportedManualInspectorReview": true,
+    "fullWalkingRouteReviewed": true,
+    "walkingRouteReviewMethod": "owner-reported manual check",
     "hardwareFpsGainMeasured": false,
     "gpuGainMeasured": false
+  },
+  "manualGameplayReview": {
+    "date": "2026-10-27",
+    "reporter": "owner",
+    "result": "all passed",
+    "expectedSourceCommit": "880507c4a1e87a012c395663b1a5108476130343",
+    "sourceCommitIndependentlyVerified": false,
+    "requestedChecks": [
+      "Awards Hall hover/click, three entries, both arrow directions, E inspection/overview, resize and Esc return/reopen",
+      "Journey map hover/click, four chapters, both arrow directions, route/waypoint animation, label and camera return",
+      "Complete outside/house walking and collision route, including doors, stairs and furniture"
+    ],
+    "assistantOperatedBrowser": false,
+    "screenshotsSupplied": false,
+    "consoleCaptureSupplied": false,
+    "renderingSettingsIndependentlyCaptured": false,
+    "beforeAfterTimingsSupplied": false
   },
   "build": {
     "entryMinifiedKB": 1019.28,
@@ -50,6 +69,6 @@
     "Picking still runs every active frame; Three.js can allocate internal hit records and temporaries",
     "Synthetic geometry and DOM/canvas fixtures do not establish the current house layout or browser pixel equality",
     "Local house-dependent checks use the earlier house export",
-    "Live hover, keyboard return, resizing, rendering settings and full collision traversal remain pending"
+    "The manual inspector/walking pass is owner-reported; no independent browser, console/settings, source fingerprint or timing capture was obtained"
   ]
 }

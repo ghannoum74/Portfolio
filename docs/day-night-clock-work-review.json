@@ -26,11 +26,13 @@
     "productionBuild": true,
     "whitespace": true,
     "liveBrowserAudioReview": false,
-    "latestInspectorManualReview": false,
-    "fullWalkingRouteReviewed": false,
+    "latestInspectorManualReview": true,
+    "fullWalkingRouteReviewed": true,
+    "gameplayReviewMethod": "owner-reported manual check",
     "hardwareFpsGainMeasured": false,
     "gpuGainMeasured": false
   },
+  "manualGameplayReviewEvidence": "experience-hover-work-review.json:manualGameplayReview",
   "build": {
     "entryMinifiedKB": 1019.47,
     "entryGzipKB": 271.25,
