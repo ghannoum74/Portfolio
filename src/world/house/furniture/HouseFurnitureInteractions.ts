@@ -5,6 +5,7 @@ import { createCouchSupport } from "../../player/CouchSeat";
 import { FireplaceFire } from "./FireplaceFire";
 import { authoredObject, findFiresideSeat, type FurnitureSeat } from "./FiresideSeat";
 import { createSinkWater } from "./SinkWater";
+import { inspectBed, type BedGeometry } from "../../player/BedGeometry";
 
 /**
  * All small, tactile furniture interactions in one system.
@@ -44,7 +45,7 @@ const FURNITURE: readonly FurnitureDefinition[] = [
   { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
   { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
   { id: "bookStack", objectName: "SEC_LIBRARY_Book_Stack_2", kind: "books", label: "Examine Old Books", message: "Old books, new ideas. Every adventure starts somewhere.", color: 0xd8b88a, range: 1.8 },
-  { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest on Bed", message: "A quiet moment on the bed.", color: 0xe5c9a8, range: 2.35 },
+  { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest on Bed", message: "A quiet moment on the bed.", color: 0xe5c9a8, range: 1.15 },
   { id: "fireside", objectName: "SEC_HEARTH_Pouf", kind: "rest", label: "Relax by the Hearth", message: "A peaceful pause beside the fire.", color: 0xf4b77e, range: 1.9 },
   { id: "noticeBoard", objectName: "SEC_ENTRANCE_NoticeBoard", kind: "notice", label: "Read Notice Board", message: "Traveler's note: seek the book, workshop, awards and map — and take your time exploring.", color: 0xe6c889, range: 1.9 },
   { id: "houseplant", objectName: "SEC_DECOR_Houseplant_4", kind: "plant", label: "Greet the Houseplant", message: "Even the houseplants enjoy a little company.", color: 0x96c99a, range: 1.65 },
@@ -85,6 +86,8 @@ export type FurnitureOptions = {
   /** A successful sit can return an adjusted world-space camera target. */
   onSitStart?: (seat: THREE.Vector3, look: THREE.Vector3, couch: THREE.Object3D) => boolean | THREE.Vector3;
   onSitEnd?: () => void;
+  onLieStart?: (bed: THREE.Object3D) => { target: THREE.Vector3; headDirection: THREE.Vector3 } | false;
+  onLieEnd?: () => void;
   isMuted?: () => boolean;
 };
 
@@ -92,6 +95,8 @@ class FurnitureInteractable implements Interactable {
   readonly position = new THREE.Vector3();
   readonly highlightTarget: THREE.Object3D;
   readonly interactionDistance: number;
+  private readonly bed?: BedGeometry;
+  private readonly nearest = new THREE.Vector3();
 
   constructor(
     private readonly owner: HouseFurnitureInteractions,
@@ -99,6 +104,7 @@ class FurnitureInteractable implements Interactable {
   ) {
     this.highlightTarget = node.model;
     this.interactionDistance = node.def.range;
+    if (node.def.id === "bed") this.bed = inspectBed(node.model);
     if (node.interactionAnchor) {
       node.interactionAnchor.getWorldPosition(this.position);
       return;
@@ -116,6 +122,12 @@ class FurnitureInteractable implements Interactable {
 
   getHint(): string { return this.owner.getHint(this.node.def.id); }
   interact(): void { this.owner.interact(this.node.def.id); }
+  distanceTo(position: THREE.Vector3): number {
+    if (!this.bed) return position.distanceTo(this.position);
+    this.nearest.copy(position).applyMatrix4(this.bed.inverse).clamp(this.bed.bounds.min, this.bed.bounds.max)
+      .applyMatrix4(this.bed.world);
+    return position.distanceTo(this.nearest);
+  }
 }
 
 export class HouseFurnitureInteractions {
@@ -136,6 +148,7 @@ export class HouseFurnitureInteractions {
   private readonly workPoint = new THREE.Vector3();
   private focusState: FocusState = "idle";
   private sitting = false;
+  private lying = false;
   private transitionElapsed = 0;
   private transitionLength = 1;
   private messageTime = 0;
@@ -304,6 +317,10 @@ export class HouseFurnitureInteractions {
         if (this.sitting) {
           this.sitting = false;
           this.options.onSitEnd?.();
+        }
+        if (this.lying) {
+          this.lying = false;
+          this.options.onLieEnd?.();
         }
         this.options.onFocusEnd();
       }
@@ -511,6 +528,10 @@ export class HouseFurnitureInteractions {
   }
 
   private startRest(node: FurnitureNode): void {
+    if (node.def.id === "bed") {
+      this.startBedRest(node);
+      return;
+    }
     if (!this.options.onFocusStart()) return;
     this.camera.updateWorldMatrix(true, false);
     this.savedPosition.copy(this.camera.position);
@@ -523,15 +544,38 @@ export class HouseFurnitureInteractions {
     approach.y = 0;
     if (approach.lengthSq() < 0.001) approach.set(0, 0, 1);
     approach.normalize();
-    const desired = this.workPoint.clone().addScaledVector(approach, node.def.id === "bed" ? 2.1 : 1.75);
-    desired.y += node.def.id === "bed" ? 0.85 : 0.6;
+    const desired = this.workPoint.clone().addScaledVector(approach, 1.75);
+    desired.y += 0.6;
     const quaternion = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(desired, this.workPoint, new THREE.Vector3(0, 1, 0)),
     );
     this.beginCameraTween(desired, quaternion, 0.98);
     this.focusState = "entering";
-    this.showMessage(node.def.message, 999,
-      node.def.id === "bed" ? "E / Esc  —  Get up" : "E / Esc  —  Return to exploring");
+    this.showMessage(node.def.message, 999, "E / Esc  —  Return to exploring");
+    this.playNote(390);
+  }
+
+  private startBedRest(node: FurnitureNode): void {
+    if (!this.options.onLieStart || !this.options.onFocusStart(true)) return;
+    const pose = this.options.onLieStart(node.model);
+    if (!pose) {
+      this.options.onFocusEnd();
+      this.showMessage("Move onto clear floor beside the bed and try again.", 2);
+      return;
+    }
+    this.camera.updateWorldMatrix(true, false);
+    this.savedPosition.copy(this.camera.position);
+    this.savedRotation.copy(this.camera.quaternion);
+    const side = pose.headDirection.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
+    if (this.savedPosition.clone().sub(pose.target).dot(side) < 0) side.negate();
+    const desired = pose.target.clone().addScaledVector(side, 3.1).add(new THREE.Vector3(0, 2.1, 0));
+    const rotation = new THREE.Quaternion().setFromRotationMatrix(
+      new THREE.Matrix4().lookAt(desired, pose.target, new THREE.Vector3(0, 1, 0)),
+    );
+    this.beginCameraTween(desired, rotation, 0.98);
+    this.lying = true;
+    this.focusState = "entering";
+    this.showMessage(node.def.message, 999, "E / Esc  —  Get up");
     this.playNote(390);
   }
 
@@ -611,6 +655,11 @@ export class HouseFurnitureInteractions {
     if (this.sitting) {
       this.sitting = false;
       this.options.onSitEnd?.();
+      this.options.onFocusEnd();
+    }
+    if (this.lying) {
+      this.lying = false;
+      this.options.onLieEnd?.();
       this.options.onFocusEnd();
     }
     this.focusState = "idle";

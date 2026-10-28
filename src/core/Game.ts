@@ -1379,6 +1379,8 @@ export class Game {
         },
         onSitStart: (seat, look, couch) => this.world.player.beginSitting(seat, look, couch),
         onSitEnd: () => this.world.player.endSitting(),
+        onLieStart: bed => this.world.player.beginLying(bed),
+        onLieEnd: () => this.world.player.endSitting(),
         isMuted: () => this.worldAudio.isMuted,
       },
     );

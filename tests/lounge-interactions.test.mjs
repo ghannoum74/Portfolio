@@ -14,6 +14,8 @@ await build({ stdin: {
     "export { createCouchSupport } from './src/world/player/CouchSeat';" +
     "export { Player } from './src/world/player/Player';" +
     "export { PlayerController } from './src/world/player/PlayerController';" +
+    "export { inspectBed } from './src/world/player/BedGeometry';" +
+    "export { InteractionSystem } from './src/interactions/InteractionSystem';" +
     "export { ThirdPersonCamera } from './src/camera/ThirdPersonCamera';" +
     "export { FireplaceFire } from './src/world/house/furniture/FireplaceFire';" +
     "export { findFiresideSeat } from './src/world/house/furniture/FiresideSeat';" +
@@ -21,11 +23,12 @@ await build({ stdin: {
     "export { createSinkWater } from './src/world/house/furniture/SinkWater';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
-}, bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: bundle });
+}, bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: bundle,
+  loader: { '.css': 'empty', '.html': 'text' } });
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, createSinkWater, performanceOptions } = loaded;
+const { SeatedPose, inspectBed, InteractionSystem, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, createSinkWater, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -620,9 +623,11 @@ test('the bed shows a persistent matching rest prompt with E/Esc to get up, incl
     bed.name = 'SEC_REST_Bed_King'; house.add(bed);
     const camera = new THREE.PerspectiveCamera(); camera.position.set(0, 2, 4); camera.lookAt(0, 0.5, 0);
     const position = camera.position.toArray(), rotation = camera.quaternion.toArray();
-    let starts = 0, ends = 0;
+    let starts = 0, ends = 0, laid = 0, stood = 0;
     const furniture = new HouseFurnitureInteractions(house, camera,
-      { onFocusStart: () => { starts++; return true; }, onFocusEnd() { ends++; }, isMuted: () => true });
+      { onFocusStart: visible => { assert.equal(visible, true); starts++; return true; }, onFocusEnd() { ends++; },
+        onLieStart: () => { laid++; return { target: new THREE.Vector3(0, 0.8, 0), headDirection: new THREE.Vector3(0, 0, -1) }; },
+        onLieEnd: () => { stood++; }, isMuted: () => true });
     const interactions = []; furniture.register(value => interactions.push(value));
     assert.equal(interactions.length, 1); assert.equal(interactions[0].getHint(), 'Rest on Bed');
     for (let repeat = 0; repeat < 2; repeat++) {
@@ -638,6 +643,139 @@ test('the bed shows a persistent matching rest prompt with E/Esc to get up, incl
       assert.equal(furniture.isControllingCamera, false); assert.equal(furniture.notice.classList.contains('is-visible'), false);
       close(camera.position.toArray(), position); close(camera.quaternion.toArray(), rotation);
     }
-    assert.equal(starts, 2); assert.equal(ends, 2); furniture.destroy();
+    assert.equal(starts, 2); assert.equal(ends, 2); assert.equal(laid, 2); assert.equal(stood, 2); furniture.destroy();
+  } finally { restore(); }
+});
+
+test('the real avatar lies face-up on the real bed and returns to its original multi-turn heading', async () => {
+  const { scene: source } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const sourceBed = source.getObjectByName('SEC_REST_Bed_King'); assert.ok(sourceBed);
+  const restore = domFixture();
+  try {
+    for (const heading of [Math.PI, -2.6, 3 * Math.PI]) {
+      const house = new THREE.Group(), bed = sourceBed.clone(true); house.add(bed);
+      const model = await avatar(), scene = new THREE.Scene(); scene.add(house, model);
+      model.position.set(-3.5, -0.49, 1.55); model.rotation.y = heading;
+      scene.updateMatrixWorld(true);
+      const original = model.position.toArray(), rotation = model.rotation.clone();
+      const bones = new Map(); model.traverse(object => { if (object.isBone) bones.set(object.name.replace(/^mixamorig[:_]?/i, '').toLowerCase(), object); });
+      const savedBones = [...bones.values()].map(bone => [bone, bone.position.clone(), bone.quaternion.clone(), bone.scale.clone()]);
+      const feet = model.position.clone(), teleports = [];
+      let physics = 0, animation = 0, begins = 0, ends = 0;
+      const player = Object.create(Player.prototype);
+      Object.assign(player, { model, seatedPose: new SeatedPose(model), standingFeet: new THREE.Vector3(),
+        body: { isGrounded: true, getFeetPosition: target => target.copy(feet), teleport: p => teleports.push(p.toArray()), syncModel() {} },
+        controller: { update() { physics++; } }, mixer: { update() { animation++; } } });
+      const camera = new THREE.PerspectiveCamera(45, 1.5, 0.1, 1000); camera.position.set(-3.5, 2.6, 4); camera.lookAt(-3.5, 0, 0);
+      const cameraBefore = camera.position.toArray(), quaternionBefore = camera.quaternion.toArray();
+      const furniture = new HouseFurnitureInteractions(house, camera, {
+        onFocusStart(show) { assert.equal(show, true); model.visible = show; begins++; return true; },
+        onFocusEnd() { model.visible = true; ends++; },
+        onLieStart: target => player.beginLying(target), onLieEnd: () => player.endSitting(), isMuted: () => true,
+      });
+      const interactions = []; furniture.register(value => interactions.push(value));
+      assert.equal(interactions.length, 1);
+      for (let repeat = 0; repeat < 2; repeat++) {
+        interactions[0].interact(); assert.equal(furniture.isControllingCamera, true); assert.equal(model.visible, true);
+        player.updatePhysics(1 / 60); player.updateAnimation(1 / 60); player.syncFromPhysics();
+        assert.equal(physics, 0); assert.equal(animation, 0);
+        for (let frame = 0; frame < 90; frame++) furniture.update(1 / 60);
+        const hips = bones.get('hips').getWorldPosition(new THREE.Vector3());
+        const head = bones.get('headtop_end').getWorldPosition(new THREE.Vector3());
+        const foot = bones.get('leftfoot').getWorldPosition(new THREE.Vector3());
+        assert.ok(head.x < hips.x - 0.8 && foot.x > hips.x + 0.5, JSON.stringify({ head, hips, foot }));
+        assert.ok(head.x >= -5.55 && head.x <= -4.75, 'head must reach the pillow end');
+        assert.ok(hips.y > 0.20 && hips.y < 0.8, 'hips must be on the mattress');
+        assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(model.getWorldQuaternion(new THREE.Quaternion())).y > 0.99, 'avatar faces up');
+        assert.ok(Math.abs(head.y - hips.y) < 0.25 && Math.abs(foot.y - hips.y) < 0.25, 'body lies along the mattress');
+        camera.updateMatrixWorld(true);
+        for (const point of [head, hips, foot]) {
+          const screen = point.clone().project(camera);
+          assert.ok(Math.abs(screen.x) < 0.9 && Math.abs(screen.y) < 0.9 && screen.z > -1 && screen.z < 1,
+            'the rest camera should frame the avatar: ' + screen.toArray());
+        }
+        furniture.leaveFocus(); for (let frame = 0; frame < 90; frame++) furniture.update(1 / 60);
+        assert.equal(furniture.isControllingCamera, false); close(model.position.toArray(), original);
+        assert.equal(model.rotation.y, rotation.y); assert.equal(model.rotation.x, rotation.x); assert.equal(model.rotation.z, rotation.z);
+        close(camera.position.toArray(), cameraBefore); close(camera.quaternion.toArray(), quaternionBefore);
+        for (const [bone, p, q, s] of savedBones) { close(bone.position.toArray(), p.toArray()); close(bone.quaternion.toArray(), q.toArray()); close(bone.scale.toArray(), s.toArray()); }
+      }
+      assert.equal(begins, 2); assert.equal(ends, 2); assert.equal(teleports.length, 4);
+      player.updatePhysics(1 / 60); player.updateAnimation(1 / 60); assert.equal(physics, 1); assert.equal(animation, 1);
+      furniture.destroy();
+    }
+  } finally { restore(); }
+});
+
+test('bed proximity follows every edge and corner, including a rotated bed, without blocking closer props', async () => {
+  const { scene } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const source = scene.getObjectByName('SEC_REST_Bed_King'), restore = domFixture();
+  try {
+    for (const angle of [0, 0.65]) {
+      const house = new THREE.Group(), bed = source.clone(true); house.add(bed); house.rotation.y = angle; house.position.set(4, -30, 2);
+      house.updateMatrixWorld(true);
+      const frame = inspectBed(bed); assert.ok(frame);
+      const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(), { onFocusStart: () => true, onFocusEnd() {}, isMuted: () => true });
+      const interactions = []; furniture.register(value => interactions.push(value)); const interactable = interactions[0];
+      const { min, max } = frame.bounds;
+      for (let i = 0; i < 24; i++) {
+        const theta = 2 * Math.PI * i / 24, x = Math.cos(theta), z = Math.sin(theta);
+        const scale = 1 / Math.max(Math.abs(x), Math.abs(z));
+        const point = new THREE.Vector3((min.x + max.x) / 2 + x * scale * ((max.x - min.x) / 2 + 0.45),
+          min.y + 0.05, (min.z + max.z) / 2 + z * scale * ((max.z - min.z) / 2 + 0.45)).applyMatrix4(frame.world);
+        assert.ok(interactable.distanceTo(point) <= interactable.interactionDistance, 'bed unreachable at angle ' + theta);
+      }
+      const far = new THREE.Vector3(max.x + 3, min.y + 0.05, max.z + 3).applyMatrix4(frame.world);
+      assert.ok(interactable.distanceTo(far) > interactable.interactionDistance);
+      const system = Object.create(InteractionSystem.prototype), near = new THREE.Vector3(max.x + 0.35, min.y + 0.05, (min.z + max.z) / 2).applyMatrix4(frame.world);
+      let invoked = 0;
+      const nearer = { position: near.clone(), interactionDistance: 1, highlightTarget: new THREE.Group(), getHint: () => 'Nearby object', interact: () => invoked++ };
+      Object.assign(system, { interactables: [interactable, nearer], active: null, hint: { show() {}, hide() {} } });
+      system.update(near); system.interact(); assert.equal(invoked, 1, 'a genuinely nearer object remains selectable');
+      furniture.destroy();
+    }
+  } finally { restore(); }
+});
+
+test('lying fits the real bed after rotation or mirroring and restores an interrupted walking pose', async () => {
+  const { scene: source } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const clip = (await readGeometryGLB(new URL('../public/assets/models/player/animations/walking.glb', import.meta.url))).animations[0];
+  for (const mirror of [false, true]) {
+    const house = new THREE.Group(), bed = source.getObjectByName('SEC_REST_Bed_King').clone(true), model = await avatar();
+    house.rotation.y = 0.7; house.position.set(3, -30, 4); if (mirror) house.scale.x = -1;
+    if (mirror) bed.traverse(object => { if (object.isMesh) object.visible = false; }); // Batch-hidden originals remain usable.
+    house.add(bed); const scene = new THREE.Scene(); scene.add(house, model); scene.updateMatrixWorld(true);
+    const pose = new SeatedPose(model), mixer = new THREE.AnimationMixer(model);
+    mixer.clipAction(clip).play(); mixer.update(0.7); model.rotation.y = 3 * Math.PI;
+    const saved = []; model.traverse(object => { if (object.isBone) saved.push([object, object.position.clone(), object.quaternion.clone(), object.scale.clone()]); });
+    const frame = inspectBed(bed), local = frame.bounds.getCenter(new THREE.Vector3());
+    local.x = frame.bounds.max.x + 0.5; local.y = frame.bounds.min.y + 0.05;
+    const approach = local.applyMatrix4(frame.world); model.position.copy(approach); scene.updateMatrixWorld(true);
+    const result = pose.beginLying(bed, approach); assert.ok(result);
+    let hips, head;
+    model.traverse(object => { if (object.isBone && /mixamorigHips$/i.test(object.name)) hips = object.getWorldPosition(new THREE.Vector3());
+      if (object.isBone && /mixamorigHeadTop_End$/i.test(object.name)) head = object.getWorldPosition(new THREE.Vector3()); });
+    assert.ok(head.clone().sub(hips).normalize().dot(result.headDirection) > 0.98);
+    assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(model.getWorldQuaternion(new THREE.Quaternion())).y > 0.99);
+    pose.end(); assert.equal(model.rotation.y, 3 * Math.PI); close(model.position.toArray(), approach.toArray());
+    for (const [bone, p, q, s] of saved) { close(bone.position.toArray(), p.toArray()); close(bone.quaternion.toArray(), q.toArray()); close(bone.scale.toArray(), s.toArray()); }
+  }
+});
+
+test('a declined bed pose restores controls, and teardown releases an active lying pose once', () => {
+  const restore = domFixture();
+  try {
+    const house = new THREE.Group(), bed = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 2.4), new THREE.MeshStandardMaterial());
+    bed.name = 'SEC_REST_Bed_King'; house.add(bed);
+    let ends = 0, stands = 0, showPlayer;
+    const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(), {
+      onFocusStart(show) { showPlayer = show; return true; }, onFocusEnd() { ends++; }, onLieStart: () => false,
+      onLieEnd() { stands++; }, isMuted: () => true,
+    });
+    furniture.interact('bed'); assert.equal(showPlayer, true); assert.equal(ends, 1); assert.equal(stands, 0);
+    assert.equal(furniture.isControllingCamera, false);
+    furniture.options.onLieStart = () => ({ target: new THREE.Vector3(0, 0.5, 0), headDirection: new THREE.Vector3(0, 0, -1) });
+    furniture.interact('bed'); assert.equal(furniture.isControllingCamera, true);
+    furniture.destroy(); assert.equal(ends, 2); assert.equal(stands, 1);
   } finally { restore(); }
 });

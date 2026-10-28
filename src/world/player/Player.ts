@@ -150,6 +150,15 @@ export class Player {
     return this.seatedPose.getCameraTarget(new THREE.Vector3());
   }
 
+  beginLying(bed: THREE.Object3D): { target: THREE.Vector3; headDirection: THREE.Vector3 } | false {
+    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive) return false;
+    this.body.getFeetPosition(this.standingFeet);
+    const pose = this.seatedPose.beginLying(bed, this.model.getWorldPosition(new THREE.Vector3()));
+    if (!pose) return false;
+    this.body.teleport(this.standingFeet);
+    return pose;
+  }
+
   endSitting(): void {
     if (!this.seatedPose?.isActive) return;
     this.seatedPose.end();

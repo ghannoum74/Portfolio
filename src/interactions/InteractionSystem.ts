@@ -28,7 +28,7 @@ export class InteractionSystem {
     let closesDistance = Infinity;
 
     for (const interactable of this.interactables) {
-      const distance = playerPositin.distanceTo(interactable.position);
+      const distance = interactable.distanceTo?.(playerPositin) ?? playerPositin.distanceTo(interactable.position);
 
       if (
         distance <= interactable.interactionDistance &&
