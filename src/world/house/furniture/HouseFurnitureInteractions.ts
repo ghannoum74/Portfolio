@@ -4,6 +4,7 @@ import type { Interactable } from "../../../interactions/Interactable";
 import { createCouchSupport } from "../../player/CouchSeat";
 import { FireplaceFire } from "./FireplaceFire";
 import { authoredObject, findFiresideSeat, type FurnitureSeat } from "./FiresideSeat";
+import { createSinkWater } from "./SinkWater";
 
 /**
  * All small, tactile furniture interactions in one system.
@@ -43,7 +44,7 @@ const FURNITURE: readonly FurnitureDefinition[] = [
   { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
   { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
   { id: "bookStack", objectName: "SEC_LIBRARY_Book_Stack_2", kind: "books", label: "Examine Old Books", message: "Old books, new ideas. Every adventure starts somewhere.", color: 0xd8b88a, range: 1.8 },
-  { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest a Moment", message: "Every adventurer needs a moment to dream.", color: 0xe5c9a8, range: 2.35 },
+  { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest on Bed", message: "A quiet moment on the bed.", color: 0xe5c9a8, range: 2.35 },
   { id: "fireside", objectName: "SEC_HEARTH_Pouf", kind: "rest", label: "Relax by the Hearth", message: "A peaceful pause beside the fire.", color: 0xf4b77e, range: 1.9 },
   { id: "noticeBoard", objectName: "SEC_ENTRANCE_NoticeBoard", kind: "notice", label: "Read Notice Board", message: "Traveler's note: seek the book, workshop, awards and map — and take your time exploring.", color: 0xe6c889, range: 1.9 },
   { id: "houseplant", objectName: "SEC_DECOR_Houseplant_4", kind: "plant", label: "Greet the Houseplant", message: "Even the houseplants enjoy a little company.", color: 0x96c99a, range: 1.65 },
@@ -386,10 +387,7 @@ export class HouseFurnitureInteractions {
       anchor.add(node.bubbles);
     }
     if (def.kind === "sink") {
-      const mat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-      node.stream = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.32, 6, 1, true), mat);
-      node.stream.position.y = -0.11;
-      anchor.add(node.stream);
+      node.stream = createSinkWater(model, anchor, def.color);
     }
     if (def.kind === "flame") {
       const mat = new THREE.MeshBasicMaterial({ color: 0xffce79, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
@@ -450,9 +448,8 @@ export class HouseFurnitureInteractions {
     }
     if (node.stream) {
       const mat = node.stream.material as THREE.MeshBasicMaterial;
-      mat.opacity = node.progress * 0.58;
+      mat.opacity = node.progress * (0.54 + Math.sin(this.elapsed * 11) * 0.04);
       node.stream.visible = node.progress > 0.02;
-      node.stream.scale.y = 0.9 + Math.sin(this.elapsed * 11) * 0.06;
     }
     if (node.bubbles) {
       node.bubbles.visible = node.progress > 0.035;
@@ -533,7 +530,8 @@ export class HouseFurnitureInteractions {
     );
     this.beginCameraTween(desired, quaternion, 0.98);
     this.focusState = "entering";
-    this.showMessage(node.def.message, 999, "E / Esc  —  Return to exploring");
+    this.showMessage(node.def.message, 999,
+      node.def.id === "bed" ? "E / Esc  —  Get up" : "E / Esc  —  Return to exploring");
     this.playNote(390);
   }
 

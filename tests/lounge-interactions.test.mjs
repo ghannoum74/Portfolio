@@ -18,13 +18,14 @@ await build({ stdin: {
     "export { FireplaceFire } from './src/world/house/furniture/FireplaceFire';" +
     "export { findFiresideSeat } from './src/world/house/furniture/FiresideSeat';" +
     "export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';" +
+    "export { createSinkWater } from './src/world/house/furniture/SinkWater';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: bundle });
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, performanceOptions } = loaded;
+const { SeatedPose, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, createSinkWater, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -303,10 +304,15 @@ test('standing after approaching from either side preserves W/S direction, A/D t
 
 function domFixture() {
   const original = globalThis.document;
-  const element = () => ({
-    dataset: {}, classList: { add() {}, remove() {} }, setAttribute() {}, appendChild() {}, remove() {},
-    replaceChildren() {}, getContext: () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {} }),
-  });
+  const element = () => {
+    const classes = new Set(), children = [];
+    return { dataset: {}, children,
+      classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, contains: name => classes.has(name) },
+      setAttribute() {}, appendChild(child) { children.push(child); }, remove() {},
+      replaceChildren() { children.length = 0; },
+      getContext: () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {} }),
+    };
+  };
   globalThis.document = { createElement: element, head: { appendChild() {} }, body: { appendChild() {} } };
   return () => { if (original === undefined) delete globalThis.document; else globalThis.document = original; };
 }
@@ -534,5 +540,104 @@ test('Blender names with spaces and numeric suffixes remain valid after loader n
     assert.equal(f.interactions.length, 2);
     assert.equal(f.interactions[0].highlightTarget, f.couch);
     f.furniture.destroy();
+  } finally { restore(); }
+});
+
+test('sink water starts inside the real faucet outlet, reaches the basin and stays attached throughout animation', async () => {
+  const { scene } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const source = scene.getObjectByName('SEC_KITCHEN_Kitchen_Sink');
+  const restore = domFixture();
+  try {
+    for (const transformed of [false, true]) {
+      const house = new THREE.Group(), sink = source.clone(true);
+      house.add(sink);
+      if (transformed) {
+        house.position.set(10, -30, 3); house.rotation.y = 0.7; house.scale.set(1.2, 0.8, 1.1);
+        sink.rotation.y = 0.4; sink.scale.set(-1.3, 1.1, 0.9);
+        sink.traverse(object => { if (object.isMesh) object.visible = false; }); // Batch-hidden originals still supply the outlet.
+      }
+      house.updateMatrixWorld(true);
+      const outlet = sink.localToWorld(new THREE.Vector3(0.00000061, 1.77662146, -0.21069960));
+      const basin = sink.localToWorld(new THREE.Vector3(0.00000061, 1.23431695, -0.21069960));
+      const originals = [];
+      sink.traverse(object => {
+        if (!object.isMesh) return;
+        originals.push({ object, matrix: object.matrixWorld.toArray(), visible: object.visible,
+          geometry: object.geometry, material: object.material,
+          positions: object.geometry.attributes.position.array.slice() });
+      });
+      const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(),
+        { onFocusStart: () => true, onFocusEnd() {}, isMuted: () => true });
+      const interactions = []; furniture.register(value => interactions.push(value));
+      assert.equal(interactions.length, 1); assert.equal(interactions[0].getHint(), 'Turn On Water');
+      const stream = house.getObjectByName('SINK_WATER_STREAM'); assert.ok(stream);
+      assert.equal(stream.visible, false);
+      const height = stream.geometry.parameters.height, vertices = stream.geometry.attributes.position.array.slice();
+      const version = stream.geometry.attributes.position.version;
+      const cast = THREE.Raycaster.prototype.intersectObject;
+      let casts = 0, disposed = 0;
+      THREE.Raycaster.prototype.intersectObject = function (...args) { casts++; return cast.apply(this, args); };
+      stream.geometry.addEventListener('dispose', () => disposed++);
+      stream.material.addEventListener('dispose', () => disposed++);
+      try {
+        for (let repeat = 0; repeat < 2; repeat++) {
+          interactions[0].interact();
+          for (let frame = 0; frame < 180; frame++) {
+            furniture.update(1 / 60); house.updateMatrixWorld(true);
+            close(stream.localToWorld(new THREE.Vector3()).toArray(), outlet.toArray());
+            close(stream.localToWorld(new THREE.Vector3(0, -height, 0)).toArray(), basin.toArray());
+          }
+          assert.equal(stream.visible, true); assert.equal(interactions[0].getHint(), 'Turn Off Water');
+          interactions[0].interact();
+          for (let frame = 0; frame < 120; frame++) furniture.update(1 / 60);
+          assert.equal(stream.visible, false);
+        }
+        assert.equal(casts, 0, 'outlet/basin picking happens only during setup');
+        assert.equal(stream.geometry.attributes.position.version, version);
+        assert.deepEqual(stream.geometry.attributes.position.array, vertices);
+        furniture.destroy(); assert.equal(disposed, 2);
+      } finally { THREE.Raycaster.prototype.intersectObject = cast; }
+      for (const original of originals) {
+        assert.equal(original.object.geometry, original.geometry); assert.equal(original.object.material, original.material);
+        assert.equal(original.object.visible, original.visible); close(original.object.matrixWorld.toArray(), original.matrix);
+        assert.deepEqual(original.geometry.attributes.position.array, original.positions);
+      }
+    }
+  } finally { restore(); }
+});
+
+test('a sink without faucet geometry does not generate a floating stream from its center', () => {
+  const sink = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const anchor = new THREE.Group(), house = new THREE.Group(); house.add(sink, anchor);
+  assert.equal(createSinkWater(sink, anchor, 0x96dceb), undefined);
+  assert.equal(anchor.children.length, 0);
+});
+
+test('the bed shows a persistent matching rest prompt with E/Esc to get up, including reopening and return', () => {
+  const restore = domFixture();
+  try {
+    const house = new THREE.Group(), bed = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 2.4), new THREE.MeshStandardMaterial());
+    bed.name = 'SEC_REST_Bed_King'; house.add(bed);
+    const camera = new THREE.PerspectiveCamera(); camera.position.set(0, 2, 4); camera.lookAt(0, 0.5, 0);
+    const position = camera.position.toArray(), rotation = camera.quaternion.toArray();
+    let starts = 0, ends = 0;
+    const furniture = new HouseFurnitureInteractions(house, camera,
+      { onFocusStart: () => { starts++; return true; }, onFocusEnd() { ends++; }, isMuted: () => true });
+    const interactions = []; furniture.register(value => interactions.push(value));
+    assert.equal(interactions.length, 1); assert.equal(interactions[0].getHint(), 'Rest on Bed');
+    for (let repeat = 0; repeat < 2; repeat++) {
+      interactions[0].interact();
+      assert.equal(furniture.notice.classList.contains('is-visible'), true);
+      assert.equal(furniture.notice.children[0].textContent, 'A quiet moment on the bed.');
+      assert.equal(furniture.notice.children[1].textContent, 'E / Esc  —  Get up');
+      for (let frame = 0; frame < 1200; frame++) furniture.update(1 / 60);
+      assert.equal(furniture.isControllingCamera, true);
+      assert.equal(furniture.notice.classList.contains('is-visible'), true);
+      furniture.leaveFocus(); furniture.leaveFocus();
+      for (let frame = 0; frame < 120; frame++) furniture.update(1 / 60);
+      assert.equal(furniture.isControllingCamera, false); assert.equal(furniture.notice.classList.contains('is-visible'), false);
+      close(camera.position.toArray(), position); close(camera.quaternion.toArray(), rotation);
+    }
+    assert.equal(starts, 2); assert.equal(ends, 2); furniture.destroy();
   } finally { restore(); }
 });
