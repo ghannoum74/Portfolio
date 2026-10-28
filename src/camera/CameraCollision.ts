@@ -72,7 +72,9 @@ export class CameraCollision {
       return this.result;
     }
 
-    const safeDistance = Math.max(0.15, hit.time_of_impact - this.padding);
+    // A minimum boom length can put the camera through a nearby wall. Permit a
+    // fully shortened arm rather than advancing beyond the measured clearance.
+    const safeDistance = Math.max(0, hit.time_of_impact - this.padding);
 
     this.result.position
       .copy(target)

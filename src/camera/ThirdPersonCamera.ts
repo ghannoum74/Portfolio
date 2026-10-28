@@ -56,6 +56,14 @@ export class ThirdPersonCamera {
   private readonly cameraSpherical = new THREE.Spherical();
   private readonly cameraOffset = new THREE.Vector3();
   private readonly cameraCollision: CameraCollision;
+  // Follow the requested shot continuously, including while obstructed. Feeding
+  // the shortened camera position back into follow switches behavior at edges.
+  private readonly followPosition = new THREE.Vector3();
+  private followReady = false;
+  private recoveringDistance = false;
+  private collisionDistance = 0;
+  private clearTime = 0;
+  private readonly clearanceDelay = 0.1;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -168,21 +176,44 @@ export class ThirdPersonCamera {
     const smoothness = 1 - Math.exp(-followSpeed * delta);
     const lookAt = this.getIdealLookAt();
     const idealPosition = this.getIdealPosition();
-    const collision = this.cameraCollision.resolve(lookAt, idealPosition);
-
-    /*
-     * If a wall suddenly appears between
-     * player and camera, pull the camera in
-     * immediately.
-     *
-     * Don't slowly lerp through the wall.
-     */
-    if (collision.blocked) {
-      this.camera.position.copy(collision.position);
-    } else {
-      // When space becomes available again, smoothly move back to normal distance.
-      this.camera.position.lerp(collision.position, smoothness);
+    if (!this.followReady) {
+      this.followPosition.copy(this.camera.position);
+      this.followReady = true;
     }
+    this.followPosition.lerp(idealPosition, smoothness);
+    // Finish tiny residual follow motion so stationary physics queries can cache.
+    if (this.followPosition.distanceToSquared(idealPosition) < 1e-8) {
+      this.followPosition.copy(idealPosition);
+    }
+
+    // Query the smoothed shot. Its heading no longer jumps to the unsmoothed
+    // player heading just because a wall, post or piece of furniture is hit.
+    const collision = this.cameraCollision.resolve(lookAt, this.followPosition);
+    const requestedDistance = lookAt.distanceTo(this.followPosition);
+    const safeDistance = lookAt.distanceTo(collision.position);
+    if (collision.blocked) {
+      this.collisionDistance = this.recoveringDistance
+        ? Math.min(safeDistance, THREE.MathUtils.lerp(this.collisionDistance, safeDistance, smoothness))
+        : safeDistance;
+      this.recoveringDistance = true;
+      this.clearTime = 0;
+    } else if (this.recoveringDistance) {
+      this.clearTime += delta;
+      // A closer requested shot must still be respected during the release delay.
+      this.collisionDistance = Math.min(this.collisionDistance, safeDistance);
+      if (this.clearTime >= this.clearanceDelay) {
+        this.collisionDistance = THREE.MathUtils.lerp(this.collisionDistance, safeDistance, smoothness);
+      }
+      if (safeDistance - this.collisionDistance < 0.001) {
+        this.recoveringDistance = false;
+      }
+    }
+
+    if (this.recoveringDistance && requestedDistance > 0.001) {
+      // Shorten immediately for safety; expand smoothly along the checked path.
+      this.camera.position.lerpVectors(lookAt, this.followPosition,
+        Math.min(1, this.collisionDistance / requestedDistance));
+    } else this.camera.position.copy(collision.position);
 
     this.camera.lookAt(lookAt);
   }
@@ -337,6 +368,9 @@ export class ThirdPersonCamera {
 
   setInteriorMode(enabled: boolean): void {
     this.interiorMode = enabled;
+    this.followReady = false;
+    this.recoveringDistance = false;
+    this.clearTime = 0;
 
     /*
      * Never carry a temporary camera
@@ -359,9 +393,15 @@ export class ThirdPersonCamera {
     this.orbitYaw = 0;
     this.orbitPitch = 0;
 
-    this.camera.position.copy(this.getIdealPosition());
-
-    this.camera.lookAt(this.getIdealLookAt());
+    this.followPosition.copy(this.getIdealPosition());
+    this.followReady = true;
+    const lookAt = this.getIdealLookAt();
+    const collision = this.cameraCollision.resolve(lookAt, this.followPosition);
+    this.camera.position.copy(collision.position);
+    this.collisionDistance = lookAt.distanceTo(collision.position);
+    this.recoveringDistance = collision.blocked;
+    this.clearTime = 0;
+    this.camera.lookAt(lookAt);
   }
 
   private normalizeAngle(angle: number): number {
