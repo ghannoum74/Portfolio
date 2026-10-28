@@ -1323,11 +1323,11 @@ export class Game {
         "SEC_AWARDS_Frame_S",
         "SEC_AWARDS_TrophyCup",
       ];
-      for (const [index, name] of exhibitNames.entries()) {
+      for (const name of exhibitNames) {
         const exhibit = house.model.getObjectByName(name);
         if (!exhibit) continue;
         this.interactionSystem.register(
-          new AwardsInteraction(exhibit, () => this.enterAwardsExperience(index)),
+          new AwardsInteraction(exhibit, () => this.enterAwardsExperience()),
         );
       }
     }
@@ -1467,7 +1467,7 @@ export class Game {
     });
   }
 
-  private enterAwardsExperience(index: number): void {
+  private enterAwardsExperience(): void {
     if (
       !this.awards || this.phase !== "playing" || !this.insideHouse ||
       this.transitioning || this.projectBookMode !== "idle" ||
@@ -1478,7 +1478,7 @@ export class Game {
       this.debugMode = false;
       this.updateOverlay();
     }
-    if (!this.awards.enter(index)) return;
+    if (!this.awards.enter()) return;
     this.keyboard.setEnabled(false);
     this.thirdPersonCamera?.setInputEnabled(false);
     this.renderer.setInteractionOutline(null);

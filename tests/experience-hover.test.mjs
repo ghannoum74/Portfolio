@@ -10,11 +10,14 @@ const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: {
   contents: `export { AwardsExperience } from './src/world/house/awards/AwardsExperience';
     export { JourneyMapExperience } from './src/world/house/journey/JourneyMapExperience';
+    export { WorkshopExperience } from './src/world/house/workshop/WorkshopExperience';
     export { AWARD_ENTRIES } from './src/data/awards';
-    export { JOURNEY_CHAPTERS } from './src/data/journey';`,
+    export { JOURNEY_CHAPTERS } from './src/data/journey';
+    export { WORKSHOP_SKILLS } from './src/data/skills';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty' } });
-const { AwardsExperience, JourneyMapExperience, AWARD_ENTRIES, JOURNEY_CHAPTERS } = await import(pathToFileURL(bundle));
+globalThis.window = { location: { search: '' }, devicePixelRatio: 1 };
+const { AwardsExperience, JourneyMapExperience, WorkshopExperience, AWARD_ENTRIES, JOURNEY_CHAPTERS, WORKSHOP_SKILLS } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 function fixture(kind, reducedMotion = false) {
@@ -23,6 +26,7 @@ function fixture(kind, reducedMotion = false) {
   const write = () => { counts.domWrites++; order.push('write'); };
   class Element {
     children = []; parent = null; listeners = new Map(); classes = new Set(); attrs = new Map();
+    dataset = {};
     styleValues = {};
     // Exercise CSSOM-like serialization instead of assuming assigned pixel strings read back verbatim.
     style = new Proxy(this.styleValues, { get(target, key) {
@@ -40,6 +44,21 @@ function fixture(kind, reducedMotion = false) {
     get textContent() { return this.text; }
     set className(value) { this.classes = new Set(value.split(/\s+/).filter(Boolean)); }
     get className() { return [...this.classes].join(' '); }
+    set innerHTML(value) {
+      this.replaceChildren();
+      // Plain spans supply captions/counters; button and inspector nodes are appended by the real code.
+      for (const match of value.matchAll(/<span class="([^"]+)"[^>]*>([^<]*)<\/span>/g)) {
+        const span = new Element(); span.className = match[1]; span.textContent = match[2]; this.appendChild(span);
+      }
+    }
+    querySelector(selector) {
+      for (const child of this.children) {
+        if (child.classes.has(selector.slice(1))) return child;
+        const found = child.querySelector(selector); if (found) return found;
+      }
+      return null;
+    }
+    animate() { return { cancel() {} }; }
     setAttribute(key, value) { this.attrs.set(key, value); }
     appendChild(child) { child.parent = this; this.children.push(child); return child; }
     append(...children) { children.forEach(child => this.appendChild(child)); }
@@ -71,7 +90,7 @@ function fixture(kind, reducedMotion = false) {
     });
     experience = new AwardsExperience(house, camera, canvas);
     centerFor = index => new THREE.Box3().setFromObject(targets[index], true).getCenter(new THREE.Vector3());
-  } else {
+  } else if (kind === 'journey') {
     entries = JOURNEY_CHAPTERS;
     const table = new THREE.Mesh(new THREE.BoxGeometry(3.6, .2, 2.4), new THREE.MeshStandardMaterial());
     table.name = 'SEC_MAP_Table_Large'; house.add(table);
@@ -80,24 +99,31 @@ function fixture(kind, reducedMotion = false) {
     experience = new JourneyMapExperience(house, top, camera, canvas);
     targets = entries.map((_, index) => house.getObjectByName(`JOURNEY_WAYPOINT_${index + 1}`).children.find(child => child.isMesh && child.material.visible === false));
     centerFor = index => targets[index].parent.getWorldPosition(new THREE.Vector3());
+  } else {
+    entries = WORKSHOP_SKILLS;
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.8, 0.5), new THREE.MeshStandardMaterial());
+    stand.name = 'SEC_WORKSHOP_WeaponStand'; house.add(stand);
+    experience = new WorkshopExperience(house, stand, camera, canvas, () => false);
+    targets = entries.map(entry => house.getObjectByName(`WORKSHOP_HIT_${entry.id}`));
+    centerFor = index => targets[index].getWorldPosition(new THREE.Vector3());
   }
-  const prefix = kind === 'awards' ? 'awards' : 'journey';
-  const hint = body.children.find(element => element.classes.has(`${prefix}-hover-hint`));
-  const panel = body.children.find(element => element.classes.has(kind === 'awards' ? 'awards-inspector' : 'journey-inspector'));
+  const prefix = kind;
+  const hint = body.children.find(element => element.classes.has(kind === 'workshop' ? 'workshop-label' : `${prefix}-hover-hint`));
+  const panel = body.children.find(element => element.classes.has(`${prefix}-inspector`));
   const nav = body.children.find(element => element.classes.has(`${prefix}-controls`));
   const previous = nav.children.find(element => element.attrs.get('aria-label') === (kind === 'awards' ? 'Previous milestone' : 'Previous chapter'));
   const next = nav.children.find(element => element.attrs.get('aria-label') === (kind === 'awards' ? 'Next milestone' : 'Next chapter'));
-  const heading = panel.children[1];
   const step = (frames = 1) => { for (let frame = 0; frame < frames; frame++) { house.updateMatrixWorld(true); experience.update(1 / 60); } };
   const settle = () => step(120);
   const point = index => {
     house.updateMatrixWorld(true); camera.updateMatrixWorld(true);
-    const world = kind === 'awards' ? centerFor(index) : targets[index].getWorldPosition(new THREE.Vector3());
+    const world = centerFor(index);
     const ndc = world.project(camera);
     return { clientX: rect.left + (ndc.x + 1) * rect.width / 2, clientY: rect.top + (1 - ndc.y) * rect.height / 2 };
   };
   const aim = index => { const xy = point(index); canvas.dispatch('pointermove', xy); step(); return xy; };
-  return { experience, house, camera, canvas, body, panel, nav, hint, heading, previous, next, entries, targets, centerFor, counts, order,
+  return { experience, house, camera, canvas, body, panel, nav, hint, previous, next, entries, targets, centerFor, counts, order,
+    get heading() { return panel.children[kind === 'workshop' ? 2 : 1]; },
     savedPosition, savedRotation, step, settle, point, aim,
     resetCounts() { counts.domWrites = counts.rectReads = 0; order.length = 0; },
     resize(nextRect) { rect = nextRect; globalThis.innerWidth = window.innerWidth = 900; globalThis.innerHeight = window.innerHeight = 560;
@@ -161,8 +187,9 @@ for (const kind of ['awards', 'journey']) {
       try {
         assert.equal(f.experience.clickAt(0, 0), false); assert.equal(f.experience.isControllingCamera, false);
         assert.equal(f.experience.enter(), true); assert.equal(f.experience.enter(), false); f.settle(); assert.equal(f.experience.mode, 'active');
+        assert.equal(f.heading.textContent, f.entries[0].title); assert.equal(f.panel.classes.has('is-visible'), true);
         f.canvas.dispatch('pointerleave');
-        for (let index = 0; index < f.entries.length; index++) {
+        for (let index = 1; index < f.entries.length; index++) {
           f.next.dispatch('click'); f.settle(); assert.equal(f.heading.textContent, f.entries[index].title); assert.equal(f.panel.classes.has('is-visible'), true);
         }
         f.next.dispatch('click'); f.settle(); assert.equal(f.heading.textContent, f.entries[0].title);
@@ -184,6 +211,76 @@ for (const kind of ['awards', 'journey']) {
       } finally { f.cleanup(); }
       assert.equal(f.body.children.length, 0); assert.equal([...f.canvas.listeners.values()].reduce((sum, values) => sum + values.size, 0), 0);
       assert.ok(owned.every(root => root.parent === null));
+    }
+  });
+}
+
+for (const kind of ['awards', 'journey', 'workshop']) {
+  test(`${kind}: one entry action shows the first item, navigates from it and resets on reopening`, () => {
+    for (const reducedMotion of [false, true]) {
+      const f = fixture(kind, reducedMotion);
+      const title = index => f.entries[index].title ?? f.entries[index].name;
+      const visibleLights = () => f.entries.flatMap((_, index) =>
+        f.house.getObjectByName(`WORKSHOP_TREASURE_LIGHT_${index + 1}`)?.visible ? [index] : []);
+      const projection = f.camera.projectionMatrix.clone();
+      const cues = [];
+      if (kind === 'workshop') f.experience.sound.play = cue => cues.push(cue);
+      const enter = () => {
+        assert.equal(f.experience.enter(), true);
+        assert.equal(f.experience.isControllingCamera, true);
+        assert.equal(f.panel.classes.has('is-visible'), true, 'show details from the entry E without another action');
+        assert.equal(f.heading.textContent, title(0));
+        // Held/repeated entry input must not close the new selection mid-transition.
+        f.experience.toggleSelection(); f.experience.selectRelative(1);
+        assert.equal(f.heading.textContent, title(0));
+        let frames = 0;
+        while (f.experience.mode === 'entering' && frames++ < 90) f.step();
+        assert.equal(f.experience.mode, 'active');
+        assert.equal(f.heading.textContent, title(0));
+        if (kind !== 'workshop') {
+          const direction = f.centerFor(0).sub(f.camera.position).normalize();
+          assert.ok(f.camera.getWorldDirection(new THREE.Vector3()).dot(direction) > 1 - 1e-9,
+            'finish entry looking at the first item, without an intermediate overview');
+        } else {
+          f.step(); assert.deepEqual(visibleLights(), [0]);
+        }
+      };
+      try {
+        enter();
+        if (kind === 'workshop') assert.deepEqual(cues, ['enter'], 'entry must not stack enter and selection sounds');
+        for (let index = 1; index < f.entries.length; index++) {
+          f.experience.selectRelative(1); f.settle(); assert.equal(f.heading.textContent, title(index));
+          if (kind === 'workshop') assert.deepEqual(visibleLights(), [index]);
+        }
+        f.experience.selectRelative(1); f.settle(); assert.equal(f.heading.textContent, title(0));
+        f.experience.selectRelative(-1); f.settle(); assert.equal(f.heading.textContent, title(f.entries.length - 1));
+        f.canvas.dispatch('pointerleave'); f.step();
+        f.experience.toggleSelection(); f.settle(); assert.equal(f.panel.classes.has('is-visible'), false);
+        if (kind === 'workshop') assert.deepEqual(visibleLights(), []);
+        const picked = f.aim(1);
+        assert.equal(f.experience.clickAt(picked.clientX, picked.clientY), true);
+        f.settle(); assert.equal(f.heading.textContent, title(1));
+        assert.equal(f.panel.classes.has('is-visible'), true);
+        if (kind === 'workshop') assert.deepEqual(visibleLights(), [1]);
+        let returned = 0;
+        f.experience.leave(() => returned++); f.settle();
+        assert.equal(returned, 1); assert.equal(f.experience.isControllingCamera, false);
+        assert.equal(f.panel.classes.has('is-visible'), false); assert.equal(f.nav.classes.has('is-visible'), false);
+        assert.ok(f.camera.position.distanceTo(f.savedPosition) < 1e-12);
+        assert.ok(1 - Math.abs(f.camera.quaternion.dot(f.savedRotation)) < 1e-12);
+        if (kind === 'workshop') assert.deepEqual(visibleLights(), []);
+        f.resize({ left: 30, top: 10, width: 850, height: 530 });
+        const resizedProjection = f.camera.projectionMatrix.clone();
+        enter(); assert.deepEqual(f.camera.projectionMatrix, resizedProjection);
+        f.experience.leave(() => returned++); f.settle(); assert.equal(returned, 2);
+        // Esc/return during the initial movement must also restore the saved camera.
+        assert.equal(f.experience.enter(), true); f.step();
+        f.experience.leave(() => returned++); f.settle(); assert.equal(returned, 3);
+        assert.ok(f.camera.position.distanceTo(f.savedPosition) < 1e-12);
+        assert.ok(!f.camera.projectionMatrix.equals(projection), 'keep the requested resized projection');
+      } finally { f.cleanup(); }
+      assert.equal(f.body.children.length, 0);
+      assert.equal([...f.canvas.listeners.values()].reduce((sum, listeners) => sum + listeners.size, 0), 0);
     }
   });
 }
