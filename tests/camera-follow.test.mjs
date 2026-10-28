@@ -14,13 +14,14 @@ await build({ stdin: {
     "export { CameraCollision } from './src/camera/CameraCollision';" +
     "export { PhysicsWorld } from './src/physics/PhysicsWorld';" +
     "export { WorldColliders } from './src/physics/WorldColliders';" +
-    "export { PlayerBody } from './src/world/player/PlayerBody';",
+    "export { PlayerBody } from './src/world/player/PlayerBody';" +
+    "export { InteractionHighlight } from './src/core/InteractionHighlight';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: bundle });
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { ThirdPersonCamera, CameraCollision, PhysicsWorld, WorldColliders, PlayerBody } = loaded;
+const { ThirdPersonCamera, CameraCollision, PhysicsWorld, WorldColliders, PlayerBody, InteractionHighlight } = loaded;
 
 const dom = () => ({ addEventListener() {}, setPointerCapture() {}, hasPointerCapture: () => false });
 const targetOf = player => player.position.clone().add(new THREE.Vector3(0, 1.25, 0));
@@ -184,6 +185,112 @@ test('walk and run camera paths around the shipped house remain clear of fixed c
           physics.rapier.QueryFilterFlags.ONLY_FIXED);
         assert.equal(hit, null, 'camera intersects ' + hit?.handle + ' at speed ' + speed + ', frame ' + frame);
       }
+    }
+  } finally { physics.world.free(); }
+});
+
+test('repeated full player turns beside highlighted furniture do not reset or pop the view', async () => {
+  const { scene: house } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const { scene: player } = await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url));
+  const scene = new THREE.Scene(); scene.add(house, player);
+  const physics = new PhysicsWorld(); await physics.init();
+  const highlight = new InteractionHighlight();
+  try {
+    const log = console.log;
+    try { console.log = () => {}; new WorldColliders(physics).createFromEnvironment(house); }
+    finally { console.log = log; }
+    physics.beginFrame(1 / 60); physics.step();
+    const floorY = new THREE.Box3().setFromObject(house.getObjectByName('COL_BOX_HOUSE_FLOOR')).max.y;
+    player.updateMatrixWorld(true);
+    const modelBottom = new THREE.Box3().setFromObject(player).min.y - player.position.y;
+    const body = new PlayerBody(physics, new THREE.Vector3());
+    const camera = new THREE.PerspectiveCamera(45, 1.5, 0.1, 1000);
+    const follow = new ThirdPersonCamera(camera, player, dom(), physics);
+    follow.setInteriorMode(true);
+    const ball = new physics.rapier.Ball(0.249), rotation = { x: 0, y: 0, z: 0, w: 1 };
+    for (const [name, side] of [['chair02_texturedobj', 'front'], ['SEC_ALCHEMY_Stool', 'left']]) {
+      const furniture = house.getObjectByName(name); assert.ok(furniture);
+      const bounds = new THREE.Box3().setFromObject(furniture), center = bounds.getCenter(new THREE.Vector3());
+      body.teleport(new THREE.Vector3(side === 'left' ? bounds.min.x - 0.42 : center.x,
+        floorY + 0.15, side === 'front' ? bounds.max.z + 0.42 : center.z));
+      for (let frame = 0; frame < 90; frame++) { body.update(0, 0, 2, false, 1 / 60); physics.step(); }
+      assert.ok(body.isGrounded);
+      body.syncModel(player, modelBottom);
+      const position = player.position.clone();
+      highlight.setTarget(furniture); assert.ok(highlight.active);
+      for (const direction of [-1, 1]) {
+        player.rotation.set(0, direction * 8 * Math.PI, 0); follow.snap();
+        const previousPosition = camera.position.clone(), previousRotation = camera.quaternion.clone();
+        for (let frame = 0; frame < 300; frame++) {
+          const yaw = player.rotation.y + direction * 4 / 60;
+          player.rotation.y = yaw;
+          highlight.update(); follow.update(1 / 60);
+          assert.equal(player.rotation.y, yaw, 'keep the unwrapped gameplay heading');
+          assert.ok(player.position.equals(position));
+          const step = camera.position.distanceTo(previousPosition);
+          assert.ok(step < 0.35, 'camera popped ' + step + ' m at heading ' + yaw);
+          assert.ok(camera.quaternion.angleTo(previousRotation) < 0.15, 'view direction reset during the turn');
+          assert.equal(physics.world.intersectionWithShape(camera.position, rotation, ball,
+            physics.rapier.QueryFilterFlags.ONLY_FIXED), null, 'anticipation must keep collision safety');
+          previousPosition.copy(camera.position); previousRotation.copy(camera.quaternion);
+        }
+      }
+    }
+  } finally { highlight.clear(); physics.world.free(); }
+});
+
+test('dragging the camera for multiple revolutions and releasing keeps the orbit continuous', async () => {
+  const { physics, player, camera, follow } = await fixture();
+  try {
+    physics.world.createCollider(physics.rapier.ColliderDesc.cuboid(0.6, 1, 0.6).setTranslation(1.3, 1, 0));
+    physics.invalidateStaticQueries(); physics.step();
+    follow.setInputEnabled(true);
+    follow.onPointerDown({ button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+    const before = camera.position.clone(), quaternion = camera.quaternion.clone();
+    for (let frame = 1; frame <= 270; frame++) {
+      follow.onPointerMove({ clientX: -frame * (4 / 60) / 0.005, clientY: 0 });
+      follow.update(1 / 60);
+      const step = camera.position.distanceTo(before);
+      assert.ok(step < 0.45, 'drag orbit popped ' + step + ' m');
+      assert.ok(camera.quaternion.angleTo(quaternion) < 0.2);
+      before.copy(camera.position); quaternion.copy(camera.quaternion);
+    }
+    follow.onPointerUp({ pointerId: 1 });
+    follow.update(1 / 60);
+    assert.ok(camera.quaternion.angleTo(quaternion) < 0.2, 'release must not reset at the angle wrap');
+    assert.equal(player.rotation.y, 0, 'orbiting must not turn the player');
+  } finally { physics.world.free(); }
+});
+
+test('turn prediction has a bounded query budget and returns to idle query caching', async () => {
+  const { physics, player, follow } = await fixture();
+  try {
+    let queries = 0;
+    const cast = physics.world.castShape.bind(physics.world);
+    physics.world.castShape = (...args) => { queries++; return cast(...args); };
+    for (let frame = 0; frame < 240; frame++) {
+      player.rotation.y += 4 / 60;
+      const before = queries; follow.update(1 / 60);
+      assert.ok(queries - before <= 7, 'prediction must stay within seven sweeps while turning');
+    }
+    for (let frame = 0; frame < 300; frame++) follow.update(1 / 60);
+    const atRest = queries;
+    for (let frame = 0; frame < 120; frame++) follow.update(1 / 60);
+    assert.equal(queries, atRest, 'do not keep prediction queries running at rest');
+  } finally { physics.world.free(); }
+});
+
+test('a zero-time frame during a turn keeps the camera finite and stationary', async () => {
+  const { physics, player, camera, follow } = await fixture();
+  try {
+    physics.world.createCollider(physics.rapier.ColliderDesc.cuboid(0.6, 1, 0.6).setTranslation(1.3, 1, 0));
+    physics.invalidateStaticQueries(); physics.step();
+    for (let frame = 0; frame < 240; frame++) {
+      player.rotation.y += 4 / 60; follow.update(1 / 60);
+      const before = camera.position.clone();
+      follow.update(0);
+      assert.ok(camera.position.toArray().every(Number.isFinite));
+      assert.ok(camera.position.distanceTo(before) < 1e-9);
     }
   } finally { physics.world.free(); }
 });
