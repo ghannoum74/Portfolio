@@ -163,7 +163,7 @@ test('production renderer, physics and frame summaries enter the report without 
   });
   Object.assign(world, { initialized: true, physicsAccumulator: 0, fixedPhysicsStep: 1 / 60, maxPhysicsSteps: 5,
     perfDiag: true, physicsTimingStarted: 0, physicsTimingMs: 0, physicsTimingFrames: 119, physicsStepCount: 120,
-    physicsDebugRenderer: { update() {} }, player: {},
+    physicsDebugRenderer: { update() {} }, player: { syncFromPhysics() {}, updateAnimation() {} },
   });
   Object.assign(game, { renderer, world, performanceReport: report, performanceReportContext: () => ({ scene: 'house' }) });
   try {

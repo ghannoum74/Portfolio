@@ -24,6 +24,7 @@ export class PlayerBody {
 
   private readonly movement = new THREE.Vector3();
   private readonly up = new THREE.Vector3(0, 1, 0);
+  private readonly previousTranslation = new THREE.Vector3();
 
   private fallingTime = 0;
 
@@ -60,6 +61,7 @@ export class PlayerBody {
       );
 
     this.body = this.physics.world.createRigidBody(bodyDesc);
+    this.previousTranslation.copy(spawnPosition);
 
     const colliderDesc = RAPIER.ColliderDesc.capsule(
       this.CAPSULE_HALF_HEIGHT,
@@ -103,6 +105,8 @@ export class PlayerBody {
     jumpRequested: boolean,
     delta: number,
   ): void {
+    const position = this.body.translation();
+    this.previousTranslation.set(position.x, position.y, position.z);
     const wasGrounded = this.grounded;
 
     // Calculate the player's facing direction.
@@ -178,8 +182,6 @@ export class PlayerBody {
 
     const correctedMovement = this.characterController.computedMovement();
 
-    const position = this.body.translation();
-
     this.body.setNextKinematicTranslation({
       x: position.x + correctedMovement.x,
       y: position.y + correctedMovement.y,
@@ -202,18 +204,23 @@ export class PlayerBody {
     }
   }
 
-  syncModel(model: THREE.Object3D, modelBottomY: number): void {
+  syncModel(model: THREE.Object3D, modelBottomY: number, interpolationAlpha = 1): void {
     const position = this.body.translation();
+    const alpha = THREE.MathUtils.clamp(interpolationAlpha, 0, 1);
 
     /*
      * body.translation() = capsule center.
      *
      * We want the visual character's feet at the bottom of the capsule.
      */
-    const capsuleBottom =
-      position.y - this.CAPSULE_HALF_HEIGHT - this.CAPSULE_RADIUS;
+    const capsuleBottom = THREE.MathUtils.lerp(this.previousTranslation.y, position.y, alpha)
+      - this.CAPSULE_HALF_HEIGHT - this.CAPSULE_RADIUS;
 
-    model.position.set(position.x, capsuleBottom - modelBottomY, position.z);
+    model.position.set(
+      THREE.MathUtils.lerp(this.previousTranslation.x, position.x, alpha),
+      capsuleBottom - modelBottomY,
+      THREE.MathUtils.lerp(this.previousTranslation.z, position.z, alpha),
+    );
   }
 
   get isGrounded(): boolean {
@@ -267,6 +274,8 @@ export class PlayerBody {
      * Keep the kinematic target synchronized.
      */
     this.body.setNextKinematicTranslation(translation);
+    // A scene change or seating return must never interpolate from the old area.
+    this.previousTranslation.set(translation.x, translation.y, translation.z);
 
     /*
      * Clear movement from the previous area.

@@ -7,6 +7,11 @@ An obstructed turn therefore skipped the normal follow damping. Brief clear
 frames at an edge moved the camera out, followed by an immediate pull-in when
 the next frame detected the obstruction again.
 
+Walking also exposed a separate timing problem: the avatar root was copied from
+Rapier only after a fixed 60 Hz physics step, while the camera aimed at that
+stepped position on every render frame. At higher or uneven render rates this
+produced a repeated pitch vibration, even with a flat floor and no camera blocker.
+
 ## Resulting behavior
 
 - An independent requested camera position follows the player continuously,
@@ -29,6 +34,13 @@ the next frame detected the obstruction again.
   including the present-path sweep and bounded prediction/refinement queries.
   The existing query cache remains active at rest. Vectors and query results are
   reused, without per-frame allocations.
+- Rendering interpolates the avatar's position between the last two physics
+  samples, using the accumulator fraction on every displayed frame. The camera
+  follows that same visual position. The usual one-physics-step visual delay is
+  bounded to about 16.7 ms; simulation input, colliders and heading remain current.
+- Animation advances once per displayed frame, including frames between physics
+  steps, and drops the same excess backlog as physics after a severe stall.
+  Teleports reset both position samples; seated poses bypass interpolation.
 
 The change preserves camera offsets, lens/projection settings, rendering options,
 movement controls, physics stepping, scene assets and interaction cameras.
@@ -46,7 +58,7 @@ collider. The player's unwrapped yaw remained continuous: the apparent reset was
 the abrupt loss of camera clearance when its orbit entered the furniture's shadow.
 Turn prediction addresses this before the present-path safety clamp is needed.
 
-Twelve camera regressions now pass:
+Sixteen camera regressions now pass:
 
 1. Obstructed turn displacement stays below 0.025 m for that same small turn.
 2. Repeated three-frame clearance intervals do not change the resting arm length.
@@ -67,8 +79,19 @@ Twelve camera regressions now pass:
     including angle wrapping, without rotating the player.
 11. Turn prediction stays within its seven-sweep budget and stops querying at rest.
 12. Zero-time frames during a turn keep the camera finite and stationary.
+13. Visual interpolation uses the last two substeps, preserves unwrapped heading
+    and never feeds an interpolated position back into the physics body.
+14. Teleports render at their destination for every interpolation fraction.
+15. Walking on a flat floor at 120/144 Hz and uneven render intervals keeps
+    frame-to-frame camera pitch RMS below 0.0006 radians. The 120 Hz probe reduced
+    RMS from 0.001263 to 0.000286 radians without changing the camera lens.
+16. Interpolated walk/run paths toward the hearth and backward, with high and
+    uneven render rates, keep the camera sphere outside the actual house colliders.
 
-`npm test` passes all 152 tests, `npm run typecheck` and `npm run build` pass,
+The world-loop integration test also verifies that fractional render frames sync
+the visual pose and advance animation without taking extra physics steps.
+
+`npm test` passes all 157 tests, `npm run typecheck` and `npm run build` pass,
 and `git diff --check` passes. The build retains its existing edge-mask asset
 and chunk-size warnings.
 

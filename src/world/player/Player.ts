@@ -136,9 +136,9 @@ export class Player {
     this.mixer?.update(delta);
   }
 
-  syncFromPhysics(): void {
+  syncFromPhysics(interpolationAlpha = 1): void {
     if (this.seatedPose?.isActive) return;
-    this.body.syncModel(this.model, this.modelBottomY);
+    this.body.syncModel(this.model, this.modelBottomY, interpolationAlpha);
   }
 
   beginSitting(seat: THREE.Vector3, look: THREE.Vector3, couch?: THREE.Object3D): THREE.Vector3 | false {

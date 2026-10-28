@@ -294,3 +294,116 @@ test('a zero-time frame during a turn keeps the camera finite and stationary', a
     }
   } finally { physics.world.free(); }
 });
+
+test('visual player positions interpolate the last two physics steps without changing the body or heading', async () => {
+  const physics = new PhysicsWorld(); await physics.init();
+  try {
+    physics.world.createCollider(physics.rapier.ColliderDesc.cuboid(100, 0.1, 100).setTranslation(0, -0.1, 0));
+    physics.beginFrame(1 / 60); physics.step();
+    const body = new PlayerBody(physics, new THREE.Vector3(0, 0.9, 0)), model = new THREE.Group();
+    body.teleport(new THREE.Vector3(0, 0.05, 0));
+    for (let i = 0; i < 90; i++) { body.update(0, 0, 2, false, 1 / 60); physics.step(); }
+    let previous;
+    for (let i = 0; i < 3; i++) {
+      previous = body.getFeetPosition(new THREE.Vector3());
+      body.update(1, 0, 2, false, 1 / 60); physics.step();
+    }
+    const current = body.getFeetPosition(new THREE.Vector3());
+    model.rotation.y = 5 * Math.PI;
+    for (const alpha of [0, 0.25, 0.5, 1]) {
+      body.syncModel(model, -0.1, alpha);
+      const expected = previous.clone().lerp(current, alpha); expected.y += 0.1;
+      assert.ok(model.position.distanceTo(expected) < 1e-6, 'render position must match the interpolation fraction');
+      assert.equal(model.rotation.y, 5 * Math.PI, 'preserve unwrapped gameplay yaw');
+      assert.ok(body.getFeetPosition(new THREE.Vector3()).equals(current), 'rendering must not move the physics body');
+    }
+  } finally { physics.world.free(); }
+});
+
+test('teleports discard interpolation history before a scene or seating transition', async () => {
+  const physics = new PhysicsWorld(); await physics.init();
+  try {
+    const body = new PlayerBody(physics, new THREE.Vector3()), model = new THREE.Group();
+    body.teleport(new THREE.Vector3(1, 3, 2));
+    body.update(0, 0, 2, false, 1 / 60); physics.beginFrame(1 / 60); physics.step();
+    const destination = new THREE.Vector3(20, -30, -10);
+    body.teleport(destination);
+    for (const alpha of [0, 0.5, 1]) {
+      body.syncModel(model, 0, alpha);
+      assert.ok(model.position.distanceTo(destination) < 1e-6, 'no interpolation across the teleport');
+    }
+  } finally { physics.world.free(); }
+});
+
+test('steady walking does not shake camera pitch between 60 Hz physics updates', async () => {
+  for (const pattern of [[1 / 120], [1 / 144], [1 / 120, 1 / 40]]) {
+    const physics = new PhysicsWorld(); await physics.init();
+    try {
+      physics.world.createCollider(physics.rapier.ColliderDesc.cuboid(100, 0.1, 100).setTranslation(0, -0.1, 0));
+      physics.beginFrame(1 / 60); physics.step();
+      const body = new PlayerBody(physics, new THREE.Vector3(0, 0.9, 0)), player = new THREE.Group();
+      body.teleport(new THREE.Vector3(0, 0.05, 0));
+      for (let i = 0; i < 90; i++) { body.update(0, Math.PI, 2, false, 1 / 60); physics.step(); }
+      body.syncModel(player, 0); player.rotation.y = Math.PI;
+      const camera = new THREE.PerspectiveCamera(45, 1.5, 0.1, 1000);
+      const follow = new ThirdPersonCamera(camera, player, dom(), physics);
+      follow.setInteriorMode(true); follow.snap();
+      let accumulator = 0, previousPitch, squares = 0, samples = 0;
+      const forward = new THREE.Vector3();
+      for (let frame = 0; frame < 900; frame++) {
+        const delta = pattern[frame % pattern.length]; accumulator += delta;
+        while (accumulator >= 1 / 60) {
+          body.update(1, Math.PI, 2, false, 1 / 60); physics.step(); accumulator -= 1 / 60;
+        }
+        body.syncModel(player, 0, accumulator / (1 / 60));
+        follow.update(delta); camera.getWorldDirection(forward);
+        const pitch = Math.atan2(forward.y, Math.hypot(forward.x, forward.z));
+        if (frame > 500 && previousPitch !== undefined) { squares += (pitch - previousPitch) ** 2; samples++; }
+        previousPitch = pitch;
+      }
+      const rms = Math.sqrt(squares / samples);
+      assert.ok(rms < 0.0006, 'walking pitch shake was ' + rms + ' radians for frame pattern ' + pattern);
+    } finally { physics.world.free(); }
+  }
+});
+
+test('interpolated walking and running toward the hearth and back retain camera collision safety', async () => {
+  const { scene: house } = await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url));
+  const physics = new PhysicsWorld(); await physics.init();
+  try {
+    const log = console.log;
+    try { console.log = () => {}; new WorldColliders(physics).createFromEnvironment(house); }
+    finally { console.log = log; }
+    physics.beginFrame(1 / 60); physics.step();
+    const floorY = new THREE.Box3().setFromObject(house.getObjectByName('COL_BOX_HOUSE_FLOOR')).max.y;
+    const body = new PlayerBody(physics, new THREE.Vector3()), player = new THREE.Group();
+    const camera = new THREE.PerspectiveCamera(45, 1.5, 0.1, 1000);
+    const follow = new ThirdPersonCamera(camera, player, dom(), physics);
+    follow.setInteriorMode(true);
+    const ball = new physics.rapier.Ball(0.249), rotation = { x: 0, y: 0, z: 0, w: 1 };
+    for (const speed of [2, 8]) for (const pattern of [[1 / 120], [0.01, 0.025, 0.015]]) {
+      body.teleport(new THREE.Vector3(6.1, floorY + 0.15, -5));
+      for (let i = 0; i < 90; i++) { body.update(0, Math.PI, speed, false, 1 / 60); physics.step(); }
+      const feet = body.getFeetPosition(new THREE.Vector3());
+      assert.ok(physics.world.intersectionWithShape({ x: feet.x, y: feet.y + 0.9, z: feet.z },
+        rotation, new physics.rapier.Capsule(0.55, 0.349), physics.rapier.QueryFilterFlags.ONLY_FIXED) === null,
+      'the route must start with a clear player capsule');
+      body.syncModel(player, 0); player.rotation.y = Math.PI; follow.snap();
+      let elapsed = 0, accumulator = 0;
+      for (let frame = 0; elapsed < 4.3; frame++) {
+        const delta = pattern[frame % pattern.length]; elapsed += delta; accumulator += delta;
+        while (accumulator >= 1 / 60) {
+          body.update(elapsed < 1.8 ? 1 : -1, Math.PI, speed, false, 1 / 60);
+          physics.step(); accumulator -= 1 / 60;
+        }
+        body.syncModel(player, 0, accumulator / (1 / 60)); follow.update(delta);
+        assert.ok(camera.position.toArray().every(Number.isFinite));
+        const hit = physics.world.intersectionWithShape(camera.position, rotation, ball,
+          physics.rapier.QueryFilterFlags.ONLY_FIXED);
+        assert.ok(hit === null, JSON.stringify({ speed, pattern, frame, alpha: accumulator / (1 / 60),
+          feet: body.getFeetPosition(new THREE.Vector3()).toArray(), player: player.position.toArray(),
+          camera: camera.position.toArray(), collider: hit?.translation() }));
+      }
+    }
+  } finally { physics.world.free(); }
+});

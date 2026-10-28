@@ -1148,7 +1148,7 @@ test('live resolution respects native DPR, updates the border/composer and survi
   window.innerWidth = previous.width; window.innerHeight = previous.height; window.devicePixelRatio = previous.ratio;
 });
 
-test('fixed physics steps run at 60 Hz while animation advances once for the accumulated time', () => {
+test('fixed physics steps run at 60 Hz while rendered animation drops the same excess backlog', () => {
   const world = Object.create(World.prototype);
   const physicsDeltas = [], animationDeltas = [];
   let physicalSteps = 0, syncs = 0;
@@ -1169,7 +1169,27 @@ test('fixed physics steps run at 60 Hz while animation advances once for the acc
   world.update(0.1, false);
   assert.equal(physicalSteps, 8);
   assert.equal(animationDeltas.length, 2);
-  assert.equal(animationDeltas[1], 5 / 60);
+  assert.ok(Math.abs(animationDeltas[1] - 5 / 60) < 1e-12);
+});
+
+test('render frames between physics steps update interpolation and animation without advancing physics', () => {
+  const world = Object.create(World.prototype), fractions = [], animationDeltas = [];
+  let steps = 0;
+  Object.assign(world, {
+    initialized: true, physicsAccumulator: 0, fixedPhysicsStep: 1 / 60, maxPhysicsSteps: 5,
+    perfDiag: false, physicsDebugRenderer: { update() {} },
+    physics: { beginFrame() {}, step() { steps++; } },
+    player: { updatePhysics() {}, syncFromPhysics(alpha) { fractions.push(alpha); },
+      updateAnimation(delta) { animationDeltas.push(delta); } },
+  });
+  world.update(1 / 120, false);
+  assert.equal(steps, 0); assert.deepEqual(fractions, [0.5]);
+  world.update(1 / 120, false);
+  assert.equal(steps, 1); assert.deepEqual(fractions, [0.5, 0]);
+  world.update(1 / 120, false);
+  assert.equal(steps, 1); assert.deepEqual(fractions, [0.5, 0, 0.5]);
+  assert.equal(animationDeltas.length, 3);
+  assert.ok(Math.abs(animationDeltas.reduce((a, b) => a + b, 0) - 3 / 120) < 1e-12);
 });
 
 test('player physics does not resample animation and one visual update preserves the final pose', () => {
