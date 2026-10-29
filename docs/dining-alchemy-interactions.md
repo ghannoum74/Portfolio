@@ -52,6 +52,11 @@ Rerunning updates its own markers and disables unused chair triggers. The
 reference house's four chairs and their camera sight lines are checked in a
 disposable Blender copy; the owner's current model still needs a live review.
 
+If no usable chair markers were exported, the game can recover the original
+`Table_RoundSmall2` and `SEC_PROJECTS_Chair_1` dining set from its geometry.
+Valid authored markers take precedence; intentionally retired chair triggers
+stay retired. The fallback is calculated once when the house is prepared.
+
 ## Controls
 
 - Approach a prepared chair and press **E**. The avatar sits facing the table;
