@@ -43,6 +43,19 @@ function copies(count = 3) {
   return { root, meshes, material };
 }
 
+test('the authored bookshelf stays available for its border while neighboring props can still batch', () => {
+  const { root, meshes } = copies();
+  meshes[2].name = 'My_Bookshelf001';
+  meshes[2].userData.name = 'My Bookshelf.001';
+  const marker = new THREE.Group(); marker.name = 'INTERACT_LIBRARY_SHELF';
+  marker.userData.targetObject = 'My Bookshelf.001'; root.add(marker);
+  const result = new StaticMeshBatches(root);
+  assert.equal(meshes[2].visible, true);
+  assert.equal(result.stats.sourceMeshes, 2);
+  assert.equal(result.stats.batches, 1);
+  result.dispose();
+});
+
 test('sun shadows stop only at zero sunlight and return at dawn without releasing their map', () => {
   const sun = new THREE.DirectionalLight(); sun.castShadow = true;
   const map = new THREE.WebGLRenderTarget(16, 16); sun.shadow.map = map;

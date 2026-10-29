@@ -70,7 +70,7 @@ function compileSurface(couch: THREE.Object3D): CouchSurface | undefined {
  * or add these wrappers to the rendered scene. Original batch-hidden meshes are
  * deliberately included: their matrices/geometry still describe the visible prop.
  */
-export function createCouchSupport(house: THREE.Object3D, target: THREE.Object3D): THREE.Group {
+export function createCouchSupport(house: THREE.Object3D, target: THREE.Object3D, includeTouchingParts = true): THREE.Group {
   house.updateWorldMatrix(true, true);
   const selected = new Set<THREE.Mesh>(), seed = new THREE.Box3();
   const collect = (object: THREE.Object3D, output: THREE.Mesh[]): void => {
@@ -86,7 +86,7 @@ export function createCouchSupport(house: THREE.Object3D, target: THREE.Object3D
     return mesh.geometry.boundingBox!.clone().applyMatrix4(mesh.matrixWorld);
   };
   for (const mesh of initial) { selected.add(mesh); seed.union(box(mesh)); }
-  if (!seed.isEmpty()) {
+  if (includeTouchingParts && !seed.isEmpty()) {
     const size = seed.getSize(new THREE.Vector3()), span = Math.max(size.x, size.z);
     const tolerance = Math.max(0.015, span * 0.015), ceiling = seed.min.y + Math.max(1.3, span * 0.9);
     const all: THREE.Mesh[] = [];

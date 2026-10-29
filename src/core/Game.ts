@@ -878,13 +878,11 @@ export class Game {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
-    // Bed / fireside cinematic: allow E or Esc to return, not gameplay input.
+    // Furniture focus owns its seat and panel controls, not gameplay input.
     if (this.furniture?.isControllingCamera) {
-      if (event.code === "Escape" || event.code === "KeyE" || event.code === "Enter") {
+      if (["Escape", "KeyE", "Enter", "Space", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code)) {
         event.preventDefault();
-        if (!event.repeat) this.furniture.leaveFocus();
-      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code)) {
-        event.preventDefault();
+        if (!event.repeat) this.furniture.handleFocusKey(event.code);
       }
       return;
     }

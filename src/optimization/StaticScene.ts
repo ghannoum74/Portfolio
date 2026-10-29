@@ -7,6 +7,9 @@ const BATCH_NAMES = /^(HOUSE_BEAM_BATCH_|STATIC_BATCH_)/;
 /** Animation and gameplay nodes retain their original hierarchy and transforms. */
 function exclusions(root: THREE.Object3D, animations: readonly THREE.AnimationClip[]): Set<THREE.Object3D> {
   const excluded = new Set<THREE.Object3D>();
+  // The bookshelf remains a real mesh so the proximity border can outline it.
+  const shelfMarker = root.getObjectByName("INTERACT_LIBRARY_SHELF");
+  const shelfName = typeof shelfMarker?.userData.targetObject === "string" ? shelfMarker.userData.targetObject : "Bookcase_2";
   for (const clip of animations) for (const track of clip.tracks) {
     const name = THREE.PropertyBinding.parseTrackName(track.name).nodeName;
     const found = THREE.PropertyBinding.findNode(root, name);
@@ -15,7 +18,7 @@ function exclusions(root: THREE.Object3D, animations: readonly THREE.AnimationCl
     node.traverse(child => excluded.add(child));
   }
   root.traverse(child => {
-    if (DYNAMIC_NAMES.test(child.name) || child.userData.staticOptimization === false || child instanceof THREE.SkinnedMesh ||
+    if ((child.userData.name ?? child.name) === shelfName || DYNAMIC_NAMES.test(child.name) || child.userData.staticOptimization === false || child instanceof THREE.SkinnedMesh ||
         child instanceof THREE.Bone || child instanceof THREE.InstancedMesh ||
         child instanceof THREE.BatchedMesh ||
         (child instanceof THREE.Mesh && Object.keys(child.geometry.morphAttributes).length > 0) ||

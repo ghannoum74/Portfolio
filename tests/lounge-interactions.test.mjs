@@ -308,17 +308,86 @@ test('standing after approaching from either side preserves W/S direction, A/D t
 function domFixture() {
   const original = globalThis.document;
   const element = () => {
-    const classes = new Set(), children = [];
+    const classes = new Set(), children = [], listeners = new Map();
     return { dataset: {}, children,
       classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); }, contains: name => classes.has(name) },
       setAttribute() {}, appendChild(child) { children.push(child); }, remove() {},
       replaceChildren() { children.length = 0; },
+      addEventListener(name, listener) { listeners.set(name, listener); },
+      click() { listeners.get('click')?.(); },
       getContext: () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {} }),
     };
   };
   globalThis.document = { createElement: element, head: { appendChild() {} }, body: { appendChild() {} } };
   return () => { if (original === undefined) delete globalThis.document; else globalThis.document = original; };
 }
+
+test('dining panels select the first item, brew the selected color and restore focus on every exit', () => {
+  const restore = domFixture();
+  try {
+    const house = new THREE.Group(), material = new THREE.MeshBasicMaterial();
+    const add = (name, x) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+      mesh.name = name; mesh.position.x = x; house.add(mesh); return mesh;
+    };
+    const cauldron = add('SEC_ALCHEMY_Cauldron', 0);
+    add('SEC_ALCHEMY_Drawer_4', 3);
+    add('Bookcase_2', 6);
+    const chair = add('SEC_PROJECTS_Chair_1', 9);
+    const marker = (name, position, data = {}) => {
+      const object = new THREE.Group(); object.name = name; object.position.copy(position); object.userData = data; house.add(object);
+    };
+    marker('INTERACT_DINING_CHAIR_01', new THREE.Vector3(9, 0, 0.8), {
+      portfolioInteraction: 'diningChair', targetObject: chair.name, seatObject: 'SEAT_DINING_01',
+      lookObject: 'LOOK_DINING_01', cameraObject: 'CAM_DINING_01',
+    });
+    marker('SEAT_DINING_01', new THREE.Vector3(9, 0.5, 0));
+    marker('LOOK_DINING_01', new THREE.Vector3(9, 0.5, -1));
+    marker('CAM_DINING_01', new THREE.Vector3(10, 1.5, 1));
+    let starts = 0, ends = 0, sits = 0, stands = 0, visible;
+    const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(), {
+      onFocusStart(showPlayer) { starts++; visible = showPlayer; return true; },
+      onFocusEnd() { ends++; },
+      onSitStart() { sits++; return true; }, onSitEnd() { stands++; }, isMuted: () => true,
+    });
+    const interactions = []; furniture.register(value => interactions.push(value));
+    assert.equal(interactions.filter(item => item.highlightTarget === cauldron).length, 1);
+    assert.equal(interactions.find(item => item.highlightTarget === chair).getHint(), 'Sit at Table');
+    furniture.interact('cauldron');
+    const panel = furniture.diningPanel, brewNode = furniture.nodes.get('cauldron');
+    assert.equal(furniture.isControllingCamera, true); assert.equal(visible, true);
+    assert.equal(panel.title.textContent, 'Verdant Elixir'); assert.equal(brewNode.active, false);
+    furniture.handleFocusKey('ArrowRight');
+    assert.equal(panel.title.textContent, 'Moonwater');
+    furniture.handleFocusKey('KeyE');
+    assert.equal(brewNode.active, true); assert.equal(brewNode.bubbles.material.color.getHex(), 0x82c8ef);
+    furniture.handleFocusKey('ArrowRight');
+    assert.equal(panel.title.textContent, 'Sunfire'); assert.equal(brewNode.active, false);
+    panel.brewButton.click(); assert.equal(brewNode.bubbles.material.color.getHex(), 0xe9ba70);
+    furniture.handleFocusKey('Escape');
+    assert.equal(panel.root.hidden, true); assert.equal(brewNode.active, false);
+    assert.equal(furniture.isControllingCamera, false); assert.equal(ends, 1);
+    furniture.interact('cauldron'); assert.equal(panel.title.textContent, 'Verdant Elixir'); panel.closeButton.click();
+    furniture.interact('bookshelf'); assert.equal(panel.title.textContent, 'Building Worlds');
+    panel.next.click(); assert.equal(panel.title.textContent, 'Thoughtful Interfaces');
+    furniture.handleFocusKey('Escape');
+    furniture.interact('alchemyDrawer'); assert.equal(panel.eyebrow.textContent, 'A RECIPE FOR MOONWATER');
+    assert.match(panel.description.textContent, /blue Moonwater/);
+    furniture.handleFocusKey('KeyE');
+    interactions.find(item => item.highlightTarget === chair).interact();
+    assert.equal(sits, 1); assert.equal(furniture.isControllingCamera, true);
+    for (let i = 0; i < 60; i++) furniture.update(1 / 60);
+    const expectedCamera = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(
+      new THREE.Vector3(10, 1.5, 1), new THREE.Vector3(9, 0.93, 0), new THREE.Vector3(0, 1, 0),
+    ));
+    assert.ok(furniture.camera.quaternion.angleTo(expectedCamera) < 1e-6);
+    furniture.handleFocusKey('Escape');
+    for (let i = 0; i < 60; i++) furniture.update(1 / 60);
+    assert.equal(stands, 1); assert.equal(furniture.isControllingCamera, false);
+    furniture.interact('cauldron'); furniture.handleFocusKey('KeyE'); furniture.destroy();
+    assert.equal(starts, ends, 'teardown also restores controls once');
+  } finally { restore(); }
+});
 
 function furnitureFixture(overrides = {}, authoringName, withChair = true) {
   const house = new THREE.Group(); house.position.y = -30;

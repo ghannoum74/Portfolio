@@ -6,6 +6,7 @@ import { FireplaceFire } from "./FireplaceFire";
 import { authoredObject, findFiresideSeat, type FurnitureSeat } from "./FiresideSeat";
 import { createSinkWater } from "./SinkWater";
 import { inspectBed, type BedGeometry } from "../../player/BedGeometry";
+import { DiningPanel, type DiningPanelMode, type Potion } from "./DiningPanel";
 
 /**
  * All small, tactile furniture interactions in one system.
@@ -15,12 +16,13 @@ import { inspectBed, type BedGeometry } from "../../player/BedGeometry";
 
 type FurnitureKind =
   | "cauldron" | "potion" | "drawer" | "sink" | "flame"
-  | "books" | "rest" | "notice" | "plant" | "seat" | "fireplace";
+  | "books" | "bookshelf" | "rest" | "notice" | "plant" | "seat" | "fireplace";
 
 type FurnitureId =
   | "cauldron" | "potionGreen" | "potionBlue" | "potionGold"
   | "alchemyDrawer" | "sink" | "candle" | "torch" | "bookStack"
-  | "bed" | "fireside" | "noticeBoard" | "houseplant" | "couch" | "fireplace";
+  | "bed" | "fireside" | "noticeBoard" | "houseplant" | "couch" | "fireplace" | "bookshelf"
+  | `dining:${string}`;
 
 type FurnitureDefinition = {
   id: FurnitureId;
@@ -40,11 +42,12 @@ const FURNITURE: readonly FurnitureDefinition[] = [
   { id: "potionGreen", objectName: "SEC_ALCHEMY_Potion_1", kind: "potion", label: "Inspect Verdant Elixir", message: "Verdant Elixir — a vial of curious energy.", color: 0x85dd9e, range: 1.65 },
   { id: "potionBlue", objectName: "SEC_ALCHEMY_Potion_2", kind: "potion", label: "Inspect Moonwater", message: "Moonwater — bright as a midnight sky.", color: 0x82c8ef, range: 1.65 },
   { id: "potionGold", objectName: "SEC_ALCHEMY_Potion_4", kind: "potion", label: "Inspect Sunfire", message: "Sunfire — a drop of bottled daylight.", color: 0xe9ba70, range: 1.65 },
-  { id: "alchemyDrawer", objectName: "SEC_ALCHEMY_Drawer_4", kind: "drawer", label: "Open Alchemy Drawer", message: "A drawer of forgotten ingredients.", color: 0xdfbd81, range: 1.8 },
+  { id: "alchemyDrawer", objectName: "SEC_ALCHEMY_Drawer_4", kind: "drawer", label: "Read Alchemy Recipe", message: "A recipe for Moonwater.", color: 0xdfbd81, range: 1.8 },
   { id: "sink", objectName: "SEC_KITCHEN_Kitchen_Sink", kind: "sink", label: "Turn On Water", message: "A tiny stream of magical spring water.", color: 0x96dceb, range: 1.9 },
   { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
   { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
   { id: "bookStack", objectName: "SEC_LIBRARY_Book_Stack_2", kind: "books", label: "Examine Old Books", message: "Old books, new ideas. Every adventure starts somewhere.", color: 0xd8b88a, range: 1.8 },
+  { id: "bookshelf", objectName: "Bookcase_2", kind: "bookshelf", label: "Explore Bookshelf", message: "Stories from the bookshelf.", color: 0xd8b88a, range: 1.8 },
   { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest on Bed", message: "A quiet moment on the bed.", color: 0xe5c9a8, range: 1.15 },
   { id: "fireside", objectName: "SEC_HEARTH_Pouf", kind: "rest", label: "Relax by the Hearth", message: "A peaceful pause beside the fire.", color: 0xf4b77e, range: 1.9 },
   { id: "noticeBoard", objectName: "SEC_ENTRANCE_NoticeBoard", kind: "notice", label: "Read Notice Board", message: "Traveler's note: seek the book, workshop, awards and map — and take your time exploring.", color: 0xe6c889, range: 1.9 },
@@ -154,6 +157,8 @@ export class HouseFurnitureInteractions {
   private messageTime = 0;
   private elapsed = 0;
   private audio?: AudioContext;
+  private diningPanel?: DiningPanel;
+  private diningMode: DiningPanelMode | null = null;
 
   constructor(
     private readonly house: THREE.Object3D,
@@ -190,14 +195,45 @@ export class HouseFurnitureInteractions {
         this.addAuthoredInteraction(def);
         continue;
       }
-      const model = house.getObjectByName(def.objectName);
+      const markerName = def.id === "cauldron" ? "INTERACT_ALCHEMY_CAULDRON" :
+        def.id === "alchemyDrawer" ? "INTERACT_RECIPE_DRAWER" :
+        def.id === "bookshelf" ? "INTERACT_LIBRARY_SHELF" : undefined;
+      const marker = markerName ? house.getObjectByName(markerName) : undefined;
+      const model = marker ? authoredObject(house, marker.userData.targetObject) : authoredObject(house, def.objectName);
       if (!model) {
         console.info(`[Furniture] Optional object not present: ${def.objectName}`);
         continue;
       }
-      this.nodes.set(def.id, this.makeNode(def, model));
+      const node = this.makeNode(def, model);
+      if (marker) node.interactionAnchor = marker;
+      this.nodes.set(def.id, node);
     }
+    this.addDiningSeats();
     console.info(`[Furniture] Loaded ${this.activeCount}/${FURNITURE.length} furniture interactions.`);
+  }
+
+  private addDiningSeats(): void {
+    const markers: THREE.Object3D[] = [];
+    this.house.traverse(object => {
+      if (/^INTERACT_DINING_CHAIR_\d+$/.test(object.name) && object.userData.portfolioInteraction === "diningChair") markers.push(object);
+    });
+    for (const marker of markers) {
+      const target = authoredObject(this.house, marker.userData.targetObject);
+      const position = authoredObject(this.house, marker.userData.seatObject);
+      const look = authoredObject(this.house, marker.userData.lookObject);
+      const camera = authoredObject(this.house, marker.userData.cameraObject);
+      if (!target || !position || !look || !camera) {
+        console.warn(`[Furniture] Incomplete dining chair markers: ${marker.name}`);
+        continue;
+      }
+      const def: FurnitureDefinition = { id: `dining:${marker.name}`, objectName: "", kind: "seat",
+        label: "Sit at Table", message: "A quiet moment at the table.", color: 0xe5c9a8, range: 1.15 };
+      const node = this.makeNode(def, target);
+      node.interactionAnchor = marker;
+      // A nearby table or another chair is not part of this chair's seat.
+      node.seat = { position, look, camera, support: createCouchSupport(this.house, target, false) };
+      this.nodes.set(def.id, node);
+    }
   }
 
   /** Register all remaining props with the *existing* E-key InteractionSystem. */
@@ -263,6 +299,10 @@ export class HouseFurnitureInteractions {
     if (this.focusState !== "idle" || !this.house.visible) return;
     const node = this.nodes.get(id);
     if (!node) return;
+    if (id === "cauldron" || id === "alchemyDrawer" || id === "bookshelf") {
+      this.openDiningPanel(id === "cauldron" ? "alchemy" : id === "bookshelf" ? "bookshelf" : "recipe");
+      return;
+    }
     if (node.seat) {
       this.startSit(node);
       return;
@@ -286,10 +326,67 @@ export class HouseFurnitureInteractions {
 
   /** During a rest camera shot, Escape or E returns the player. */
   leaveFocus(): void {
+    if (this.diningMode) { this.closeDiningPanel(); return; }
     if (this.focusState === "idle" || this.focusState === "leaving") return;
     this.focusState = "leaving";
     this.beginCameraTween(this.savedPosition, this.savedRotation, 0.78);
     this.showMessage("Returning to your adventure…", 0.8);
+  }
+
+  /** Furniture focus owns E/Esc and arrows while its panel or seat is open. */
+  handleFocusKey(code: string): void {
+    if (this.diningMode) {
+      if (code === "Escape") this.closeDiningPanel();
+      else if (code === "ArrowLeft" || code === "ArrowRight") this.diningPanel?.selectRelative(code === "ArrowRight" ? 1 : -1);
+      else if (code === "KeyE" || code === "Enter") {
+        if (this.diningMode === "alchemy") this.diningPanel?.brew();
+        else if (this.diningMode === "recipe") this.closeDiningPanel();
+      }
+    } else if (code === "Escape" || code === "KeyE" || code === "Enter") this.leaveFocus();
+  }
+
+  private openDiningPanel(mode: DiningPanelMode): void {
+    if (!this.options.onFocusStart(true)) return;
+    try {
+      this.diningPanel ??= new DiningPanel({
+        onSelection: () => this.stopBrewing(),
+        onBrew: potion => this.brew(potion),
+        onClose: () => this.closeDiningPanel(),
+      });
+      this.diningMode = mode;
+      this.focusState = "resting";
+      this.notice.classList.remove("is-visible");
+      this.diningPanel.open(mode);
+    } catch (error) {
+      this.diningMode = null;
+      this.focusState = "idle";
+      this.options.onFocusEnd();
+      console.warn("Dining interaction could not be opened", error);
+    }
+  }
+
+  private brew(potion: Potion): void {
+    const node = this.nodes.get("cauldron");
+    if (!node || this.diningMode !== "alchemy") return;
+    node.auraMaterial.color.setHex(potion.color);
+    node.light?.color.setHex(potion.color);
+    if (node.bubbles) (node.bubbles.material as THREE.MeshBasicMaterial).color.setHex(potion.color);
+    node.active = true; node.burst = 1;
+    this.playNote(590);
+  }
+
+  private stopBrewing(): void {
+    const node = this.nodes.get("cauldron");
+    if (node) { node.active = false; node.burst = 0; }
+  }
+
+  private closeDiningPanel(): void {
+    if (!this.diningMode) return;
+    this.stopBrewing();
+    this.diningPanel?.close();
+    this.diningMode = null;
+    this.focusState = "idle";
+    this.options.onFocusEnd();
   }
 
   update(delta: number): void {
@@ -517,6 +614,7 @@ export class HouseFurnitureInteractions {
     this.savedPosition.copy(this.camera.position);
     this.savedRotation.copy(this.camera.quaternion);
     const target = sitting instanceof THREE.Vector3 ? sitting.clone() : seat.clone().add(new THREE.Vector3(0, 0.55, 0));
+    if (node.def.id.startsWith("dining:")) target.y -= 0.12;
     if (node.hearth) target.lerp(node.hearth.getLightPosition(new THREE.Vector3()), 0.33);
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(camera, target, new THREE.Vector3(0, 1, 0)),
@@ -652,6 +750,8 @@ export class HouseFurnitureInteractions {
   }
 
   destroy(): void {
+    if (this.diningMode) this.closeDiningPanel();
+    this.diningPanel?.destroy();
     if (this.sitting) {
       this.sitting = false;
       this.options.onSitEnd?.();
