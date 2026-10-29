@@ -24,10 +24,26 @@ it is pulled apart or moved.
    `CAM_DINING_XX` Empty. Their **positions** control seat contact, facing and
    the seated camera; move the Empty if adjustment is needed. Do not rotate the
    camera marker to aim it. Re-running the script recalculates these markers.
-5. Save the Blender file and export the **whole house** as GLB with **Include →
-   Custom Properties** enabled and **Selected Objects** disabled. Use the
-   project's `public/assets/models/environment/house.glb` path. Follow any
-   existing asset compression workflow after export.
+5. In Git Bash at the project root, create an export folder:
+
+   ```bash
+   mkdir -p dining-house-export/input
+   ```
+
+   Save the Blender file, then export the **whole house** as
+   `dining-house-export/input/house.glb`, with **Include → Custom Properties**
+   enabled and **Selected Objects** disabled.
+6. In Git Bash, pack that one export and copy it to the game. Keep only the
+   house GLB in the input folder; `--recursive` processes every GLB in it.
+
+   ```bash
+   node scripts/optimize-assets.mjs dining-house-export/input dining-house-export/output --recursive &&
+   cp dining-house-export/output/house.glb public/assets/models/environment/house.glb
+   ```
+
+   The existing optimizer checks that decoded geometry and marker properties
+   are preserved. The copy runs only if packing succeeds. The input and output
+   folders are temporary working files and can be removed after verification.
 
 The script adds only owned Empty markers and their properties. It never moves,
 deletes or re-materials furniture, changes existing colliders, saves, or exports.
