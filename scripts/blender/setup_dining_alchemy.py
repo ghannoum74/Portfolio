@@ -91,12 +91,16 @@ def upward_seat(chair, low, high, forward):
 def camera_obstacles():
     """Cache evaluated bounds once; helpers do not obscure a camera view."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    visuals, colliders = [], []
+    visuals, colliders, unavailable = [], [], set()
     for obj in bpy.context.scene.objects:
         if obj.type != "MESH" or obj.get("portfolioHelper"):
             continue
+        # Scene objects in excluded collections are not in the active
+        # dependency graph and cannot be ray-cast, even when hide_get() is false.
+        if bpy.context.view_layer.objects.get(obj.name) is None:
+            continue
         is_collider = obj.name.startswith("COL_BOX_")
-        if not is_collider and (obj.name.startswith(HELPERS) or obj.hide_render or obj.hide_get()):
+        if not is_collider and (obj.name.startswith(HELPERS) or obj.hide_render or not obj.visible_get()):
             continue
         evaluated = obj.evaluated_get(depsgraph)
         if not evaluated.data or not len(evaluated.data.vertices) or abs(evaluated.matrix_world.determinant()) < 1e-10:
@@ -108,10 +112,10 @@ def camera_obstacles():
             colliders.append((low, high))
         else:
             visuals.append((evaluated, low, high))
-    return visuals, colliders
+    return visuals, colliders, unavailable
 
 
-def clear_camera(camera, target, visuals, colliders):
+def clear_camera(camera, target, visuals, colliders, unavailable):
     # Keep the camera outside expanded collider bounds, including walls.
     for low, high in colliders:
         if all(low[i] - 0.18 <= camera[i] <= high[i] + 0.18 for i in range(3)):
@@ -126,7 +130,13 @@ def clear_camera(camera, target, visuals, colliders):
             continue
         inverse = obj.matrix_world.inverted()
         local_direction = (inverse.to_3x3() @ direction).normalized()
-        found, location, _, _ = obj.ray_cast(inverse @ camera, local_direction)
+        try:
+            found, location, _, _ = obj.ray_cast(inverse @ camera, local_direction)
+        except RuntimeError:
+            # Some visible objects can still lack an evaluated mesh. Keep the
+            # setup usable, but tell the author that its camera needs review.
+            unavailable.add(obj.name)
+            continue
         if found:
             hit = obj.matrix_world @ location
             if (hit - camera).length < distance - 0.03:
@@ -227,6 +237,9 @@ def make_plan():
             point = center + front * distance
         point.z = low.z + min(0.55, size.z * 0.5)
         planned.append((marker_name, point, {"portfolioInteraction": interaction, "targetObject": target.name}))
+
+    if obstacles[2]:
+        warnings.append("Camera check could not ray-cast: " + ", ".join(sorted(obstacles[2])) + "; inspect the camera markers.")
 
     for name, _, _ in planned:
         existing = bpy.data.objects.get(name)

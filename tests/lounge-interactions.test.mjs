@@ -20,7 +20,6 @@ await build({ stdin: {
     "export { FireplaceFire } from './src/world/house/furniture/FireplaceFire';" +
     "export { findFiresideSeat } from './src/world/house/furniture/FiresideSeat';" +
     "export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';" +
-    "export { inferDiningSeats } from './src/world/house/furniture/DiningSeatFallback';" +
     "export { createSinkWater } from './src/world/house/furniture/SinkWater';" +
     "export { performanceOptions } from './src/core/PerformanceOptions';",
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
@@ -29,7 +28,7 @@ await build({ stdin: {
 let loaded;
 try { loaded = await import(pathToFileURL(bundle)); }
 finally { await rm(temporary, { recursive: true, force: true }); }
-const { SeatedPose, inspectBed, InteractionSystem, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, inferDiningSeats, createSinkWater, performanceOptions } = loaded;
+const { SeatedPose, inspectBed, InteractionSystem, createCouchSupport, Player, PlayerController, ThirdPersonCamera, FireplaceFire, findFiresideSeat, HouseFurnitureInteractions, createSinkWater, performanceOptions } = loaded;
 const avatar = async () => (await readGeometryGLB(new URL('../public/assets/models/player/player.glb', import.meta.url))).scene;
 const close = (actual, expected, epsilon = 1e-5) => {
   assert.equal(actual.length, expected.length);
@@ -390,124 +389,34 @@ test('dining panels select the first item, brew the selected color and restore f
   } finally { restore(); }
 });
 
-test('the existing house seats all four dining chairs without exported markers and restores the player', async () => {
-  const restore = domFixture();
+test('dining chairs require Blender markers and do not infer interactions from furniture geometry', () => {
+  const restore = domFixture(), originalWarn = console.warn, originalInfo = console.info;
   try {
-    const house = (await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url))).scene;
-    house.position.y = -30; house.updateMatrixWorld(true);
-    assert.equal(house.getObjectByName('INTERACT_DINING_CHAIR_01'), undefined);
-    const model = await avatar(), pose = new SeatedPose(model);
-    model.position.set(2, -30, 4); model.rotation.y = Math.PI * 3; model.updateMatrixWorld(true);
-    const position = model.position.toArray(), rotation = model.rotation.toArray();
-    let starts = 0, ends = 0, stood = 0;
-    const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(), {
-      onFocusStart(showPlayer) { assert.equal(showPlayer, true); starts++; return true; },
-      onFocusEnd() { ends++; },
-      onSitStart(seat, look, support) { return pose.begin(seat, look, support) ? pose.getCameraTarget(new THREE.Vector3()) : false; },
-      onSitEnd() { stood++; pose.end(); }, isMuted: () => true,
-    });
-    const all = []; furniture.register(value => all.push(value));
-    const chairs = all.filter(value => value.getHint() === 'Sit at Table');
-    assert.equal(chairs.length, 4);
-    const colliders = [];
-    house.traverse(object => {
-      if (object.isMesh && object.name.startsWith('COL_BOX_')) colliders.push(new THREE.Box3().setFromObject(object));
-    });
-    const system = Object.create(InteractionSystem.prototype);
-    Object.assign(system, { interactables: all, active: null, hint: { show() {}, hide() {} } });
-    for (const chair of chairs) {
-      assert.match(chair.highlightTarget.userData.name ?? chair.highlightTarget.name, /^SEC_PROJECTS_Chair_1/);
-      const bounds = new THREE.Box3().setFromObject(chair.highlightTarget), center = bounds.getCenter(new THREE.Vector3());
-      let reachable = false;
-      for (let angle = 0; angle < 36 && !reachable; angle++) for (const radius of [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]) {
-        const point = new THREE.Vector3(center.x + Math.cos(angle * Math.PI / 18) * radius,
-          bounds.min.y + 0.03, center.z + Math.sin(angle * Math.PI / 18) * radius);
-        const obstructed = colliders.some(box => {
-          const dx = Math.max(box.min.x - point.x, 0, point.x - box.max.x);
-          const dz = Math.max(box.min.z - point.z, 0, point.z - box.max.z);
-          return dx * dx + dz * dz < 0.35 ** 2 && box.max.y > point.y + 0.02 && box.min.y < point.y + 1.8;
-        });
-        if (obstructed) continue;
-        system.update(point);
-        if (system.active === chair) { reachable = true; break; }
+    for (const state of ['missing', 'missing-properties', 'retired']) {
+      const house = new THREE.Group(), material = new THREE.MeshBasicMaterial();
+      for (const name of ['Table_RoundSmall2', 'SEC_PROJECTS_Chair_1']) {
+        const object = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+        object.name = name; house.add(object);
       }
-      assert.equal(reachable, true, 'the chair should be selectable from a clear sampled approach');
-      chair.interact();
-      assert.equal(pose.isActive, true, 'the real avatar should fit the actual chair');
-      assert.equal(furniture.isControllingCamera, true);
-      for (let frame = 0; frame < 60; frame++) furniture.update(1 / 60);
-      assert.ok(furniture.camera.position.toArray().every(Number.isFinite));
-      furniture.handleFocusKey('Escape');
-      for (let frame = 0; frame < 60; frame++) furniture.update(1 / 60);
-      assert.equal(pose.isActive, false); assert.equal(furniture.isControllingCamera, false);
-      close(model.position.toArray(), position); assert.deepEqual(model.rotation.toArray(), rotation);
-    }
-    assert.equal(starts, 4); assert.equal(ends, 4); assert.equal(stood, 4);
-    furniture.destroy();
-  } finally { restore(); }
-});
-
-test('dining fallback respects authored and deliberately retired markers, and recovers missing extras', async () => {
-  const restore = domFixture();
-  try {
-    for (const state of ['missing-extras', 'authored', 'retired']) {
-      const house = (await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url))).scene;
-      const marker = new THREE.Object3D(); marker.name = 'INTERACT_DINING_CHAIR_01';
-      if (state === 'retired') marker.userData.portfolioInteraction = 'unusedDiningChair';
-      if (state === 'authored') {
-        marker.userData = { portfolioInteraction: 'diningChair', targetObject: 'SEC_PROJECTS_Chair_1',
-          seatObject: 'CUSTOM_SEAT', lookObject: 'CUSTOM_LOOK', cameraObject: 'CUSTOM_CAMERA' };
-        for (const name of ['CUSTOM_SEAT', 'CUSTOM_LOOK', 'CUSTOM_CAMERA']) {
-          const object = new THREE.Object3D(); object.name = name; house.add(object);
-        }
+      if (state !== 'missing') {
+        const marker = new THREE.Object3D(); marker.name = 'INTERACT_DINING_CHAIR_01';
+        if (state === 'retired') marker.userData.portfolioInteraction = 'unusedDiningChair';
+        house.add(marker);
       }
-      house.add(marker);
+      const warnings = [], information = [];
+      console.warn = message => warnings.push(String(message));
+      console.info = message => information.push(String(message));
       const furniture = new HouseFurnitureInteractions(house, new THREE.PerspectiveCamera(), {
         onFocusStart: () => true, onFocusEnd() {}, isMuted: () => true,
       });
       const interactions = []; furniture.register(value => interactions.push(value));
-      const seats = interactions.filter(value => value.getHint() === 'Sit at Table');
-      assert.equal(seats.length, state === 'missing-extras' ? 4 : state === 'authored' ? 1 : 0, state);
-      if (state === 'authored') close(seats[0].position.toArray(), marker.position.toArray());
+      assert.equal(interactions.filter(value => value.getHint() === 'Sit at Table').length, 0, state);
+      if (state === 'missing') assert.ok(information.some(message => message.includes('No dining chair markers')));
+      if (state === 'missing-properties') assert.ok(warnings.some(message => message.includes('Custom Properties enabled')));
+      if (state === 'retired') assert.ok(!warnings.some(message => message.includes('Dining markers')));
       furniture.destroy();
     }
-  } finally { restore(); }
-});
-
-test('fallback dining chairs retain seat contact and framing after house rotation or mirroring', async () => {
-  for (const mirrored of [false, true]) {
-    const house = (await readGeometryGLB(new URL('../public/assets/models/environment/house.glb', import.meta.url))).scene;
-    house.position.set(2, -30, -3); house.rotation.y = 0.57;
-    if (mirrored) house.scale.x = -1;
-    house.updateMatrixWorld(true);
-    house.traverse(object => {
-      if (/^SEC_PROJECTS_Chair_1(?:\.\d+)?$/.test(object.userData.name ?? object.name)) object.visible = false;
-    });
-    const chairs = inferDiningSeats(house);
-    assert.equal(chairs.length, 4);
-    for (const chair of chairs) {
-      const model = await avatar(), pose = new SeatedPose(model);
-      const seat = chair.seat.position.getWorldPosition(new THREE.Vector3());
-      const look = chair.seat.look.getWorldPosition(new THREE.Vector3());
-      assert.equal(pose.begin(seat, look, chair.seat.support), true);
-      const camera = new THREE.PerspectiveCamera(45, 0.7, 0.1, 1000);
-      camera.position.copy(chair.seat.camera.getWorldPosition(new THREE.Vector3()));
-      const target = pose.getCameraTarget(new THREE.Vector3()); target.y -= 0.12;
-      camera.lookAt(target); camera.updateMatrixWorld(true); camera.updateProjectionMatrix();
-      const frame = new THREE.Box2(), point = new THREE.Vector3();
-      model.traverse(mesh => {
-        if (!mesh.isSkinnedMesh) return;
-        mesh.skeleton.update();
-        for (let i = 0; i < mesh.geometry.attributes.position.count; i++) {
-          mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld).project(camera);
-          frame.expandByPoint(new THREE.Vector2(point.x, point.y));
-        }
-      });
-      assert.ok(frame.min.x > -1 && frame.max.x < 1 && frame.min.y > -1 && frame.max.y < 1,
-        `the avatar must fit the seated view: ${JSON.stringify(frame)}`);
-      pose.end();
-    }
-  }
+  } finally { console.warn = originalWarn; console.info = originalInfo; restore(); }
 });
 
 function furnitureFixture(overrides = {}, authoringName, withChair = true) {

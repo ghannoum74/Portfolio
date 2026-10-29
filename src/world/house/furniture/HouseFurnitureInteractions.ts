@@ -7,7 +7,6 @@ import { authoredObject, findFiresideSeat, type FurnitureSeat } from "./Fireside
 import { createSinkWater } from "./SinkWater";
 import { inspectBed, type BedGeometry } from "../../player/BedGeometry";
 import { DiningPanel, type DiningPanelMode, type Potion } from "./DiningPanel";
-import { inferDiningSeats } from "./DiningSeatFallback";
 
 /**
  * All small, tactile furniture interactions in one system.
@@ -215,12 +214,21 @@ export class HouseFurnitureInteractions {
 
   private addDiningSeats(): void {
     const markers: THREE.Object3D[] = [];
+    const missingProperties: string[] = [];
+    let sawMarker = false;
     this.house.traverse(object => {
-      if (/^INTERACT_DINING_CHAIR_\d+$/.test(object.name)) markers.push(object);
+      if (!/^INTERACT_DINING_CHAIR_\d+$/.test(object.name)) return;
+      sawMarker = true;
+      if (object.userData.portfolioInteraction === "diningChair") markers.push(object);
+      else if (object.userData.portfolioInteraction !== "unusedDiningChair") missingProperties.push(object.name);
     });
-    let added = 0;
+    if (missingProperties.length) console.warn(
+      `[Furniture] Dining markers lack valid custom properties: ${missingProperties.join(", ")}. Export the house with Custom Properties enabled.`,
+    );
+    if (!sawMarker && authoredObject(this.house, "SEC_PROJECTS_Chair_1")) {
+      console.info("[Furniture] No dining chair markers were exported. Run the Blender setup and export the complete house.");
+    }
     for (const marker of markers) {
-      if (marker.userData.portfolioInteraction !== "diningChair") continue;
       const target = authoredObject(this.house, marker.userData.targetObject);
       const position = authoredObject(this.house, marker.userData.seatObject);
       const look = authoredObject(this.house, marker.userData.lookObject);
@@ -236,22 +244,7 @@ export class HouseFurnitureInteractions {
       // A nearby table or another chair is not part of this chair's seat.
       node.seat = { position, look, camera, support: createCouchSupport(this.house, target, false) };
       this.nodes.set(def.id, node);
-      added++;
     }
-    // Respect authored seats and intentionally retired triggers. If no usable
-    // marker survived export, recover only this house's recognizable dining set.
-    if (added || markers.some(marker => marker.userData.portfolioInteraction === "unusedDiningChair")) return;
-    const inferred = inferDiningSeats(this.house);
-    for (const entry of inferred) {
-      const def: FurnitureDefinition = { id: `dining:fallback:${entry.model.name}`, objectName: "", kind: "seat",
-        label: "Sit at Table", message: "A quiet moment at the table.", color: 0xe5c9a8, range: 1.15 };
-      const node = this.makeNode(def, entry.model);
-      node.interactionAnchor = entry.anchor;
-      node.seat = entry.seat;
-      this.nodes.set(def.id, node);
-    }
-    if (inferred.length) console.info(`[Furniture] Recovered ${inferred.length} dining chairs without exported markers.`);
-    else if (markers.length) console.warn("[Furniture] Dining chair markers could not be resolved; check the export and marker properties.");
   }
 
   /** Register all remaining props with the *existing* E-key InteractionSystem. */

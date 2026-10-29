@@ -52,10 +52,11 @@ Rerunning updates its own markers and disables unused chair triggers. The
 reference house's four chairs and their camera sight lines are checked in a
 disposable Blender copy; the owner's current model still needs a live review.
 
-If no usable chair markers were exported, the game can recover the original
-`Table_RoundSmall2` and `SEC_PROJECTS_Chair_1` dining set from its geometry.
-Valid authored markers take precedence; intentionally retired chair triggers
-stay retired. The fallback is calculated once when the house is prepared.
+Dining chairs require the Blender-authored `INTERACT_DINING_CHAIR_XX` markers
+and their custom properties; the game does not create substitute chair markers.
+If the report contains `Object 'Raft' has no evaluated mesh data`, update the
+script, select the table and run it again. Excluded Blender collections are
+ignored by the camera check. Confirm the report says `READY` before exporting.
 
 ## Controls
 
