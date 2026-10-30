@@ -203,3 +203,8 @@
     font-size: 44px;
   }
 }
+.world-entrance_enter { display: none; }
+@media (pointer: coarse) {
+  .world-entrance_enter { display: inline-flex; pointer-events: auto; align-items: center; justify-content: center; min-height: 48px; padding: 12px 22px; margin-bottom: 18px; border: 2px solid #5c4534; border-radius: 10px; color: #5c4534; background: #f3e7c2; font: 16px var(--font-root, system-ui); touch-action: manipulation; }
+  .world-entrance_description { font-size: clamp(13px, 2.2vw, 18px); }
+}

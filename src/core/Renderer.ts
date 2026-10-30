@@ -310,7 +310,8 @@ export class Renderer {
   }
 
   resize() {
-    const requested = this.pixelRatioOverride ?? getPerformanceOptions(window.location.search, window.devicePixelRatio).pixelRatio;
+    const requested = this.pixelRatioOverride ?? getPerformanceOptions(window.location.search, window.devicePixelRatio,
+      window.matchMedia?.("(pointer: coarse)").matches ?? false).pixelRatio;
     const pixelRatio = Math.min(requested, getPerformanceOptions("", window.devicePixelRatio).pixelRatio);
 
     this.instance.setSize(window.innerWidth, window.innerHeight);

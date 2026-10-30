@@ -1,6 +1,6 @@
 import "./DiningPanel.css";
 
-export type DiningPanelMode = "alchemy" | "bookshelf" | "recipe";
+export type DiningPanelMode = "alchemy" | "bookshelf";
 export type Potion = { name: string; description: string; color: number };
 
 export const POTIONS: readonly Potion[] = [
@@ -50,7 +50,7 @@ export class DiningPanel {
     for (const button of [this.previous, this.next, this.brewButton, this.closeButton]) button.type = "button";
     this.previous.textContent = "← Previous";
     this.next.textContent = "Next →";
-    this.brewButton.textContent = "Brew";
+    this.brewButton.textContent = "Brew again";
     this.closeButton.textContent = "Close";
     this.previous.addEventListener("click", () => this.selectRelative(-1));
     this.next.addEventListener("click", () => this.selectRelative(1));
@@ -66,7 +66,8 @@ export class DiningPanel {
   open(mode: DiningPanelMode): void {
     this.mode = mode; this.index = 0; this.brewing = false;
     this.root.hidden = false;
-    this.render();
+    if (mode === "alchemy") this.brew();
+    else this.render();
   }
 
   selectRelative(direction: number): void {
@@ -75,7 +76,8 @@ export class DiningPanel {
     this.index = (this.index + direction % length + length) % length;
     this.brewing = false;
     this.callbacks.onSelection();
-    this.render();
+    if (this.mode === "alchemy") this.brew();
+    else this.render();
   }
 
   brew(): void {
@@ -89,18 +91,17 @@ export class DiningPanel {
   destroy(): void { this.close(); this.root.remove(); }
 
   private render(): void {
-    const isAlchemy = this.mode === "alchemy", isBookshelf = this.mode === "bookshelf";
-    const item = isAlchemy ? POTIONS[this.index] : isBookshelf ? BOOKS[this.index] : null;
-    this.eyebrow.textContent = isAlchemy ? "THE ALCHEMY CORNER" : isBookshelf ? "THE BOOKSHELF" : "A RECIPE FOR MOONWATER";
-    this.title.textContent = item?.name ?? "A little moonlight";
-    this.description.textContent = item?.description ??
-      "At the cauldron, use the arrows to select the blue Moonwater, then press E to brew it.";
-    this.status.textContent = isAlchemy ? (this.brewing ? `Brewing ${POTIONS[this.index].name}…` : "Choose a potion, then brew.") : "";
+    const isAlchemy = this.mode === "alchemy";
+    const item = isAlchemy ? POTIONS[this.index] : BOOKS[this.index];
+    this.eyebrow.textContent = isAlchemy ? "THE ALCHEMY CORNER" : "THE BOOKSHELF";
+    this.title.textContent = item.name;
+    this.description.textContent = item.description;
+    this.status.textContent = isAlchemy ? (this.brewing ? `Brewing ${POTIONS[this.index].name}…` : "Choose a potion to start brewing.") : "";
     this.count.textContent = item ? `${this.index + 1} / ${isAlchemy ? POTIONS.length : BOOKS.length}` : "";
     this.previous.hidden = this.next.hidden = !item;
     this.count.hidden = !item;
     this.brewButton.hidden = !isAlchemy;
     this.keys.textContent = isAlchemy ? "← / → Choose   ·   E Brew   ·   Esc Close" :
-      isBookshelf ? "← / → Turn page   ·   Esc Close" : "E / Esc Close";
+      "← / → Turn page   ·   Esc Close";
   }
 }

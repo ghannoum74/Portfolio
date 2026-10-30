@@ -8,6 +8,7 @@ type EntranceState = "idle" | "active" | "complete";
 interface WorldEntranceOptions {
   onProgress?: (progress: number) => void;
   onComplete: () => void;
+  onEnter?: () => void;
 }
 
 export class WorldEntrance {
@@ -36,6 +37,7 @@ export class WorldEntrance {
     }
 
     this.mask = new OrganicPortalMask(shape);
+    document.querySelector("[data-enter-world]")?.addEventListener("click", this.onEnter);
 
     this.renderProgress(0);
   }
@@ -49,6 +51,12 @@ export class WorldEntrance {
 
     return element;
   }
+
+  private onEnter = (): void => {
+    if (this.state !== "active") return;
+    this.options.onEnter?.();
+    this.finish();
+  };
 
   /**
    * Start scrolling only after the world
@@ -205,6 +213,7 @@ export class WorldEntrance {
   }
 
   destroy(): void {
+    document.querySelector("[data-enter-world]")?.removeEventListener("click", this.onEnter);
     this.destroyLenis();
 
     window.removeEventListener("resize", this.onResize);
