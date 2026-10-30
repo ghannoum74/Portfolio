@@ -11,6 +11,7 @@ const temporary = await mkdtemp(new URL('../.startup-test-', import.meta.url));
 const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: { contents: `
   export { AssetLoader } from './src/loaders/AssetLoader';
+  export { PhysicsWorld } from './src/physics/PhysicsWorld';
   export { ASSETS, STARTUP_ASSETS } from './src/loaders/AssetManifest';
   export { NpcManager } from './src/world/npc/NpcManager';
   export { World } from './src/world/World';
@@ -19,7 +20,7 @@ await build({ stdin: { contents: `
   export { AnimatedBook3D } from './src/world/house/AnimatedBook3D';
 `, resolveDir: process.cwd(), loader: 'ts' }, outfile: bundle,
   bundle: true, platform: 'node', format: 'esm', packages: 'external' });
-const { AssetLoader, ASSETS, STARTUP_ASSETS, NpcManager, World, Player, HouseInterior, AnimatedBook3D } = await import(pathToFileURL(bundle));
+const { AssetLoader, PhysicsWorld, ASSETS, STARTUP_ASSETS, NpcManager, World, Player, HouseInterior, AnimatedBook3D } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -51,7 +52,9 @@ test('startup waits for Frequenc and its clips, constructs it once, and leaves t
     return asset();
   });
   const scene = new THREE.Scene();
-  const npcs = new NpcManager(scene, startupManager, url => ready.push(url));
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
+  const npcs = new NpcManager(scene, startupManager, physics, url => ready.push(url));
   const first = npcs.loadStartup();
   assert.equal(npcs.loadStartup(), first);
   assert.equal(requests.length, 5);
@@ -83,7 +86,9 @@ test('an optional NPC failure keeps Frequenc visible and retries without duplica
     if (url === ASSETS.characters.mtc && fail) { fail = false; throw new Error('optional download failed'); }
     return asset();
   });
-  const npcs = new NpcManager(new THREE.Scene(), new THREE.LoadingManager(), url => ready.push(url));
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
+  const npcs = new NpcManager(new THREE.Scene(), new THREE.LoadingManager(), physics, url => ready.push(url));
   await npcs.loadStartup();
   const frequenc = npcs.npcs[0];
   await assert.rejects(npcs.load(), /optional download failed/);

@@ -8,6 +8,8 @@ import type { Npc } from "./Npc";
 import { ASSETS } from "../../loaders/AssetManifest";
 import { NpcAnimationClips, NpcAnimator } from "./NpcAnimator";
 import { mapConcurrent } from "../../loaders/mapConcurrent";
+import type { PhysicsWorld } from "../../physics/PhysicsWorld";
+import { createNpcCollider, isNpcColliderHelper } from "./NpcCollider";
 
 export class NpcManager {
   readonly npcs: Npc[] = [];
@@ -28,6 +30,7 @@ export class NpcManager {
     private readonly scene: THREE.Scene,
 
     loadingManager: THREE.LoadingManager,
+    private readonly physics: PhysicsWorld,
     onAssetReady?: (url: string) => void,
   ) {
     this.startupLoader = new AssetLoader(loadingManager, onAssetReady);
@@ -49,6 +52,7 @@ export class NpcManager {
     const [asset, animationClips] = await Promise.all([
       this.startupLoader.loadGLB(definition.asset),
       this.loadAnimations(),
+      this.physics.init(),
     ]);
     this.createNpc(definition, asset.scene, animationClips);
   }
@@ -88,6 +92,10 @@ export class NpcManager {
     const shadowMeshes: THREE.Mesh[] = [];
 
     model.traverse((child) => {
+      if (isNpcColliderHelper(child)) {
+        child.visible = false;
+        return;
+      }
       if (!(child instanceof THREE.Mesh)) {
         return;
       }
@@ -108,6 +116,7 @@ export class NpcManager {
      * the NPC has its final transform.
      */
     const animator = new NpcAnimator(model, animationClips);
+    const collision = createNpcCollider(model, this.physics, this.visible);
 
     this.npcs.push({
       id: definition.id,
@@ -118,6 +127,7 @@ export class NpcManager {
       animator,
       shadowMeshes,
       shadowsEnabled: true,
+      collision,
     });
   }
 
@@ -153,6 +163,7 @@ export class NpcManager {
 
   update(delta: number, playerPosition: THREE.Vector3): void {
     for (const npc of this.npcs) {
+      npc.collision?.sync();
       const distanceSq = npc.model.position.distanceToSquared(playerPosition);
 
       // Animation
@@ -196,6 +207,7 @@ export class NpcManager {
     this.visible = visible;
 
     for (const npc of this.npcs) {
+      npc.collision?.setEnabled(visible);
       npc.model.visible = visible;
       if (visible) this.scene.add(npc.model);
       else this.scene.remove(npc.model);

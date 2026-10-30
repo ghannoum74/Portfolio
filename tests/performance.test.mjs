@@ -1694,6 +1694,7 @@ test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachm
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let requests = 0, active = 0, peak = 0;
   Object.assign(manager, { scene, npcs: [], visible: false,
+    physics: { init: async () => {} },
     loadAnimations: async () => clips,
     loader: { loadGLB: async () => {
       requests++; peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--;
@@ -1831,6 +1832,7 @@ test('a failed NPC load can retry without partial characters or duplicate regist
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let calls = 0;
   Object.assign(manager, { scene, npcs: [], visible: true, loadAnimations: async () => clips,
+    physics: { init: async () => {} },
     loader: { loadGLB: async () => {
       const request = ++calls; await new Promise(resolve => setImmediate(resolve));
       if (request === 1) throw new Error('network failed');

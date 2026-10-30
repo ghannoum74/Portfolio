@@ -78,7 +78,7 @@ export class World {
       this.ambientLight,
     );
 
-    this.npcManager = new NpcManager(this.scene, this.loadingManager, this.onAssetReady);
+    this.npcManager = new NpcManager(this.scene, this.loadingManager, this.physics, this.onAssetReady);
   }
   async init(): Promise<void> {
     // Start the interior immediately, but keep its promise/errors outside startup.
