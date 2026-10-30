@@ -4,7 +4,7 @@ This revision replaces placeholder project entries and fictional colleague testi
 
 ## Career and training
 
-The supplied CV, **Abdel rahman ghannoum - Full stack developer (1).pdf**, is the primary source for employment dates and responsibilities. The PDF itself and its phone number are not included in the public repository.
+The supplied CV, **Abdel rahman ghannoum - Full stack developer (1).pdf**, is the primary source for employment dates and responsibilities. The PDF is published at `public/assets/documents/abdel-rahman-ghannoum-cv.pdf` and opens from the contact panel's “Check my CV” link.
 
 | Organization | Period | How it is presented |
 | --- | --- | --- |
