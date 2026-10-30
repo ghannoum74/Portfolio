@@ -263,7 +263,7 @@ export class WorkshopExperience {
     this.controls.innerHTML = `
       <kbd>←</kbd><kbd>→</kbd> <span>Switch craft</span>
       <span class="workshop-controls_divider"></span>
-      <kbd>E</kbd><span>Inspect</span>
+      <kbd>E</kbd><span>Details</span>
       <span class="workshop-controls_divider"></span>
       <kbd>Esc</kbd><span>Return</span>
       <span class="workshop-controls_divider"></span>
@@ -446,7 +446,7 @@ export class WorkshopExperience {
   }
 
   enter(): boolean {
-    if (this.state !== "idle") return false;
+    if (this.state !== "idle" || !this.artifacts.length) return false;
     this.camera.updateWorldMatrix(true, false);
     this.returnPosition.copy(this.camera.position);
     this.returnQuaternion.copy(this.camera.quaternion);
@@ -493,7 +493,7 @@ export class WorkshopExperience {
     this.hoveredIndex = -1;
     this.panel.classList.remove("is-visible");
     this.controls.classList.add("is-visible");
-    this.updateControlHint();
+    this.select(0, false);
     this.updateDesiredCamera();
     this.beginTransition(this.desiredPosition, this.desiredQuaternion, 0.95);
     this.state = "entering";
@@ -556,17 +556,17 @@ export class WorkshopExperience {
     this.select(index);
   }
 
-  private select(index: number): void {
+  private select(index: number, playSound = true): void {
     if (index < 0 || index >= this.artifacts.length) return;
     if (this.selectedIndex === index) {
       this.selectedIndex = -1;
       this.panel.classList.remove("is-visible");
-      this.sound.play("close", index);
+      if (playSound) this.sound.play("close", index);
     } else {
       this.selectedIndex = index;
       this.artifacts[index].pulse = 1;
-      this.sound.play("select", index);
-      this.renderPanel(this.artifacts[index].skill, index);
+      if (playSound) this.sound.play("select", index);
+      this.renderPanel(this.artifacts[index].skill);
       this.panel.classList.add("is-visible");
       this.panel.animate(
         [
@@ -580,19 +580,10 @@ export class WorkshopExperience {
     this.updateControlHint();
   }
 
-  private renderPanel(skill: WorkshopSkill, index: number): void {
+  private renderPanel(skill: WorkshopSkill): void {
     // Data is text-only; never insert project data into innerHTML.
     this.panel.replaceChildren();
     this.panel.dataset.craft = skill.id;
-    const top = document.createElement("div");
-    top.className = "workshop-inspector_topline";
-    const eyebrow = document.createElement("span");
-    eyebrow.textContent = skill.eyebrow;
-    const count = document.createElement("span");
-    count.className = "workshop-inspector_count";
-    count.textContent = `${String(index + 1).padStart(2, "0")} / ${String(this.artifacts.length).padStart(2, "0")}`;
-    top.append(eyebrow, count);
-
     const artifactName = document.createElement("p");
     artifactName.className = "workshop-inspector_artifact";
     artifactName.textContent = skill.artifact;
@@ -611,7 +602,7 @@ export class WorkshopExperience {
     const note = document.createElement("p");
     note.className = "workshop-inspector_note";
     note.textContent = skill.note;
-    this.panel.append(top, artifactName, name, desc, stack, note);
+    this.panel.append(artifactName, name, desc, stack, note);
   }
 
   private updateControlHint(): void {

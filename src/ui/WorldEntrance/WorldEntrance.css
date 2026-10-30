@@ -125,22 +125,25 @@
   font-size: 60px;
 }
 
-.world-entrance_eyebrow {
-  margin: 0;
+.entrance-attention {
+  color: #795b3d;
+  font-family: "Coiny", system-ui;
+}
 
-  color: #9b7853;
-  font-size: 11px;
-  font-weight: 600;
-
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
+.entrance-emphasis {
+  color: #426f66;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgb(66 111 102 / 40%);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .world-entrance_content h1 {
   margin: 16px 0 20px;
   color: #493522;
-  font-size: clamp(38px, 6vw, 76px);
-  line-height: 1.1;
+  font-size: clamp(26px, 4.5vw, 48px);
+  line-height: 1.15;
   letter-spacing: -0.04em;
 }
 
@@ -163,6 +166,12 @@
   margin: 0;
   pointer-events: none;
   opacity: 0.8;
+}
+
+.world-entrance_prompt {
+  margin: 22px 0 0;
+  color: #795b3d;
+  font-size: 13px;
 }
 
 /* Irreversible completed state */
@@ -201,5 +210,34 @@
     width: 80px;
     height: 80px;
     font-size: 44px;
+  }
+}
+.world-entrance_enter {
+  display: none;
+}
+@media (pointer: coarse) {
+  .world-entrance_prompt {
+    display: none;
+  }
+  .world-entrance_enter {
+    margin-top: 20px;
+  }
+  .world-entrance_enter {
+    display: inline-flex;
+    pointer-events: auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 12px 22px;
+    margin-bottom: 18px;
+    border: 2px solid #5c4534;
+    border-radius: 10px;
+    color: #5c4534;
+    background: #f3e7c2;
+    font: 16px var(--font-root, system-ui);
+    touch-action: manipulation;
+  }
+  .world-entrance_description {
+    font-size: clamp(13px, 2.2vw, 18px);
   }
 }

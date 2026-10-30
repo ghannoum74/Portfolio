@@ -148,7 +148,7 @@ export class AwardsExperience {
     this.controls = document.createElement("nav");
     this.controls.className = "awards-controls";
     this.controls.setAttribute("aria-label", "Milestone navigation");
-    this.controls.innerHTML = `<span class="awards-controls_caption">THE HALL OF MILESTONES</span><span class="awards-controls_keys"><kbd>E</kbd> Inspect <kbd>Esc</kbd> Return</span>`;
+    this.controls.innerHTML = `<span class="awards-controls_caption">LEARNING MILESTONES</span><span class="awards-controls_keys"><kbd>E</kbd> Details <kbd>Esc</kbd> Return</span>`;
     this.leftButton = document.createElement("button");
     this.leftButton.type = "button";
     this.leftButton.className = "awards-controls_arrow";
@@ -179,8 +179,8 @@ export class AwardsExperience {
     return this.exhibits.length;
   }
 
-  /** Wide establishing shot; E can be pressed near any frame or trophy. */
-  enter(_initialIndex = 0): boolean {
+  /** Open the first available milestone directly from any frame or trophy. */
+  enter(): boolean {
     if (this.modeState !== "idle" || this.exhibits.length === 0) return false;
     this.camera.updateMatrixWorld(true);
     this.savedPosition.copy(this.camera.position);
@@ -194,7 +194,7 @@ export class AwardsExperience {
     this.hoveredIndex = null;
     this.sheet.classList.remove("is-visible");
     this.controls.classList.add("is-visible");
-    this.beginShot(this.overviewShot(), this.reducedMotion ? 0.01 : 1.05);
+    this.inspect(0);
     this.modeState = "entering";
     return true;
   }

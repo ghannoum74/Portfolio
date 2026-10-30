@@ -78,9 +78,15 @@ export class World {
       this.ambientLight,
     );
 
-    this.npcManager = new NpcManager(this.scene, this.loadingManager);
+    this.npcManager = new NpcManager(this.scene, this.loadingManager, this.physics, this.onAssetReady);
   }
   async init(): Promise<void> {
+    // Start the interior immediately, but keep its promise/errors outside startup.
+    this.preloadHouseInterior();
+    await Promise.all([this.loadExterior(), this.npcManager.loadStartup()]);
+  }
+
+  private async loadExterior(): Promise<void> {
     // Independent network/decoder work starts together behind the loading screen.
     const [, asset] = await Promise.all([
       this.physics.init(),
@@ -199,6 +205,7 @@ export class World {
     // Stable physics substeps. At 15 FPS we now simulate ~4 x 1/60 s,
     // rather than advancing only 1/30 s and making the player half-speed.
     const physicsStarted = this.perfDiag ? performance.now() : 0;
+    const previousAccumulator = this.physicsAccumulator;
     this.physicsAccumulator += visualDelta;
     let steps = 0;
     while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsSteps) {
@@ -214,7 +221,9 @@ export class World {
     if (steps === this.maxPhysicsSteps && this.physicsAccumulator >= this.fixedPhysicsStep) {
       this.physicsAccumulator = 0;
     }
-    if (steps > 0) this.player.syncFromPhysics();
+    // Render between the last two simulation samples, including frames with no
+    // physics step. The follow camera reads this same continuous visual pose.
+    this.player.syncFromPhysics(this.physicsAccumulator / this.fixedPhysicsStep);
 
     if (this.perfDiag) {
       this.physicsTimingMs += performance.now() - physicsStarted;
@@ -240,9 +249,11 @@ export class World {
       }
     }
 
-    // Evaluate the skeleton once per displayed frame, preserving the total
-    // elapsed simulation time instead of repeating it in every physics step.
-    if (steps > 0) this.player.updateAnimation(steps * this.fixedPhysicsStep);
+    // Advance the skeleton once per displayed frame, including fractional
+    // physics frames. Drop the same severe-stall backlog as the simulation.
+    const animationDelta = Math.max(0, Math.min(visualDelta,
+      steps * this.fixedPhysicsStep + this.physicsAccumulator - previousAccumulator));
+    if (animationDelta > 0) this.player.updateAnimation(animationDelta);
 
     this.physicsDebugRenderer.update();
     if (exteriorActive) this.sunHelper?.update();
@@ -366,7 +377,7 @@ export class World {
   }
 
   preloadHouseInterior(): void {
-    // Optional downloads begin after the essential world/player loading screen.
+    // Optional downloads begin during startup and share work with early entry.
     void this.loadHouseInterior().catch(error => {
       console.warn("House preload failed; entering the house will retry:", error);
     });

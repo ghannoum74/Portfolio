@@ -1,0 +1,28 @@
+.dining-panel {
+  position: fixed;
+  z-index: 96;
+  left: clamp(16px, 4vw, 44px);
+  bottom: clamp(18px, 5vh, 48px);
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 20px;
+  border: 2px solid #bea17a;
+  border-radius: 12px;
+  color: #513c2b;
+  background: rgba(245, 233, 200, .97);
+  box-shadow: 3px 4px 0 #4937273b, 0 12px 30px #2d211c33;
+  font: 14px/1.5 system-ui, sans-serif;
+}
+.dining-panel[hidden], .dining-panel [hidden] { display: none; }
+.dining-panel__eyebrow { font-size: 10px; letter-spacing: .14em; color: #806346; }
+.dining-panel h2 { margin: 6px 0; font: 18px/1.3 var(--font-root, "Coiny", system-ui); }
+.dining-panel__description { margin: 0; }
+.dining-panel__status { min-height: 1.3em; margin: 8px 0 0; color: #725338; }
+.dining-panel__status:empty { display: none; }
+.dining-panel__controls { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.dining-panel__controls button { border: 1px solid #a78660; border-radius: 7px; padding: 6px 9px; color: #513c2b; background: #fff5d9; cursor: pointer; }
+.dining-panel__controls button:hover, .dining-panel__controls button:focus-visible { background: #ecd9ae; outline-color: #725338; }
+.dining-panel__count { font-size: 11px; white-space: nowrap; }
+.dining-panel__keys { display: block; margin-top: 10px; color: #82694b; font-size: 11px; }

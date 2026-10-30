@@ -1,18 +1,20 @@
 <section class="world-guide">
   <header class="world-guide_header">
-    <span class="world-guide_stamp">QUEST STARTED</span>
-
-    <p class="world-guide_eyebrow">WELCOME TO MY WORLD</p>
+    <span class="world-guide_stamp">EXPLORE MY WORK</span>
 
     <h2>
-      Alright, traveler.<br />
-      Here's the deal.
+      A world built<br />
+      around my work.
     </h2>
 
     <p class="world-guide_intro">
-      This isn't a normal portfolio. It's a little world full of stories,
-      projects, and things to discover. Follow the clues, walk up to anything
-      interesting, and press E when a hint appears.
+      Programmer first, frameworks second. Software engineering grounded in
+      programming fundamentals, algorithms, data structures and system design.
+      The focus is on understanding how things work, solving problems and
+      choosing tools with purpose—from interfaces and backend services to
+      databases and infrastructure. Explore the projects, technical skills and
+      career milestones throughout this world. Approach an object or career
+      guide and press E when prompted.
     </p>
   </header>
 
@@ -27,8 +29,9 @@
       <div>
         <h3>Talk to the people you meet.</h3>
         <p>
-          The NPCs aren't just decoration. They each have a chapter of my
-          experience to share.
+          The characters are guides to my career and training. Each shares a
+          factual chapter of my experience; they do not represent endorsements
+          from colleagues or employers.
         </p>
         <p class="quest_hint">
           <kbd>E</kbd> Talk &nbsp; <kbd>E</kbd> / <kbd>Enter</kbd> /
@@ -54,8 +57,8 @@
       <div>
         <h3>Enter the cottage.</h3>
         <p>
-          Beyond the door are the Projects Book, Skills Workshop, Awards Hall,
-          and a map of the journey so far.
+          Beyond the door are the Projects Book, Skills Workshop, Learning
+          Milestones, and a map of the journey so far.
         </p>
         <p class="quest_hint"><kbd>E</kbd> Enter / exit through the door</p>
       </div>
@@ -69,12 +72,28 @@
     </div>
 
     <article class="quest">
-      <span class="quest_marker" aria-hidden="true">&#10022;</span>
+      <span class="quest_marker" aria-hidden="true">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M12 6C9.5 4 6 4 3 5v14c3-1 6.5-1 9 1 2.5-2 6-2 9-1V5c-3-1-6.5-1-9 1Z"
+          />
+          <path d="M12 6v14" />
+        </svg>
+      </span>
       <div>
         <h3>Open the Projects Book.</h3>
         <p>
-          A real animated book filled with projects. Turn its pages, inspect the
-          screenshots, and visit the live websites.
+          Browse the Solar System Explorer, Sudoku and a university website
+          prototype. Turn the pages to see each project and open its live demo.
         </p>
         <p class="quest_hint">
           <kbd>E</kbd> Open &nbsp; <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> Turn
@@ -92,8 +111,8 @@
       <div>
         <h3>Wake the Enchanted Workshop.</h3>
         <p>
-          Four magical artifacts represent my development skills. Each has its
-          own animation and treasure glow.
+          Explore frontend development, backend and data, interactive 3D, and
+          deployment and reporting through four interactive artifacts.
         </p>
         <p class="quest_hint">
           <kbd>E</kbd> Enter &nbsp; Hover / click to inspect &nbsp;
@@ -108,10 +127,10 @@
     <article class="quest">
       <span class="quest_marker" aria-hidden="true">&#9733;</span>
       <div>
-        <h3>Explore the Awards Hall.</h3>
+        <h3>Explore the Learning Milestones.</h3>
         <p>
-          Inspect the framed certificates and trophy to discover real learning
-          milestones.
+          Read about the 42 Beirut Piscine, SE Factory foundations programme and
+          my continued learning through courses and internship training.
         </p>
         <p class="quest_hint">
           <kbd>E</kbd> Enter &nbsp; Click a frame or trophy &nbsp;
@@ -128,8 +147,8 @@
       <div>
         <h3>Follow the Cartographer's Trail.</h3>
         <p>
-          The glowing map tells the story of my development journey, one
-          milestone at a time.
+          Follow my path from technical studies and training to Interphase,
+          BePro, Frequenc and Medicals at the Center.
         </p>
         <p class="quest_hint">
           <kbd>E</kbd> Enter map &nbsp; Click a waypoint &nbsp;
@@ -142,7 +161,27 @@
     </article>
   </section>
 
-  <section class="world-controls" aria-label="Player controls">
+  <section
+    class="world-controls world-controls--touch"
+    aria-label="Touch controls"
+  >
+    <div class="world-controls_title">TOUCH CONTROLS</div>
+    <p>
+      Play with your phone sideways. Touch the lower-left area to reveal the
+      movement arrows. Drag up or down to walk, sideways to turn, and farther to
+      run. Release to hide the arrows.
+    </p>
+    <p>
+      Drag on the right side to look around. Tap Jump to jump. When an object is
+      nearby, tap its action button. In focused views, use the arrows, Details
+      and Back. The cauldron starts brewing as soon as you open it.
+    </p>
+  </section>
+
+  <section
+    class="world-controls world-controls--keyboard"
+    aria-label="Player controls"
+  >
     <div class="world-controls_title">FIELD MANUAL &mdash; CONTROLS</div>
 
     <div class="control-row">
@@ -216,7 +255,9 @@
 
   <footer class="world-guide_footer">
     <span>OPTIONAL OBJECTIVE</span>
-    <p>Try not to break anything. I wrote the physics myself.</p>
+    <p>
+      Take your time exploring. You can revisit any project or career chapter.
+    </p>
     <p>The ? button reopens this guide; the speaker button toggles sound.</p>
   </footer>
 </section>

@@ -165,7 +165,7 @@ export class JourneyMapExperience {
     this.navTitle.textContent = "THE CARTOGRAPHER'S TRAIL";
     const keys = document.createElement("span");
     keys.className = "journey-controls__keys";
-    keys.innerHTML = "<kbd>E</kbd> Explore <kbd>Esc</kbd> Return";
+    keys.innerHTML = "<kbd>E</kbd> Details <kbd>Esc</kbd> Return";
     this.nav.append(this.previous, this.navTitle, this.next, keys);
     document.body.appendChild(this.nav);
 
@@ -193,7 +193,7 @@ export class JourneyMapExperience {
     const shot = this.makeOverview();
     this.overviewPosition.copy(shot.position);
     this.overviewRotation.copy(shot.rotation);
-    this.beginTween(shot, this.reducedMotion ? 0.02 : 0.98);
+    this.inspect(0);
     this.state = "entering";
     return true;
   }

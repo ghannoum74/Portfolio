@@ -23,12 +23,20 @@ export class InteractionSystem {
     return [...new Set(this.interactables.map(interactable => interactable.highlightTarget))];
   }
 
+  get activeHint(): string | null { return this.active?.getHint() ?? null; }
+
+  clear(): void {
+    this.active = null;
+    this.hint.hide();
+    this.onActiveChange?.(null);
+  }
+
   update(playerPositin: THREE.Vector3): void {
     let closest: Interactable | null = null;
     let closesDistance = Infinity;
 
     for (const interactable of this.interactables) {
-      const distance = playerPositin.distanceTo(interactable.position);
+      const distance = interactable.distanceTo?.(playerPositin) ?? playerPositin.distanceTo(interactable.position);
 
       if (
         distance <= interactable.interactionDistance &&

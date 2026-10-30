@@ -1,5 +1,5 @@
 // Independent switches keep A/B captures attributable to one setting.
-export function getPerformanceOptions(search: string, devicePixelRatio: number) {
+export function getPerformanceOptions(search: string, devicePixelRatio: number, coarsePointer = false) {
   const params = new URLSearchParams(search);
   const lowFx = params.has("lowfx") && params.get("lowfx") !== "0";
   const enabled = (name: string) => params.has(name) && params.get(name) !== "0";
@@ -8,7 +8,7 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
     ? devicePixelRatio : 1;
   const pixelRatio = params.has("dpr") && Number.isFinite(requestedRatio) && requestedRatio > 0
     ? Math.min(nativeRatio, Math.max(0.5, Math.min(requestedRatio, 2)))
-    : lowFx ? 1 : Math.min(nativeRatio, 2);
+    : lowFx ? 1 : Math.min(nativeRatio, coarsePointer ? 1.5 : 2);
   const gpuStats = !lowFx && enabled("gpuStats");
   const perfDiag = enabled("perfdiag");
   return {
@@ -38,4 +38,5 @@ export function getPerformanceOptions(search: string, devicePixelRatio: number) 
   };
 }
 
-export const performanceOptions = getPerformanceOptions(window.location.search, window.devicePixelRatio);
+export const performanceOptions = getPerformanceOptions(window.location.search, window.devicePixelRatio,
+  window.matchMedia?.("(pointer: coarse)").matches ?? false);

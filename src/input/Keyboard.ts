@@ -6,6 +6,38 @@ export class Keyboard {
   run = false;
   private jumpQueued = false;
   private enabled = true;
+  private suspended = false;
+  private readonly physical = new Set<string>();
+  private touch = { forward: false, backward: false, left: false, right: false, run: false };
+
+  get isEnabled(): boolean { return this.enabled && !this.suspended; }
+
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+    this.reset();
+  }
+
+  setTouchMovement(x: number, y: number, run = false): void {
+    if (!this.isEnabled) return;
+    this.touch = { forward: y < -0.2, backward: y > 0.2, left: x < -0.2, right: x > 0.2, run };
+    this.applyMovement();
+  }
+
+  clearTouchMovement(): void {
+    this.touch = { forward: false, backward: false, left: false, right: false, run: false };
+    this.applyMovement();
+  }
+
+  queueJump(): void { if (this.isEnabled) this.jumpQueued = true; }
+
+  private applyMovement(): void {
+    this.forward = this.isEnabled && (this.touch.forward || this.physical.has("KeyW"));
+    this.backward = this.isEnabled && (this.touch.backward || this.physical.has("KeyS"));
+    this.left = this.isEnabled && (this.touch.left || this.physical.has("KeyA"));
+    this.right = this.isEnabled && (this.touch.right || this.physical.has("KeyD"));
+    this.run = this.isEnabled && (this.touch.run || this.physical.has("ShiftLeft") || this.physical.has("ShiftRight"));
+  }
 
   constructor() {
     window.addEventListener("keydown", this.onKeyDown);
@@ -31,6 +63,8 @@ export class Keyboard {
   }
 
   private reset = (): void => {
+    this.physical.clear();
+    this.touch = { forward: false, backward: false, left: false, right: false, run: false };
     this.forward = false;
     this.backward = false;
     this.left = false;
@@ -40,7 +74,7 @@ export class Keyboard {
   };
 
   private onKeyDown = (event: KeyboardEvent) => {
-    if (!this.enabled) return;
+    if (!this.isEnabled) return;
 
     // Don't intercept keyboard input in form controls.
     const target = event.target;
@@ -53,62 +87,18 @@ export class Keyboard {
       return;
     }
 
-    switch (event.code) {
-      case "KeyW":
-        this.forward = true;
-        break;
-
-      case "KeyS":
-        this.backward = true;
-        break;
-
-      case "KeyA":
-        this.left = true;
-        break;
-
-      case "KeyD":
-        this.right = true;
-        break;
-
-      case "ShiftLeft":
-        this.run = true;
-        break;
-
-      case "Space":
-        // listen to this event only once
-        if (!event.repeat) {
-          this.jumpQueued = true;
-        }
-        break;
-    }
+    this.physical.add(event.code);
+    this.applyMovement();
+    if (event.code === "Space" && !event.repeat) this.queueJump();
   };
 
   private onKeyUp = (event: KeyboardEvent) => {
-    switch (event.code) {
-      case "KeyW":
-        this.forward = false;
-        break;
-
-      case "KeyS":
-        this.backward = false;
-        break;
-
-      case "KeyA":
-        this.left = false;
-        break;
-
-      case "KeyD":
-        this.right = false;
-        break;
-
-      case "ShiftLeft":
-        this.run = false;
-        break;
-    }
+    this.physical.delete(event.code);
+    this.applyMovement();
   };
 
   consumeJump(): boolean {
-    if (!this.enabled) {
+    if (!this.isEnabled) {
       this.jumpQueued = false;
       return false;
     }

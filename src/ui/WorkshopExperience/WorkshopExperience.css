@@ -54,26 +54,8 @@
   visibility: visible;
   transform: translateY(0) scale(1);
 }
-.workshop-inspector_topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #d0be9b;
-  font:
-    700 10px system-ui,
-    sans-serif;
-  letter-spacing: 0.15em;
-  color: #4f7569;
-  text-transform: uppercase;
-}
-.workshop-inspector_count {
-  font-variant-numeric: tabular-nums;
-  color: #826b51;
-}
 .workshop-inspector_artifact {
-  margin: 15px 0 5px;
+  margin: 0 0 5px;
   color: #91785a;
   font:
     12px system-ui,
