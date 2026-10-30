@@ -6,9 +6,11 @@ const fixtureName = "LIGHT_HOUSE_CHANDELIER";
 export function createHouseLighting(house: THREE.Object3D, shadows: boolean): THREE.Group {
   const group = new THREE.Group();
   group.name = "HOUSE_CHANDELIER_LIGHTS";
-  const fill = new THREE.HemisphereLight(0xffead6, 0x46372d, 0.28);
+  const fill = new THREE.HemisphereLight(0xffefda, 0x7b6c5b, 0.65);
   fill.name = "HOUSE_LIGHT_FILL";
-  group.add(fill);
+  const bounce = new THREE.AmbientLight(0xfff1df, 0.16);
+  bounce.name = "HOUSE_LIGHT_BOUNCE";
+  group.add(fill, bounce);
 
   house.updateWorldMatrix(true, true);
   // Authoring fill/sun lights may be included by a future GLB export. The
@@ -39,7 +41,11 @@ export function createHouseLighting(house: THREE.Object3D, shadows: boolean): TH
   const color = typeof data.portfolioLightColor === "string" && /^#[0-9a-f]{6}$/i.test(data.portfolioLightColor)
     ? new THREE.Color(data.portfolioLightColor) : new THREE.Color(0xffd3a0);
   const range = positive("portfolioLightRange", 26);
-  const main = new THREE.SpotLight(color, positive("portfolioLightIntensity", 100), range, 1.32, 0.55, 2);
+  // The chandelier's all-direction light supplies the room. Keep the cone as
+  // a very small shadow contribution, so it cannot bleach the central rug.
+  // Scale existing authored power too: changing just the default would leave
+  // previously exported 100 cd fixtures with the same excessive hotspot.
+  const main = new THREE.SpotLight(color, positive("portfolioLightIntensity", 100) * 0.08, range, 1.48, 1, 2);
   main.name = "HOUSE_LIGHT_CHANDELIER";
   main.position.copy(position);
   main.castShadow = shadows;
@@ -53,9 +59,11 @@ export function createHouseLighting(house: THREE.Object3D, shadows: boolean): TH
   target.position.copy(position).add(new THREE.Vector3(0, -1, 0));
   main.target = target;
 
-  // A small upward spill at the same source reveals its suspension and ceiling.
-  // Only the downlight uses a shadow map (one map instead of six point faces).
-  const spill = new THREE.PointLight(color, positive("portfolioLightSpill", 8), range * 0.55, 2);
+  // Broad warm light reaches the walls and furniture in every direction.
+  // A gentler artistic falloff keeps the far corners readable without raising
+  // exposure or adding bright patches from extra lamps. Only the downlight
+  // uses a shadow map (one map instead of six point faces).
+  const spill = new THREE.PointLight(color, positive("portfolioLightSpill", 8), range, 1);
   spill.name = "HOUSE_LIGHT_CHANDELIER_SPILL";
   spill.position.copy(position);
   spill.castShadow = false;

@@ -1,16 +1,22 @@
 # Chandelier light and dining access
 
-The interior's main light now comes from the hanging `Chandelier`. A warm,
-downward spotlight provides contact shadows; a small spill at the same source
-reveals its suspension. The previous directional light above the roof and
-unanchored room-center point light are removed. A restrained hemisphere light
-represents bounce. Only the spotlight uses a shadow map, and `?shadows=0` or
-`?lowfx` disables that map. No new work runs per frame.
+The interior's direct light comes from the hanging `Chandelier`. Broad warm
+point light reaches the walls, ceiling and furniture in every direction. Its
+gentler distance falloff, a hemisphere fill and a small ambient bounce keep the
+room's edges and the player's unlit side readable. A very weak, fully feathered
+downlight retains contact shadows without bleaching the central rug. Only that
+downlight uses a shadow map; `?shadows=0` or `?lowfx` disables the map. No new
+work runs per frame.
 
 `HouseLighting.ts` reads the `LIGHT_HOUSE_CHANDELIER` Empty and its color,
 intensity, range and spill custom properties. Existing exports without that
 Empty use the actual chandelier mesh bounds, including the interior's -30 m
 offset. Imported Blender preview lights are hidden to avoid doubled lighting.
+Runtime weights the authored downlight intensity at 8% and lets the point light
+use the full authored range with linear falloff. This also balances previously
+exported 100 cd fixture settings; an existing house does not need to be exported
+again to receive this lighting adjustment. Blender preview power remains the
+authoring input; the runtime applies the room-lighting weights.
 
 ## Apply the layout in Blender
 
@@ -39,7 +45,7 @@ reported before furniture moves. No file is automatically saved or exported.
 ## Validation
 
 - Typecheck and production build pass.
-- Three new lighting checks pass, including the actual current house geometry,
+- Four lighting checks pass, including the actual current house geometry,
   transformed Blender markers, imported preview-light suppression and shadows
   disabled.
 - Blender 5.1.2 verification on the current source: all furniture geometry,
