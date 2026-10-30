@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import { ASSETS } from "../../loaders/AssetManifest";
+import type { NpcCapsuleDefinition } from "./NpcCollider";
 
 export type NpcTalkAnimation = "talking_1" | "talking_2" | "talking_3";
 
@@ -26,15 +27,20 @@ export interface NpcDefinition {
 
   scale?: number;
 
+  collision: NpcCapsuleDefinition;
+
   dialogues: readonly NpcDialogue[];
 }
 
+// Local-space capsules measured against the current GLBs in their initial idle
+// pose. They are physics-only and do not depend on world.blend or extra meshes.
 export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
   {
     id: "frequenc",
     name: "Frequenc · Career Guide",
     company: "Frequenc",
     asset: ASSETS.characters.frequenc,
+    collision: { radius: 0.22, height: 1.311, center: [0, 0.674, 0] },
     position: new THREE.Vector3(2.5, 12.5, 5),
     rotationY: Math.PI,
     scale: 1.3,
@@ -64,6 +70,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Healthcare · Career Guide",
     company: "Medicals at the Center",
     asset: ASSETS.characters.mtc,
+    collision: { radius: 0.235, height: 1.407, center: [0, 0.744, -0.009] },
     position: new THREE.Vector3(13, 7.8, -4.8),
     rotationY: -Math.PI / 4,
     scale: 1.3,
@@ -94,6 +101,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Training · Learning Guide",
     company: "Prodigy InfoTech",
     asset: ASSETS.characters.prodigy,
+    collision: { radius: 0.312, height: 1.871, center: [0, 0.980, 0.023] },
     position: new THREE.Vector3(10, 3, -8),
     rotationY: 0,
     dialogues: [
@@ -119,6 +127,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "SE Factory · Learning Guide",
     company: "SE Factory",
     asset: ASSETS.characters.seFactory,
+    collision: { radius: 0.32, height: 1.922, center: [0, 0.989, 0] },
     position: new THREE.Vector3(4, 3, 22),
     rotationY: Math.PI,
     dialogues: [
@@ -144,6 +153,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "42 Beirut · Learning Guide",
     company: "42 Beirut",
     asset: ASSETS.characters.fortyTwo,
+    collision: { radius: 0.264, height: 1.584, center: [0, 0.842, -0.005] },
     position: new THREE.Vector3(16.5, 3, 7.5),
     rotationY: Math.PI,
     scale: 1.3,
@@ -170,6 +180,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "BePro · Career Guide",
     company: "bePro",
     asset: ASSETS.characters.bePro,
+    collision: { radius: 0.284, height: 1.704, center: [0, 0.877, 0.046] },
     position: new THREE.Vector3(13, 3, 17),
     rotationY: Math.PI,
     dialogues: [
@@ -194,6 +205,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Interphase · Career Guide",
     company: "Interphase",
     asset: ASSETS.characters.interphase,
+    collision: { radius: 0.312, height: 1.871, center: [0, 1.004, 0.044] },
     position: new THREE.Vector3(7.5, 3, 12),
     rotationY: Math.PI,
     dialogues: [

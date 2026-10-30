@@ -66,6 +66,7 @@ test('startup waits for Frequenc and its clips, constructs it once, and leaves t
   lastClip.resolve(asset()); await first;
   const frequenc = npcs.npcs[0];
   assert.equal(frequenc.id, 'frequenc');
+  assert.ok(frequenc.collision, 'Frequenc collision must exist before startup completes');
   assert.equal(frequenc.model.parent, scene);
   assert.equal(new Set(ready).size, 5);
   const background = npcs.load();

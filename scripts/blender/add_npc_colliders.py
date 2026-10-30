@@ -1,4 +1,7 @@
-"""Add Blender-authored capsule helpers to the portfolio's seven NPCs.
+"""Author optional Blender capsule overrides for the portfolio's seven NPCs.
+
+The current runtime already creates configured physics capsules for all seven
+NPCs. This script is only needed to replace those dimensions with a custom shape.
 
 In each character source .blend: select the NPC armature or a skinned mesh,
 open this script in Scripting, and Run Script in Object Mode. Multiple selected

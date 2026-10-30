@@ -116,7 +116,7 @@ export class NpcManager {
      * the NPC has its final transform.
      */
     const animator = new NpcAnimator(model, animationClips);
-    const collision = createNpcCollider(model, this.physics, this.visible);
+    const collision = createNpcCollider(model, this.physics, this.visible, definition.collision);
 
     this.npcs.push({
       id: definition.id,

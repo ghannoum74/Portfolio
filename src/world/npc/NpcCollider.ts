@@ -4,11 +4,18 @@ import type { PhysicsWorld } from "../../physics/PhysicsWorld";
 
 export const NPC_COLLIDER_PREFIX = "COL_CAPSULE_NPC_";
 
+/** Capsule dimensions/center in character GLB scene coordinates, before NPC scale. */
+export interface NpcCapsuleDefinition {
+  radius: number;
+  height: number;
+  center: readonly [number, number, number];
+}
+
 export function isNpcColliderHelper(object: THREE.Object3D): boolean {
   return object.name.startsWith("COL_") || object.userData.portfolioNpcCollider === true;
 }
 
-/** One authored body capsule, independent of bone animation and camera obstacles. */
+/** One body capsule, independent of bone animation and camera obstacles. */
 export class NpcCollider {
   readonly collider: Collider;
   private readonly body: RigidBody;
@@ -19,7 +26,7 @@ export class NpcCollider {
 
   constructor(
     private readonly physics: PhysicsWorld,
-    private readonly marker: THREE.Mesh,
+    private readonly marker: THREE.Object3D,
     private readonly localCenter: THREE.Vector3,
     radius: number,
     fullHeight: number,
@@ -78,11 +85,28 @@ export class NpcCollider {
   }
 }
 
-/** No visual-mesh fallback: Blender is the source of the collision envelope. */
+function configuredCapsule(model: THREE.Group, physics: PhysicsWorld,
+  enabled: boolean, definition: NpcCapsuleDefinition): NpcCollider {
+  const { radius, height, center } = definition;
+  if (![radius, height, ...center].every(Number.isFinite) || radius <= 0 || height < radius * 2) {
+    throw new Error(`[${model.name}] Invalid configured NPC capsule`);
+  }
+  model.updateWorldMatrix(true, false);
+  const scale = model.getWorldScale(new THREE.Vector3());
+  const worldRadius = radius * Math.max(Math.abs(scale.x), Math.abs(scale.z));
+  const worldHeight = height * Math.abs(scale.y);
+  if (!(worldRadius > 0) || worldHeight < worldRadius * 2) {
+    throw new Error(`[${model.name}] Invalid NPC capsule scale`);
+  }
+  return new NpcCollider(physics, model, new THREE.Vector3(...center), worldRadius, worldHeight, enabled);
+}
+
+/** Explicit runtime dimensions work with existing GLBs; Blender markers override them. */
 export function createNpcCollider(
   model: THREE.Group,
   physics: PhysicsWorld,
   enabled: boolean,
+  definition?: NpcCapsuleDefinition,
 ): NpcCollider | null {
   const markers: THREE.Object3D[] = [];
   model.traverse(object => {
@@ -90,7 +114,8 @@ export function createNpcCollider(
     if (object.name.startsWith(NPC_COLLIDER_PREFIX)) markers.push(object);
   });
   if (markers.length === 0) {
-    console.warn(`[${model.name}] No Blender NPC capsule. Run add_npc_colliders.py and re-export this character GLB.`);
+    if (definition) return configuredCapsule(model, physics, enabled, definition);
+    console.warn(`[${model.name}] No NPC capsule configuration or Blender marker.`);
     return null;
   }
   try {
@@ -124,7 +149,8 @@ export function createNpcCollider(
     }
     return new NpcCollider(physics, marker, localCenter, radius, Math.max(fullHeight, radius * 2), enabled);
   } catch (error) {
-    console.warn(`[${model.name}] Invalid Blender NPC capsule; collision disabled until the asset is corrected:`, error);
+    console.warn(`[${model.name}] Invalid Blender NPC capsule; ${definition ? "using the configured capsule" : "collision disabled until the asset is corrected"}:`, error);
+    if (definition) return configuredCapsule(model, physics, enabled, definition);
     return null;
   }
 }

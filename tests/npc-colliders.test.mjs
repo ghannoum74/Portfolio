@@ -4,18 +4,20 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import * as THREE from 'three';
+import { readGeometryGLB } from '../scripts/read-geometry-glb.mjs';
 
 const temporary = await mkdtemp(new URL('../.npc-collider-test-', import.meta.url));
 const bundle = `${temporary}/suite.mjs`;
 await build({ stdin: { contents: `
   export { createNpcCollider } from './src/world/npc/NpcCollider';
   export { NpcManager } from './src/world/npc/NpcManager';
+  export { NPC_DEFINITIONS } from './src/world/npc/NpcData';
   export { PhysicsWorld } from './src/physics/PhysicsWorld';
   export { PlayerBody } from './src/world/player/PlayerBody';
   export { CameraCollision } from './src/camera/CameraCollision';
 `, resolveDir: process.cwd(), loader: 'ts' }, outfile: bundle,
   bundle: true, platform: 'node', format: 'esm', packages: 'external' });
-const { createNpcCollider, NpcManager, PhysicsWorld, PlayerBody, CameraCollision } = await import(pathToFileURL(bundle));
+const { createNpcCollider, NpcManager, NPC_DEFINITIONS, PhysicsWorld, PlayerBody, CameraCollision } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 function authoredNpc() {
@@ -59,8 +61,9 @@ test('authored capsules honor runtime placement, yaw and scale while staying out
 test('the real player controller stops at an NPC and can pass only after that collider is disabled', async t => {
   const physics = await physicsFixture(t);
   physics.world.createCollider(physics.rapier.ColliderDesc.cuboid(20, .1, 20).setTranslation(0, -.1, 0));
-  const { model } = authoredNpc(); model.position.z = 2;
-  const npc = createNpcCollider(model, physics, true);
+  const { model, marker } = authoredNpc(); model.position.z = 2;
+  model.remove(marker);
+  const npc = createNpcCollider(model, physics, true, { radius: .3, height: 1.8, center: [0, .9, 0] });
   const player = new PlayerBody(physics, new THREE.Vector3(0, .95, 0));
   player.teleport(new THREE.Vector3(0, .05, 0));
   const walk = frames => { for (let i = 0; i < frames; i++) {
@@ -93,7 +96,7 @@ test('NPC movement follows its authored marker without turning it into a camera 
   assert.equal(camera.resolve(target, desired).blocked, true, 'fixed wall collisions remain intact');
 });
 
-test('bone animation does not resize or move the collider, and malformed/missing helpers have no guessed fallback', async t => {
+test('bone animation does not resize collision, and missing helpers without a configuration have no guessed fallback', async t => {
   const physics = await physicsFixture(t), warnings = [];
   t.mock.method(console, 'warn', (...args) => warnings.push(args));
   const { model } = authoredNpc();
@@ -111,4 +114,50 @@ test('bone animation does not resize or move the collider, and malformed/missing
   assert.equal(createNpcCollider(boneParent.model, physics, true), null);
   assert.equal(physics.world.bodies.len(), 0);
   assert.equal(warnings.length, 3);
+});
+
+test('configured capsules need no helper mesh and valid Blender overrides create only one body', async t => {
+  const physics = await physicsFixture(t);
+  const model = new THREE.Group(); model.position.set(2, 3, 4); model.rotation.y = .7; model.scale.setScalar(1.3);
+  const config = { radius: .3, height: 1.8, center: [.1, .9, .2] };
+  const npc = createNpcCollider(model, physics, true, config);
+  assert.equal(model.children.length, 0, 'physics must not add a visible/collider mesh to the GLB');
+  assert.ok(Math.abs(npc.collider.shape.radius - .39) < 1e-6);
+  const expected = new THREE.Vector3(...config.center).applyMatrix4(model.matrixWorld);
+  assert.ok(new THREE.Vector3().copy(npc.collider.translation()).distanceTo(expected) < 1e-6);
+  npc.dispose();
+  const authored = authoredNpc();
+  const override = createNpcCollider(authored.model, physics, true, { radius: .5, height: 3, center: [0, 1.5, 0] });
+  assert.ok(Math.abs(override.collider.shape.radius - .3) < 1e-6, 'the Blender capsule takes precedence');
+  assert.equal(physics.world.bodies.len(), 1);
+});
+
+test('all seven current character GLBs get fitted capsules without a Blender re-export', async t => {
+  const physics = await physicsFixture(t), scene = new THREE.Scene(), warnings = [];
+  t.mock.method(console, 'warn', (...args) => {
+    if (!String(args[0]).startsWith('THREE.PropertyBinding: No target node found')) warnings.push(args);
+  });
+  const manager = new NpcManager(scene, new THREE.LoadingManager(), physics);
+  const clips = {};
+  const names = { idle: 'breathing_idle', talking_1: 'talking_1', talking_2: 'talking_2', talking_3: 'talking_3' };
+  for (const [key, file] of Object.entries(names)) {
+    const asset = await readGeometryGLB(`public/assets/models/player/animations/${file}.glb`);
+    clips[key] = manager.prepareNpcClip(asset.animations[0]);
+  }
+  for (const definition of NPC_DEFINITIONS) {
+    const asset = await readGeometryGLB(`public${definition.asset}`);
+    manager.createNpc(definition, asset.scene, clips);
+    const npc = manager.npcs.at(-1);
+    assert.ok(npc.collision, definition.id);
+    const bounds = new THREE.Box3().setFromObject(npc.model, true);
+    const shape = npc.collision.collider.shape, center = npc.collision.collider.translation();
+    const halfHeight = shape.halfHeight + shape.radius;
+    assert.ok(center.y - halfHeight >= bounds.min.y - .01, `${definition.id}: capsule must start at the feet`);
+    assert.ok(center.y + halfHeight <= bounds.max.y + .01, `${definition.id}: capsule must fit below the head`);
+    assert.ok(Math.abs(shape.radius - definition.collision.radius * (definition.scale ?? 1)) < 1e-6);
+    assert.equal(npc.model.getObjectByName(`COL_CAPSULE_NPC_${definition.id}`), undefined);
+  }
+  assert.equal(manager.npcs.length, 7);
+  assert.equal(physics.world.bodies.len(), 7);
+  assert.equal(warnings.length, 0, 'existing assets must work without missing-collider warnings');
 });
