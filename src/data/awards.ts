@@ -15,31 +15,31 @@ export const AWARD_ENTRIES: readonly AwardEntry[] = [
   {
     id: "42-piscine",
     objectName: "SEC_AWARDS_Frame_M",
-    eyebrow: "42 BEIRUT · MARCH 2024",
-    title: "42 Piscine — Participation",
+    eyebrow: "42 BEIRUT · FEB–MAR 2024",
+    title: "42 Beirut Piscine",
     description:
-      "Participated in 42 Beirut’s intensive four-week Piscine, from February 12 through March 9, 2024, with practical programming exercises and peer evaluation.",
-    footnote: "Certificate of Participation · Issued March 9, 2024",
+      "Four weeks of practical C programming, covering functions, pointers, memory management and problem solving through peer learning.",
+    footnote: "Piscine participation · February–March 2024",
     artMarkerName: "AWARD_ART_42",
   },
   {
     id: "se-factory",
     objectName: "SEC_AWARDS_Frame_S",
-    eyebrow: "SE FACTORY · JULY 2024",
+    eyebrow: "SE FACTORY · APR–JUL 2024",
     title: "Foundations of Computer Science",
     description:
-      "Successfully completed SE Factory’s Foundations of Computer Science course.",
-    footnote: "Certificate of Completion · July 7, 2024",
+      "I completed SE Factory's foundations programme, strengthening the programming and problem-solving skills I use in web development.",
+    footnote: "Foundations programme · April–July 2024",
     artMarkerName: "AWARD_ART_SE_FACTORY",
   },
   {
     id: "networking",
     objectName: "SEC_AWARDS_TrophyCup",
-    eyebrow: "NETWORKING STUDIES",
-    title: "Cisco CCNA 1 & 2 Coursework",
+    eyebrow: "CONTINUED LEARNING",
+    title: "Learning through practice",
     description:
-      "Networking fundamentals studied through Cisco CCNA 1 and CCNA 2 coursework.",
+      "My learning also includes a full-stack internship with Prodigy InfoTech and courses in React, Next.js, Three.js and Java with object-oriented programming.",
     footnote:
-      "Coursework is not equivalent to a professional CCNA certification.",
+      "Web development courses and internship training",
   },
 ];

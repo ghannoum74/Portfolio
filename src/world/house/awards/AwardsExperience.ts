@@ -148,7 +148,7 @@ export class AwardsExperience {
     this.controls = document.createElement("nav");
     this.controls.className = "awards-controls";
     this.controls.setAttribute("aria-label", "Milestone navigation");
-    this.controls.innerHTML = `<span class="awards-controls_caption">THE HALL OF MILESTONES</span><span class="awards-controls_keys"><kbd>E</kbd> Details <kbd>Esc</kbd> Return</span>`;
+    this.controls.innerHTML = `<span class="awards-controls_caption">LEARNING MILESTONES</span><span class="awards-controls_keys"><kbd>E</kbd> Details <kbd>Esc</kbd> Return</span>`;
     this.leftButton = document.createElement("button");
     this.leftButton.type = "button";
     this.leftButton.className = "awards-controls_arrow";

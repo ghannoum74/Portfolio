@@ -31,6 +31,7 @@ await build({ stdin: {
     export { VisibleAnimationLoop } from './src/core/VisibleAnimationLoop';
     export { Keyboard } from './src/input/Keyboard';
     export { World } from './src/world/World';
+    export { PhysicsWorld } from './src/physics/PhysicsWorld';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
     export { NPC_DEFINITIONS } from './src/world/npc/NpcData';
@@ -46,7 +47,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, PhysicsWorld, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -1689,17 +1690,21 @@ test('bounded loading preserves result order and drains started work before reje
   assert.deepEqual(started, [0, 1]); assert.equal(active, 0);
 });
 
-test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachment', async () => {
+test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachment', async t => {
   const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let requests = 0, active = 0, peak = 0;
   Object.assign(manager, { scene, npcs: [], visible: false,
+    physics,
     loadAnimations: async () => clips,
     loader: { loadGLB: async () => {
       requests++; peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--;
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   const first = manager.load(); assert.equal(manager.load(), first); await first;
   assert.equal(requests, NPC_DEFINITIONS.length); assert.equal(peak, 2);
   assert.deepEqual(manager.npcs.map(npc => npc.id), NPC_DEFINITIONS.map(definition => definition.id));
@@ -1825,17 +1830,21 @@ test('normal renderer entry keeps stats and legacy postprocessing out of its sta
   assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.endsWith('/OutlinePass.js'))));
 });
 
-test('a failed NPC load can retry without partial characters or duplicate registrations', async () => {
+test('a failed NPC load can retry without partial characters or duplicate registrations', async t => {
   const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let calls = 0;
   Object.assign(manager, { scene, npcs: [], visible: true, loadAnimations: async () => clips,
+    physics,
     loader: { loadGLB: async () => {
       const request = ++calls; await new Promise(resolve => setImmediate(resolve));
       if (request === 1) throw new Error('network failed');
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   await assert.rejects(manager.load(), /network failed/); assert.equal(manager.npcs.length, 0);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);

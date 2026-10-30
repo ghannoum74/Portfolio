@@ -367,6 +367,7 @@ export class Game {
       await this.world.init();
 
       this.setupInteractions();
+      this.registerNpcInteractions();
 
       const mailbox = this.world.model.getObjectByName("INTERACT_MAILBOX_01");
 
@@ -408,7 +409,6 @@ export class Game {
       await this.loading.complete();
 
       this.loadNpcsInBackground();
-      this.world.preloadHouseInterior();
 
       // Now the visitor may scroll.
       this.entrance.activate();
@@ -1132,15 +1132,23 @@ export class Game {
     );
   }
 
+  private readonly registeredNpcIds = new Set<string>();
+
+  private registerNpcInteractions(): void {
+    for (const npc of this.world.npcs) {
+      if (this.registeredNpcIds.has(npc.id)) continue;
+      this.interactionSystem.register(
+        new NpcInteraction(npc, this.world.player.model, this.dialogueBox),
+      );
+      this.registeredNpcIds.add(npc.id);
+    }
+  }
+
   private async loadNpcsInBackground(): Promise<void> {
     try {
       await this.world.loadNpcs();
 
-      for (const npc of this.world.npcs) {
-        this.interactionSystem.register(
-          new NpcInteraction(npc, this.world.player.model, this.dialogueBox),
-        );
-      }
+      this.registerNpcInteractions();
     } catch (error) {
       console.error("Failed to load NPCs:", error);
     }

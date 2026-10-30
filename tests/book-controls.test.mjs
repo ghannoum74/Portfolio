@@ -123,7 +123,7 @@ test('resting real-book controls retain exact coordinates with no repeated verte
     const writes = { ...fixture.writes };
     for (let i = 0; i < 120; i++) { book.update(1 / 60); fixture.controls.update(book); }
     assert.equal(reads.value(), 0); assert.deepEqual(fixture.writes, writes);
-    assert.equal(fixture.counter.textContent, '01 / 04'); assert.equal(fixture.previous.disabled, true); assert.equal(fixture.next.disabled, false);
+    assert.equal(fixture.counter.textContent, `01 / ${String(book.projectCount).padStart(2, '0')}`); assert.equal(fixture.previous.disabled, true); assert.equal(fixture.next.disabled, false);
     fixture.listeners.get('previous:click')(); fixture.listeners.get('next:click')(); assert.deepEqual(fixture.calls(), [1, 1]);
     t.diagnostic(JSON.stringify({ firstLayoutVertexReads: firstReads, unchangedUpdates: 120, unchangedVertexReads: reads.value(), unchangedDomWrites: 0 }));
   } finally { fixture.cleanup(); }

@@ -127,6 +127,8 @@ export class HouseInterior {
 
     this.model.updateMatrixWorld(true);
 
+    // Preloading can now beat exterior initialization on a fast/cached network.
+    await this.physics.init();
     const colliders = new WorldColliders(this.physics);
 
     colliders.createFromEnvironment(this.model);
