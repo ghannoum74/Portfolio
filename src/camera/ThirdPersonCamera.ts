@@ -14,6 +14,7 @@ export class ThirdPersonCamera {
   private orbitYaw = 0;
   private orbitPitch = 0;
   private dragging = false;
+  private dragPointer: number | null = null;
   private inputEnabled = false;
   private lastPointerX = 0;
   private lastPointerY = 0;
@@ -363,18 +364,19 @@ export class ThirdPersonCamera {
   }
 
   private onPointerDown = (event: PointerEvent): void => {
-    if (!this.inputEnabled || event.button !== 0) {
+    if (!this.inputEnabled || event.button !== 0 || this.dragging) {
       return;
     }
 
     this.dragging = true;
+    this.dragPointer = event.pointerId;
     this.lastPointerX = event.clientX;
     this.lastPointerY = event.clientY;
     this.domElement.setPointerCapture(event.pointerId);
   };
 
   private onPointerMove = (event: PointerEvent): void => {
-    if (!this.inputEnabled || !this.dragging) {
+    if (!this.inputEnabled || !this.dragging || event.pointerId !== this.dragPointer) {
       return;
     }
 
@@ -397,11 +399,12 @@ export class ThirdPersonCamera {
   };
 
   private onPointerUp = (event: PointerEvent): void => {
-    if (!this.dragging) {
+    if (!this.dragging || event.pointerId !== this.dragPointer) {
       return;
     }
 
     this.dragging = false;
+    this.dragPointer = null;
 
     /*
      * Make the return use the shortest
@@ -438,6 +441,7 @@ export class ThirdPersonCamera {
 
   private onWindowBlur = (): void => {
     this.dragging = false;
+    this.dragPointer = null;
   };
 
   private quadraticBezier(

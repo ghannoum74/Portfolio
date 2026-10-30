@@ -1,10 +1,10 @@
 # Dining and alchemy interactions
 
-The house supports sitting on the authored dining chairs, choosing and brewing
-three potions, reading a Moonwater recipe and browsing a small bookshelf. The
-existing individual potion interactions remain available. The recipe is a
-panel: the original cabinet is one mesh in the reference house, so no part of
-it is pulled apart or moved.
+The house supports sitting on authored dining chairs, brewing three potions at
+the cauldron and browsing a small bookshelf. The cauldron is the only alchemy
+interaction: individual bottles and the recipe cabinet are decorative. Old
+recipe markers in existing GLBs are ignored; no Blender re-export is needed
+for this behavior change.
 
 ## Prepare the house in Blender
 
@@ -62,13 +62,13 @@ ignored by the camera check. Confirm the report says `READY` before exporting.
 
 - Approach a prepared chair and press **E**. The avatar sits facing the table;
   **E** or **Esc** stands up and restores movement.
-- At the cauldron press **E**. The first potion appears immediately; use the
-  arrow keys or buttons to choose, then **E** or **Brew** to start bubbling.
+- Approach the cauldron from any side and press **E**, or tap **Brew a Potion**
+  on mobile. Proximity is measured from the pot surface, with a 2.5 m reach.
+  The first potion starts brewing immediately; arrows or buttons change the
+  potion and brew its selected color automatically. **Brew again** repeats it.
   **Esc** or **Close** stops the effect and returns to walking.
 - At the bookshelf press **E**; use arrows or buttons to browse and **Esc** or
   **Close** to return. The first page appears immediately when reopening.
-- At the alchemy cabinet press **E** to read the Moonwater recipe; **E**,
-  **Esc** or **Close** returns to walking.
 
 Verify each chair from a clear approach, especially near the cauldron and
 bookshelf. Check the seat, camera view, nearby prompts, return movement and

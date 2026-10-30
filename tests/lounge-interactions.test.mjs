@@ -332,6 +332,9 @@ test('dining panels select the first item, brew the selected color and restore f
     };
     const cauldron = add('SEC_ALCHEMY_Cauldron', 0);
     add('SEC_ALCHEMY_Drawer_4', 3);
+    add('SEC_ALCHEMY_Potion_1', 3);
+    add('SEC_ALCHEMY_Potion_2', 3);
+    add('SEC_ALCHEMY_Potion_4', 3);
     add('Bookcase_2', 6);
     const chair = add('SEC_PROJECTS_Chair_1', 9);
     const marker = (name, position, data = {}) => {
@@ -352,17 +355,23 @@ test('dining panels select the first item, brew the selected color and restore f
     });
     const interactions = []; furniture.register(value => interactions.push(value));
     assert.equal(interactions.filter(item => item.highlightTarget === cauldron).length, 1);
+    assert.ok(!interactions.some(item => /SEC_ALCHEMY_(Potion|Drawer)/.test(item.highlightTarget.name)));
+    const brewInteraction = interactions.find(item => item.highlightTarget === cauldron);
+    for (const point of [new THREE.Vector3(2.8, 0, 0), new THREE.Vector3(-2.8, 0, 0), new THREE.Vector3(0, 0, 2.8), new THREE.Vector3(0, 0, -2.8)]) {
+      assert.ok(point.distanceTo(brewInteraction.position) > 2.25, 'Outside the former center-based range');
+      assert.ok(brewInteraction.distanceTo(point) < brewInteraction.interactionDistance, 'Reach the cauldron from every side of the wider approach');
+    }
     assert.equal(interactions.find(item => item.highlightTarget === chair).getHint(), 'Sit at Table');
     furniture.interact('cauldron');
     const panel = furniture.diningPanel, brewNode = furniture.nodes.get('cauldron');
     assert.equal(furniture.isControllingCamera, true); assert.equal(visible, true);
-    assert.equal(panel.title.textContent, 'Verdant Elixir'); assert.equal(brewNode.active, false);
+    assert.equal(panel.title.textContent, 'Verdant Elixir'); assert.equal(brewNode.active, true);
     furniture.handleFocusKey('ArrowRight');
     assert.equal(panel.title.textContent, 'Moonwater');
     furniture.handleFocusKey('KeyE');
     assert.equal(brewNode.active, true); assert.equal(brewNode.bubbles.material.color.getHex(), 0x82c8ef);
     furniture.handleFocusKey('ArrowRight');
-    assert.equal(panel.title.textContent, 'Sunfire'); assert.equal(brewNode.active, false);
+    assert.equal(panel.title.textContent, 'Sunfire'); assert.equal(brewNode.active, true);
     panel.brewButton.click(); assert.equal(brewNode.bubbles.material.color.getHex(), 0xe9ba70);
     furniture.handleFocusKey('Escape');
     assert.equal(panel.root.hidden, true); assert.equal(brewNode.active, false);
@@ -371,9 +380,10 @@ test('dining panels select the first item, brew the selected color and restore f
     furniture.interact('bookshelf'); assert.equal(panel.title.textContent, 'Building Worlds');
     panel.next.click(); assert.equal(panel.title.textContent, 'Thoughtful Interfaces');
     furniture.handleFocusKey('Escape');
-    furniture.interact('alchemyDrawer'); assert.equal(panel.eyebrow.textContent, 'A RECIPE FOR MOONWATER');
-    assert.match(panel.description.textContent, /blue Moonwater/);
-    furniture.handleFocusKey('KeyE');
+    furniture.interact('alchemyDrawer');
+    assert.equal(furniture.isControllingCamera, false, 'The recipe is no longer interactive');
+    assert.equal(panel.root.hidden, true);
+    assert.ok(!interactions.some(item => item.highlightTarget.name === 'SEC_ALCHEMY_Drawer_4'));
     interactions.find(item => item.highlightTarget === chair).interact();
     assert.equal(sits, 1); assert.equal(furniture.isControllingCamera, true);
     for (let i = 0; i < 60; i++) furniture.update(1 / 60);
