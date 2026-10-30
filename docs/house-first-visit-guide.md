@@ -1,40 +1,42 @@
-# First house visit
+# Cinematic first house visit
 
-The first successful entry introduces the Projects Book, Journey Map,
-Achievements and Workshop as optional objectives. Each cue briefly frames the
-real object, then restores the visitor's camera and movement. A small card and
-an on-screen diamond help the visitor find the current objective.
+The first successful entry plays an automatic tour of the Projects Book,
+Journey Map, Achievements and Workshop. It begins with a welcome view, travels
+to each available section, pauses for 3.4 seconds with a short caption, and
+returns to the original player view at the end. No interaction is required to
+advance, and player control is retained by the tour for the entire sequence.
 
-The next cue waits until the current interaction has successfully opened and
-the visitor has closed it. Discoveries made out of order count immediately and
-are omitted from later cues. Missing destinations are omitted.
+Shots use oblique angles and wider context rather than the book reading
+camera. Real target bounds are framed with room for their surroundings. Travel
+uses swept camera-sphere checks against existing fixed colliders, roof
+clearance and the floor footprint. Blocked routes use a small navigation grid;
+curves are accepted only when their sampled segments stay clear. A short fade
+is used if no clear travel route exists. Roof and furniture checks do no work
+after the tour ends.
 
-- **E**, **Enter**, **Space**, or **Let me explore** ends a camera cue early.
-- **Esc** during a cue, or **Skip guide**, dismisses the entire guide.
-- Leaving the house cancels pending cues and restores camera ownership.
-- Reduced-motion visitors get objective cards without camera cutaways.
+- **Enter**, **E**, **Space**, or **Next section** advances during a pause.
+- **Esc** or **Skip tour** ends the tour and restores the player camera.
+- Leaving the house cancels it synchronously before the scene transition.
+- Reduced-motion visitors see every section as still shots with short fades.
+- Missing destinations are omitted; a failed house load consumes no visit flag.
 
-The entry is remembered under `portfolio.house-first-visit.v1` in localStorage
-as soon as the guide starts. Re-entry and reload therefore do not restart it,
-including when the visitor leaves early. If storage is blocked, the guide still
-runs at most once within the current Game instance.
+First entry is remembered under `portfolio.house-first-visit.v2` in localStorage
+as soon as the tour starts. It does not repeat on re-entry, reload, or after a
+skip. The new version key lets visitors who only saw the previous book hint see
+the complete cinematic tour once. If storage is blocked, it runs once within
+the current Game instance.
 
-For a repeat development check, remove that one key in the browser's application
-storage panel and reload. No geometry, interaction markers or house assets need
-to be re-exported. Camera directions use existing camera markers where present;
-otherwise they approach real target bounds from the entrance. Portrait framing
-lowers the viewing angle to stay below the cottage roof. Transitions cut under
-an opaque cover rather than flying through furniture.
+For development replay, remove that one key and reload. No Blender re-export
+is needed. Optional `CAMERA_TOUR_PROJECTS`, `CAMERA_TOUR_JOURNEY`,
+`CAMERA_TOUR_AWARDS` and `CAMERA_TOUR_WORKSHOP` markers can set the preferred
+viewing direction. Existing camera markers and entrance direction are used
+otherwise; their reading angles are replaced by oblique tour framing.
 
 ## Validation
 
 `npm run typecheck`, `npm run build`, and `node --test tests/house-guide.test.mjs`.
-The guide tests cover successful/failed house entry, completion hooks, input and
-camera ownership, skip/cancel during every transition, blocked storage, reduced
-motion, reload, missing targets, out-of-order exploration, and landscape/portrait
-framing with the production house geometry.
-
-The house at base commit `3a19599c51b600118b138943b14f538b65e315b4` also has
-three existing performance-test failures: its new house export is uncompressed,
-the stone LOD source has changed, and its surface-culling hash has not been
-reviewed. This feature does not change model files or those performance checks.
+Tests cover automatic progression through every section, continuous movement,
+final camera/input restoration, entrance success/failure, skip/cancel, reduced
+motion, reload/version migration, missing destinations, blocked storage,
+landscape/portrait framing, production-house collision clearance and obstructed
+routes. Live visual review in the browser remains part of local acceptance.

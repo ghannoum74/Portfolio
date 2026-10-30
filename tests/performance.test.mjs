@@ -1148,6 +1148,24 @@ test('live resolution respects native DPR, updates the border/composer and survi
   window.innerWidth = previous.width; window.innerHeight = previous.height; window.devicePixelRatio = previous.ratio;
 });
 
+test('mobile default resolution survives orientation resize while explicit resolution overrides are retained', () => {
+  const previous = { width: window.innerWidth, height: window.innerHeight, ratio: window.devicePixelRatio, matchMedia: window.matchMedia, search: window.location.search };
+  try {
+    window.innerWidth = 844; window.innerHeight = 390; window.devicePixelRatio = 3;
+    window.matchMedia = () => ({ matches: true }); window.location.search = '';
+    const renderer = rendererFixture(true, 'border'), ratios = [];
+    renderer.instance.setSize = () => {}; renderer.instance.setPixelRatio = value => ratios.push(value);
+    renderer.borderHighlight.setSize = () => {}; renderer.composer.setSize = () => {}; renderer.composer.setPixelRatio = () => {};
+    renderer.resize(); window.innerWidth = 390; window.innerHeight = 844; renderer.resize();
+    assert.deepEqual(ratios, [1.5, 1.5]);
+    window.location.search = '?dpr=2'; renderer.resize(); assert.equal(ratios.at(-1), 2);
+    renderer.setPixelRatio(.75); renderer.resize(); assert.equal(ratios.at(-1), .75);
+  } finally {
+    window.innerWidth = previous.width; window.innerHeight = previous.height; window.devicePixelRatio = previous.ratio;
+    window.matchMedia = previous.matchMedia; window.location.search = previous.search;
+  }
+});
+
 test('fixed physics steps run at 60 Hz while rendered animation drops the same excess backlog', () => {
   const world = Object.create(World.prototype);
   const physicsDeltas = [], animationDeltas = [];

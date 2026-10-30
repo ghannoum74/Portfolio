@@ -23,6 +23,8 @@ export class InteractionSystem {
     return [...new Set(this.interactables.map(interactable => interactable.highlightTarget))];
   }
 
+  get activeHint(): string | null { return this.active?.getHint() ?? null; }
+
   clear(): void {
     this.active = null;
     this.hint.hide();

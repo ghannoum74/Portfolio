@@ -19,8 +19,7 @@ type FurnitureKind =
   | "books" | "bookshelf" | "rest" | "notice" | "plant" | "seat" | "fireplace";
 
 type FurnitureId =
-  | "cauldron" | "potionGreen" | "potionBlue" | "potionGold"
-  | "alchemyDrawer" | "sink" | "candle" | "torch" | "bookStack"
+  | "cauldron" | "sink" | "candle" | "torch" | "bookStack"
   | "bed" | "fireside" | "noticeBoard" | "houseplant" | "couch" | "fireplace" | "bookshelf"
   | `dining:${string}`;
 
@@ -38,11 +37,7 @@ type FurnitureDefinition = {
 // These are verified object names in house-v2(9).blend.
 // Avoid targets owned by the Book, Workshop, Awards Hall or Journey Map.
 const FURNITURE: readonly FurnitureDefinition[] = [
-  { id: "cauldron", objectName: "SEC_ALCHEMY_Cauldron", kind: "cauldron", label: "Brew at Cauldron", message: "A little alchemy. The cauldron is bubbling!", color: 0x70d9a5, range: 2.25 },
-  { id: "potionGreen", objectName: "SEC_ALCHEMY_Potion_1", kind: "potion", label: "Inspect Verdant Elixir", message: "Verdant Elixir — a vial of curious energy.", color: 0x85dd9e, range: 1.65 },
-  { id: "potionBlue", objectName: "SEC_ALCHEMY_Potion_2", kind: "potion", label: "Inspect Moonwater", message: "Moonwater — bright as a midnight sky.", color: 0x82c8ef, range: 1.65 },
-  { id: "potionGold", objectName: "SEC_ALCHEMY_Potion_4", kind: "potion", label: "Inspect Sunfire", message: "Sunfire — a drop of bottled daylight.", color: 0xe9ba70, range: 1.65 },
-  { id: "alchemyDrawer", objectName: "SEC_ALCHEMY_Drawer_4", kind: "drawer", label: "Read Alchemy Recipe", message: "A recipe for Moonwater.", color: 0xdfbd81, range: 1.8 },
+  { id: "cauldron", objectName: "SEC_ALCHEMY_Cauldron", kind: "cauldron", label: "Brew a Potion", message: "A little alchemy. The cauldron is bubbling!", color: 0x70d9a5, range: 2.5 },
   { id: "sink", objectName: "SEC_KITCHEN_Kitchen_Sink", kind: "sink", label: "Turn On Water", message: "A tiny stream of magical spring water.", color: 0x96dceb, range: 1.9 },
   { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
   { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
@@ -99,6 +94,7 @@ class FurnitureInteractable implements Interactable {
   readonly highlightTarget: THREE.Object3D;
   readonly interactionDistance: number;
   private readonly bed?: BedGeometry;
+  private readonly cauldronBounds?: THREE.Box3;
   private readonly nearest = new THREE.Vector3();
 
   constructor(
@@ -108,6 +104,11 @@ class FurnitureInteractable implements Interactable {
     this.highlightTarget = node.model;
     this.interactionDistance = node.def.range;
     if (node.def.id === "bed") this.bed = inspectBed(node.model);
+    if (node.def.id === "cauldron") {
+      node.model.updateWorldMatrix(true, true);
+      const bounds = new THREE.Box3().setFromObject(node.model, true);
+      if (!bounds.isEmpty()) this.cauldronBounds = bounds;
+    }
     if (node.interactionAnchor) {
       node.interactionAnchor.getWorldPosition(this.position);
       return;
@@ -126,6 +127,7 @@ class FurnitureInteractable implements Interactable {
   getHint(): string { return this.owner.getHint(this.node.def.id); }
   interact(): void { this.owner.interact(this.node.def.id); }
   distanceTo(position: THREE.Vector3): number {
+    if (this.cauldronBounds) return position.distanceTo(this.nearest.copy(position).clamp(this.cauldronBounds.min, this.cauldronBounds.max));
     if (!this.bed) return position.distanceTo(this.position);
     this.nearest.copy(position).applyMatrix4(this.bed.inverse).clamp(this.bed.bounds.min, this.bed.bounds.max)
       .applyMatrix4(this.bed.world);
@@ -196,7 +198,6 @@ export class HouseFurnitureInteractions {
         continue;
       }
       const markerName = def.id === "cauldron" ? "INTERACT_ALCHEMY_CAULDRON" :
-        def.id === "alchemyDrawer" ? "INTERACT_RECIPE_DRAWER" :
         def.id === "bookshelf" ? "INTERACT_LIBRARY_SHELF" : undefined;
       const marker = markerName ? house.getObjectByName(markerName) : undefined;
       const model = marker ? authoredObject(house, marker.userData.targetObject) : authoredObject(house, def.objectName);
@@ -288,12 +289,13 @@ export class HouseFurnitureInteractions {
   }
 
   get isControllingCamera(): boolean { return this.focusState !== "idle"; }
+  get isPanelOpen(): boolean { return this.diningMode !== null; }
   get activeCount(): number { return [...this.nodes.values()].filter(node => !node.hearth || node.seat).length; }
 
   getHint(id: FurnitureId): string {
     const node = this.nodes.get(id);
     if (!node) return "Interact";
-    if (node.seat) return node.def.label;
+    if (node.seat || id === "cauldron") return node.def.label;
     if (!node.active) return node.def.label;
     switch (node.def.kind) {
       case "cauldron": return "Settle Cauldron";
@@ -310,8 +312,8 @@ export class HouseFurnitureInteractions {
     if (this.focusState !== "idle" || !this.house.visible) return;
     const node = this.nodes.get(id);
     if (!node) return;
-    if (id === "cauldron" || id === "alchemyDrawer" || id === "bookshelf") {
-      this.openDiningPanel(id === "cauldron" ? "alchemy" : id === "bookshelf" ? "bookshelf" : "recipe");
+    if (id === "cauldron" || id === "bookshelf") {
+      this.openDiningPanel(id === "cauldron" ? "alchemy" : "bookshelf");
       return;
     }
     if (node.seat) {
@@ -351,7 +353,6 @@ export class HouseFurnitureInteractions {
       else if (code === "ArrowLeft" || code === "ArrowRight") this.diningPanel?.selectRelative(code === "ArrowRight" ? 1 : -1);
       else if (code === "KeyE" || code === "Enter") {
         if (this.diningMode === "alchemy") this.diningPanel?.brew();
-        else if (this.diningMode === "recipe") this.closeDiningPanel();
       }
     } else if (code === "Escape" || code === "KeyE" || code === "Enter") this.leaveFocus();
   }
