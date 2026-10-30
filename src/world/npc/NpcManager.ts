@@ -12,6 +12,7 @@ import { mapConcurrent } from "../../loaders/mapConcurrent";
 export class NpcManager {
   readonly npcs: Npc[] = [];
   private readonly loader: AssetLoader;
+  private readonly startupLoader: AssetLoader;
   private readonly animationDistance = 15;
   private readonly animationDistanceSq =
     this.animationDistance * this.animationDistance;
@@ -20,13 +21,36 @@ export class NpcManager {
   private readonly shadowDistanceSq = this.shadowDistance * this.shadowDistance;
   private visible = true;
   private loadPromise?: Promise<void>;
+  private startupPromise?: Promise<void>;
+  private animationsPromise?: Promise<NpcAnimationClips>;
 
   constructor(
     private readonly scene: THREE.Scene,
 
     loadingManager: THREE.LoadingManager,
+    onAssetReady?: (url: string) => void,
   ) {
-    this.loader = new AssetLoader(loadingManager);
+    this.startupLoader = new AssetLoader(loadingManager, onAssetReady);
+    // Optional characters cannot affect the initial loading gate or its errors.
+    this.loader = new AssetLoader(new THREE.LoadingManager());
+  }
+
+  loadStartup(): Promise<void> {
+    this.startupPromise ??= this.loadStartupAssets().catch(error => {
+      this.startupPromise = undefined;
+      throw error;
+    });
+    return this.startupPromise;
+  }
+
+  private async loadStartupAssets(): Promise<void> {
+    const definition = NPC_DEFINITIONS.find(npc => npc.asset === ASSETS.characters.frequenc);
+    if (!definition) throw new Error("Missing startup Frequenc character definition");
+    const [asset, animationClips] = await Promise.all([
+      this.startupLoader.loadGLB(definition.asset),
+      this.loadAnimations(),
+    ]);
+    this.createNpc(definition, asset.scene, animationClips);
   }
 
   load(): Promise<void> {
@@ -38,11 +62,14 @@ export class NpcManager {
   }
 
   private async loadAssets(): Promise<void> {
+    // Reuse the already visible character and its clips, including concurrent calls.
+    await this.loadStartup();
     const animationClips = await this.loadAnimations();
+    const remaining = NPC_DEFINITIONS.filter(npc => npc.asset !== ASSETS.characters.frequenc);
     // Two model decodes/downloads overlap without starting every NPC at once.
-    // Create only after all models succeed, so retry cannot duplicate a partial scene.
-    const assets = await mapConcurrent(NPC_DEFINITIONS, 2, definition => this.loader.loadGLB(definition.asset));
-    assets.forEach((asset, index) => this.createNpc(NPC_DEFINITIONS[index], asset.scene, animationClips));
+    // Create the remaining group atomically so retry cannot duplicate partial work.
+    const assets = await mapConcurrent(remaining, 2, definition => this.loader.loadGLB(definition.asset));
+    assets.forEach((asset, index) => this.createNpc(remaining[index], asset.scene, animationClips));
   }
 
   private createNpc(
@@ -94,15 +121,23 @@ export class NpcManager {
     });
   }
 
-  private async loadAnimations(): Promise<NpcAnimationClips> {
+  private loadAnimations(): Promise<NpcAnimationClips> {
+    this.animationsPromise ??= this.loadAnimationAssets().catch(error => {
+      this.animationsPromise = undefined;
+      throw error;
+    });
+    return this.animationsPromise;
+  }
+
+  private async loadAnimationAssets(): Promise<NpcAnimationClips> {
     const [idle, talking1, talking2, talking3] = await Promise.all([
-      this.loader.loadGLB(ASSETS.npcAnimations.idle),
+      this.startupLoader.loadGLB(ASSETS.npcAnimations.idle),
 
-      this.loader.loadGLB(ASSETS.npcAnimations.talking1),
+      this.startupLoader.loadGLB(ASSETS.npcAnimations.talking1),
 
-      this.loader.loadGLB(ASSETS.npcAnimations.talking2),
+      this.startupLoader.loadGLB(ASSETS.npcAnimations.talking2),
 
-      this.loader.loadGLB(ASSETS.npcAnimations.talking3),
+      this.startupLoader.loadGLB(ASSETS.npcAnimations.talking3),
     ]);
 
     return {

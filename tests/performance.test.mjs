@@ -1700,6 +1700,7 @@ test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachm
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   const first = manager.load(); assert.equal(manager.load(), first); await first;
   assert.equal(requests, NPC_DEFINITIONS.length); assert.equal(peak, 2);
   assert.deepEqual(manager.npcs.map(npc => npc.id), NPC_DEFINITIONS.map(definition => definition.id));
@@ -1836,6 +1837,7 @@ test('a failed NPC load can retry without partial characters or duplicate regist
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   await assert.rejects(manager.load(), /network failed/); assert.equal(manager.npcs.length, 0);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);

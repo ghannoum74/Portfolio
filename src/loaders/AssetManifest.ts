@@ -58,4 +58,7 @@ export const STARTUP_ASSETS: readonly string[] = [
   ASSETS.world,
   ASSETS.player,
   ...Object.values(ASSETS.animations),
+  // The first character seen during the entrance must be posed and ready too.
+  ASSETS.characters.frequenc,
+  ...Object.values(ASSETS.npcAnimations),
 ];
