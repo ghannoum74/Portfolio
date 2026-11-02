@@ -234,61 +234,35 @@ export class WorldColliders {
   }
 
   private createConvexHullCollider(mesh: THREE.Mesh): void {
-    /*
-     * Clone so we don't modify the visual geometry.
-     */
-    const geometry = mesh.geometry.clone();
-
-    /*
-     * Bake:
-     *
-     * position
-     * rotation
-     * scale
-     * parent transforms
-     *
-     * directly into the collider vertices.
-     */
-    geometry.applyMatrix4(mesh.matrixWorld);
-
-    const position = geometry.getAttribute("position");
-
-    if (!position) {
-      geometry.dispose();
-      return;
-    }
-
-    /*
-     * Rapier convexHull expects:
-     *
-     * [
-     *   x, y, z,
-     *   x, y, z,
-     *   ...
-     * ]
-     */
-    const vertices = new Float32Array(position.count * 3);
-
-    for (let i = 0; i < position.count; i++) {
-      vertices[i * 3] = position.getX(i);
-
-      vertices[i * 3 + 1] = position.getY(i);
-
-      vertices[i * 3 + 2] = position.getZ(i);
-    }
+    const vertices = this.worldVertices(mesh);
+    if (!vertices) return;
 
     const colliderDesc = this.physics.rapier.ColliderDesc.convexHull(vertices);
 
     if (!colliderDesc) {
-      geometry.dispose();
       return;
     }
 
     this.physics.world.createCollider(colliderDesc);
 
     console.log(`🪨 Convex hull collider: ${mesh.name}`);
+  }
 
-    geometry.dispose();
+  private worldVertices(mesh: THREE.Mesh): Float32Array | null {
+    const position = mesh.geometry.getAttribute("position");
+    if (!position) return null;
+    const vertices = new Float32Array(position.count * 3);
+    const point = new THREE.Vector3();
+    for (let i = 0; i < position.count; i++) {
+      // Meshopt positions may be normalized Int16/Uint16 attributes. Decode
+      // first, then transform into a FLOAT buffer: applying Matrix4 in place
+      // would write world coordinates back into the bounded integer attribute.
+      point.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      vertices[i * 3] = point.x;
+      vertices[i * 3 + 1] = point.y;
+      vertices[i * 3 + 2] = point.z;
+    }
+    return vertices;
   }
 
   /*
@@ -298,35 +272,18 @@ export class WorldColliders {
    */
 
   private createTrimeshCollider(mesh: THREE.Mesh): void {
-    const geometry = mesh.geometry.clone();
-
-    geometry.applyMatrix4(mesh.matrixWorld);
-
-    const position = geometry.getAttribute("position");
-
-    if (!position) {
-      geometry.dispose();
-      return;
-    }
-
-    const vertices = new Float32Array(position.count * 3);
-
-    for (let i = 0; i < position.count; i++) {
-      vertices[i * 3] = position.getX(i);
-
-      vertices[i * 3 + 1] = position.getY(i);
-
-      vertices[i * 3 + 2] = position.getZ(i);
-    }
+    const geometry = mesh.geometry;
+    const vertices = this.worldVertices(mesh);
+    if (!vertices) return;
 
     let indices: Uint32Array;
 
     if (geometry.index) {
       indices = new Uint32Array(geometry.index.array);
     } else {
-      indices = new Uint32Array(position.count);
+      indices = new Uint32Array(vertices.length / 3);
 
-      for (let i = 0; i < position.count; i++) {
+      for (let i = 0; i < indices.length; i++) {
         indices[i] = i;
       }
     }
@@ -339,7 +296,5 @@ export class WorldColliders {
     this.physics.world.createCollider(colliderDesc);
 
     console.log(`🔺 Trimesh collider: ${mesh.name}`);
-
-    geometry.dispose();
   }
 }
