@@ -69,11 +69,22 @@ export class NpcManager {
     // Reuse the already visible character and its clips, including concurrent calls.
     await this.loadStartup();
     const animationClips = await this.loadAnimations();
-    const remaining = NPC_DEFINITIONS.filter(npc => npc.asset !== ASSETS.characters.frequenc);
-    // Two model decodes/downloads overlap without starting every NPC at once.
-    // Create the remaining group atomically so retry cannot duplicate partial work.
-    const assets = await mapConcurrent(remaining, 2, definition => this.loader.loadGLB(definition.asset));
-    assets.forEach((asset, index) => this.createNpc(remaining[index], asset.scene, animationClips));
+    const loadedIds = new Set(this.npcs.map(npc => npc.id));
+    const remaining = NPC_DEFINITIONS.filter(npc => !loadedIds.has(npc.id));
+    const failures: Error[] = [];
+    // Keep two requests in flight, but let each available guide appear even if
+    // another model is missing. Retry only the missing IDs on the next load().
+    await mapConcurrent(remaining, 2, async definition => {
+      try {
+        const asset = await this.loader.loadGLB(definition.asset);
+        this.createNpc(definition, asset.scene, animationClips);
+      } catch (cause) {
+        failures.push(new Error(`Could not load guide ${definition.id}: ${definition.asset}`, { cause }));
+      }
+    });
+    this.npcs.sort((a, b) => NPC_DEFINITIONS.findIndex(npc => npc.id === a.id) -
+      NPC_DEFINITIONS.findIndex(npc => npc.id === b.id));
+    if (failures.length) throw new AggregateError(failures, "Some optional career guides could not load");
   }
 
   private createNpc(

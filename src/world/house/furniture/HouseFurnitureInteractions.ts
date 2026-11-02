@@ -37,7 +37,7 @@ type FurnitureDefinition = {
 // These are verified object names in house-v2(9).blend.
 // Avoid targets owned by the Book, Workshop, Awards Hall or Journey Map.
 const FURNITURE: readonly FurnitureDefinition[] = [
-  { id: "cauldron", objectName: "SEC_ALCHEMY_Cauldron", kind: "cauldron", label: "Brew a Potion", message: "A little alchemy. The cauldron is bubbling!", color: 0x70d9a5, range: 2.5 },
+  { id: "cauldron", objectName: "SEC_ALCHEMY_Cauldron", kind: "cauldron", label: "One Last Side Quest", message: "The cauldron has received a small request.", color: 0x70d9a5, range: 2.5 },
   { id: "sink", objectName: "SEC_KITCHEN_Kitchen_Sink", kind: "sink", label: "Turn On Water", message: "A tiny stream of magical spring water.", color: 0x96dceb, range: 1.9 },
   { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
   { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
@@ -86,6 +86,7 @@ export type FurnitureOptions = {
   onSitEnd?: () => void;
   onLieStart?: (bed: THREE.Object3D) => { target: THREE.Vector3; headDirection: THREE.Vector3 } | false;
   onLieEnd?: () => void;
+  onEndingContact?: () => void;
   isMuted?: () => boolean;
 };
 
@@ -364,6 +365,7 @@ export class HouseFurnitureInteractions {
         onSelection: () => this.stopBrewing(),
         onBrew: potion => this.brew(potion),
         onClose: () => this.closeDiningPanel(),
+        onContact: this.options.onEndingContact,
       });
       this.diningMode = mode;
       this.focusState = "resting";

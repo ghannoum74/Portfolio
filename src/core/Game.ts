@@ -1092,10 +1092,12 @@ export class Game {
   private async loadNpcsInBackground(): Promise<void> {
     try {
       await this.world.loadNpcs();
-
-      this.registerNpcInteractions();
     } catch (error) {
       console.error("Failed to load NPCs:", error);
+    } finally {
+      // A failed optional model must not leave the successfully loaded guides
+      // without their conversations and proximity hints.
+      this.registerNpcInteractions();
     }
   }
 
@@ -1398,6 +1400,11 @@ export class Game {
         onSitEnd: () => this.world.player.endSitting(),
         onLieStart: bed => this.world.player.beginLying(bed),
         onLieEnd: () => this.world.player.endSitting(),
+        onEndingContact: () => {
+          if (this.phase === "playing" && this.insideHouse && !this.transitioning) {
+            this.paperPanel.open(createContactContent(), "Let’s talk.");
+          }
+        },
         isMuted: () => this.worldAudio.isMuted,
       },
     );

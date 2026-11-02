@@ -1673,6 +1673,8 @@ test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachm
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let requests = 0, active = 0, peak = 0;
   Object.assign(manager, { scene, npcs: [], visible: false,
+    createNpc(definition, model) { model.visible = this.visible; if (this.visible) this.scene.add(model); this.npcs.push({ id: definition.id, model }); },
+    loadStartup: async () => { if (!manager.npcs.length) { requests++; manager.createNpc(NPC_DEFINITIONS[0], new THREE.Group()); } },
     loadAnimations: async () => clips,
     loader: { loadGLB: async () => {
       requests++; peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--;
@@ -1804,20 +1806,27 @@ test('normal renderer entry keeps stats and legacy postprocessing out of its sta
   assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.endsWith('/OutlinePass.js'))));
 });
 
-test('a failed NPC load can retry without partial characters or duplicate registrations', async () => {
+test('an optional NPC failure preserves available guides and retry loads only the missing ID', async () => {
   const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let calls = 0;
   Object.assign(manager, { scene, npcs: [], visible: true, loadAnimations: async () => clips,
+    createNpc(definition, model) { this.scene.add(model); this.npcs.push({ id: definition.id, model }); },
+    loadStartup: async () => { if (!manager.npcs.length) manager.createNpc(NPC_DEFINITIONS[0], new THREE.Group()); },
     loader: { loadGLB: async () => {
       const request = ++calls; await new Promise(resolve => setImmediate(resolve));
       if (request === 1) throw new Error('network failed');
       return { scene: new THREE.Group() };
     } },
   });
-  await assert.rejects(manager.load(), /network failed/); assert.equal(manager.npcs.length, 0);
+  await assert.rejects(manager.load(), error => error instanceof AggregateError && error.errors[0].cause.message === 'network failed');
+  assert.equal(manager.npcs.length, NPC_DEFINITIONS.length - 1);
+  const existing = manager.npcs.slice();
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
+  assert.equal(calls, NPC_DEFINITIONS.length);
+  for (const npc of existing) assert.ok(manager.npcs.includes(npc));
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
+  assert.equal(calls, NPC_DEFINITIONS.length);
 });
 
 test('asset packing rejects unknown extensions before replacing an existing output', async () => {
