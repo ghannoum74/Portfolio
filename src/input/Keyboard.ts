@@ -9,6 +9,13 @@ export class Keyboard {
   private suspended = false;
   private readonly physical = new Set<string>();
   private touch = { forward: false, backward: false, left: false, right: false, run: false };
+  private touchTurnStrength = 0;
+
+  /** Physical keys retain their full turn rate; the touch stick steers gradually. */
+  get turnStrength(): number {
+    if (this.physical.has("KeyA") || this.physical.has("KeyD") || (!this.touch.left && !this.touch.right)) return 1;
+    return this.touchTurnStrength;
+  }
 
   get isEnabled(): boolean { return this.enabled && !this.suspended; }
 
@@ -20,12 +27,21 @@ export class Keyboard {
 
   setTouchMovement(x: number, y: number, run = false): void {
     if (!this.isEnabled) return;
-    this.touch = { forward: y < -0.2, backward: y > 0.2, left: x < -0.2, right: x > 0.2, run };
+    // Wider steering than walking dead zone, with separate release thresholds
+    // so a finger hovering near the boundary does not chatter between states.
+    const left = x < -(this.touch.left ? 0.20 : 0.30);
+    const right = x > (this.touch.right ? 0.20 : 0.30);
+    const forward = y < -(this.touch.forward ? 0.17 : 0.24);
+    const backward = y > (this.touch.backward ? 0.17 : 0.24);
+    const turn = Math.max(0, Math.min(1, (Math.abs(x) - 0.20) / 0.80));
+    this.touchTurnStrength = Math.pow(turn, 1.4) * 0.65;
+    this.touch = { forward, backward, left, right, run: run && (forward || backward) };
     this.applyMovement();
   }
 
   clearTouchMovement(): void {
     this.touch = { forward: false, backward: false, left: false, right: false, run: false };
+    this.touchTurnStrength = 0;
     this.applyMovement();
   }
 
@@ -65,6 +81,7 @@ export class Keyboard {
   private reset = (): void => {
     this.physical.clear();
     this.touch = { forward: false, backward: false, left: false, right: false, run: false };
+    this.touchTurnStrength = 0;
     this.forward = false;
     this.backward = false;
     this.left = false;

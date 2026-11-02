@@ -65,11 +65,11 @@ export class PlayerController {
     // an accidental fall.
     if (!falling || allowAirControl) {
       if (this.keyboard.left) {
-        this.player.rotation.y += this.rotationSpeed * delta;
+        this.player.rotation.y += this.rotationSpeed * this.keyboard.turnStrength * delta;
       }
 
       if (this.keyboard.right) {
-        this.player.rotation.y -= this.rotationSpeed * delta;
+        this.player.rotation.y -= this.rotationSpeed * this.keyboard.turnStrength * delta;
       }
     }
 

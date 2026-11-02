@@ -1,25 +1,43 @@
 .mobile-controls { position: fixed; inset: 0; z-index: 150; pointer-events: none; user-select: none; -webkit-user-select: none; }
 .mobile-controls [hidden], .mobile-controls[hidden] { display: none !important; }
 .mobile-controls__zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 58%; touch-action: none; pointer-events: auto; }
-.mobile-controls__pad { position: fixed; transform: translate(-50%, -50%); width: 108px; height: 108px; border: 1px solid #f3e7c27a; border-radius: 50%; background: #30291e45; color: #fff5d9ba; box-shadow: inset 0 0 18px #19140f25; }
-.mobile-controls__pad > span { position: absolute; font: 12px/1 system-ui; }
-.mobile-controls__up { left: 50%; top: 9px; transform: translateX(-50%); }
-.mobile-controls__down { left: 50%; bottom: 9px; transform: translateX(-50%); }
-.mobile-controls__left { top: 50%; left: 9px; transform: translateY(-50%); }
-.mobile-controls__right { top: 50%; right: 9px; transform: translateY(-50%); }
-.mobile-controls__pad .mobile-controls__knob { left: 50%; top: 50%; width: 34px; height: 34px; border-radius: 50%; background: #f4e8cb9c; border: 1px solid #fff5d999; }
-.mobile-controls button, .mobile-rotate button { pointer-events: auto; touch-action: manipulation; min-height: 44px; min-width: 44px; border: 1px solid #e4cda17a; border-radius: 12px; color: #fff1d3; background: #30261dd9; padding: 9px 14px; font: 13px/1.2 var(--font-root, system-ui); }
-.mobile-controls button:active, .mobile-rotate button:active { background: #61503de8; }
-.mobile-controls button:focus-visible, .mobile-rotate button:focus-visible { outline: 2px solid #f5d99c; outline-offset: 3px; }
-.mobile-controls__actions { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: center; max-width: 75vw; flex-wrap: wrap; justify-content: flex-end; }
-.mobile-controls__actions button { max-width: 220px; }
-.mobile-controls__fullscreen { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); }
-.mobile-controls__hint { position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: 50vw; margin: 0; text-align: center; text-shadow: 0 1px 5px #000; color: #fff6dc; font: 11px/1.5 system-ui; }
-.mobile-rotate { box-sizing: border-box; color: #f3e7c2; background: #261f19; border: 1px solid #c8ac7c; border-radius: 18px; padding: 30px 24px; max-width: min(360px, calc(100vw - 32px)); text-align: center; }
-.mobile-rotate::backdrop { background: #17130ff5; }
+.mobile-controls__pad { position: fixed; transform: translate(-50%, -50%); width: 120px; height: 120px; border: 2px solid #5c4534a6; border-radius: 49% 52% 47% 51%; background: radial-gradient(circle, #f3e7c24a 24%, #f3e7c2a6 72%); color: #5c4534; box-shadow: inset 0 0 0 7px #f3e7c25c, 2px 3px 0 #30261d35; pointer-events: none; }
+.mobile-controls__pad::before { content: ""; position: absolute; inset: 13px; border: 1px dashed #5c453454; border-radius: 50%; }
+.mobile-controls__pad > span { position: absolute; }
+.mobile-controls__pad svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.mobile-controls__up { left: 50%; top: 4px; transform: translateX(-50%); }
+.mobile-controls__down { left: 50%; bottom: 4px; transform: translateX(-50%) rotate(180deg); }
+.mobile-controls__left { top: 50%; left: 4px; transform: translateY(-50%) rotate(-90deg); }
+.mobile-controls__right { top: 50%; right: 4px; transform: translateY(-50%) rotate(90deg); }
+.mobile-controls__pad > span:not(.mobile-controls__knob) { opacity: .45; }
+.mobile-controls__pad[data-x="left"] .mobile-controls__left,
+.mobile-controls__pad[data-x="right"] .mobile-controls__right,
+.mobile-controls__pad[data-y="up"] .mobile-controls__up,
+.mobile-controls__pad[data-y="down"] .mobile-controls__down { opacity: 1; }
+.mobile-controls__pad .mobile-controls__knob { left: 50%; top: 50%; width: 34px; height: 34px; border: 2px solid #5c4534; border-radius: 48% 53% 46% 51%; background: #f3e7c2ed; box-shadow: inset 0 0 0 4px #5c45341c, 2px 2px 0 #30261d35; }
+.mobile-controls__pad[data-pace="run"] { border-color: #5c4534; box-shadow: inset 0 0 0 7px #a58a5357, 2px 3px 0 #30261d35; }
+.mobile-controls button, .mobile-rotate button { --tilt: 0deg; box-sizing: border-box; pointer-events: auto; touch-action: manipulation; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 64px; height: 64px; min-height: 48px; min-width: 48px; padding: 7px; border: 3px solid var(--paper-ink, #5c4534); border-radius: 48% 53% 46% 51%; color: var(--paper-ink, #5c4534); background: var(--paper-background, #f3e7c2); box-shadow: inset 0 0 0 2px #fff6dc80, 3px 4px 0 #30261d70; font: 11px/1.1 var(--font-root, system-ui); cursor: pointer; transform: rotate(var(--tilt)); }
+.mobile-controls button:active, .mobile-rotate button:active { background: #e7d1a0; transform: rotate(var(--tilt)) translateY(3px); box-shadow: inset 0 0 0 2px #fff6dc80, 1px 1px 0 #30261d70; }
+.mobile-controls button:focus-visible, .mobile-rotate button:focus-visible { outline: 3px solid #f3e7c2; outline-offset: 4px; }
+.mobile-controls__icon { display: block; width: 25px; height: 25px; pointer-events: none; }
+.mobile-controls__icon svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mobile-controls__label { pointer-events: none; white-space: nowrap; }
+.mobile-controls__actions { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: flex-end; max-width: min(420px, calc(100vw - 160px)); flex-wrap: wrap; justify-content: flex-end; }
+.mobile-controls .mobile-controls__action { --tilt: -3deg; width: 78px; height: 78px; border-width: 3px; outline: 1px solid #f3e7c2a6; outline-offset: 3px; }
+.mobile-controls__action .mobile-controls__icon { width: 30px; height: 30px; }
+.mobile-controls .mobile-controls__jump { --tilt: 4deg; }
+.mobile-controls .mobile-controls__back { --tilt: -4deg; width: 54px; height: 54px; }
+.mobile-controls .mobile-controls__previous, .mobile-controls .mobile-controls__next { width: 48px; height: 48px; }
+.mobile-controls .mobile-controls__project { --tilt: 3deg; }
+.mobile-controls__target { position: absolute; right: 0; bottom: calc(100% + 14px); box-sizing: border-box; margin: 0; padding: 9px 13px; max-width: min(260px, 52vw); border: 2px solid var(--paper-ink, #5c4534); border-radius: 9px 13px 8px 11px; background: var(--paper-background, #f3e7c2); color: var(--paper-ink, #5c4534); box-shadow: 2px 3px 0 #30261d40; font: 12px/1.4 var(--font-root, system-ui); text-align: center; pointer-events: none; }
+.mobile-controls .mobile-controls__fullscreen { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 48px; height: 48px; }
+.mobile-controls__hint { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: min(260px, 36vw); margin: 0; text-align: center; text-shadow: 0 1px 5px #000; color: #fff6dc; font: 11px/1.5 system-ui; }
+.mobile-rotate { box-sizing: border-box; color: var(--paper-ink, #5c4534); background: var(--paper-background, #f3e7c2); border: 3px solid var(--paper-ink, #5c4534); border-radius: 18px 13px 20px 15px; padding: 30px 24px; max-width: min(360px, calc(100vw - 32px)); text-align: center; box-shadow: 6px 8px 0 #30261d70; }
+.mobile-rotate::backdrop { background: #261f19e8; }
 .mobile-rotate h2 { font: 23px/1.25 var(--font-root, system-ui); margin: 0 0 16px; }
 .mobile-rotate p { font: 15px/1.6 system-ui; }
-.mobile-rotate small { display: block; margin-top: 18px; font: 12px/1.5 system-ui; color: #cdbd9f; }
+.mobile-rotate small { display: block; margin-top: 18px; font: 12px/1.5 system-ui; color: #806346; }
+.mobile-rotate .mobile-controls__landscape { flex-direction: row; gap: 10px; width: 100%; height: auto; padding: 12px; border-radius: 10px 14px 9px 12px; font-size: 13px; }
 .has-touch-controls.is-world #game { touch-action: none; }
 .has-touch-controls .interaction-hint { display: none; }
 .has-touch-controls .help-button, .has-touch-controls .sound-button { top: max(10px, env(safe-area-inset-top)); width: 44px; height: 44px; }
@@ -33,8 +51,8 @@
 .has-touch-controls .dining-panel__keys { display: none; }
 .has-touch-controls .dialogue-box kbd, .has-touch-controls .house-guide__keys { display: none; }
 .has-touch-controls .dialogue-box_next { display: none; }
-.has-touch-controls .dialogue-box_panel { bottom: 76px; min-height: 0; padding: 30px 24px 18px; }
-.has-touch-controls .dialogue-box_text { min-height: 0; max-height: calc(100dvh - 220px); overflow-y: auto; font-size: 16px; line-height: 1.45; }
+.has-touch-controls .dialogue-box_panel { bottom: 112px; min-height: 0; padding: 30px 24px 18px; }
+.has-touch-controls .dialogue-box_text { min-height: 0; max-height: calc(100dvh - 250px); overflow-y: auto; font-size: 16px; line-height: 1.45; }
 .has-touch-controls .awards-inspector_proof { min-height: 44px; display: inline-flex; align-items: center; }
 .has-touch-controls .awards-inspector_proof[hidden] { display: none; }
 .has-touch-controls .house-guide button { min-height: 44px; }
@@ -46,7 +64,7 @@
 .has-touch-controls .dining-panel__controls button { min-height: 44px; min-width: 44px; }
 .has-touch-controls .dialogue-box_next, .has-touch-controls [data-paper-close] { min-width: 44px; min-height: 44px; }
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
-  .has-touch-controls .workshop-inspector, .has-touch-controls .awards-inspector, .has-touch-controls .journey-inspector { box-sizing: border-box; top: max(62px, env(safe-area-inset-top)); bottom: 76px; right: max(12px, env(safe-area-inset-right)); width: min(310px, 43vw); max-height: calc(100dvh - 138px); overflow-y: auto; pointer-events: auto; padding: 12px 15px; }
+  .has-touch-controls .workshop-inspector, .has-touch-controls .awards-inspector, .has-touch-controls .journey-inspector { box-sizing: border-box; top: max(62px, env(safe-area-inset-top)); bottom: 112px; right: max(12px, env(safe-area-inset-right)); width: min(310px, 43vw); max-height: calc(100dvh - 174px); overflow-y: auto; pointer-events: auto; padding: 12px 15px; }
   .has-touch-controls .workshop-inspector h2, .has-touch-controls .awards-inspector h2, .has-touch-controls .journey-inspector h2 { font-size: 21px; margin: 6px 0; }
   .has-touch-controls .workshop-inspector_description, .has-touch-controls .awards-inspector_description, .has-touch-controls .journey-inspector p { font-size: 12px; line-height: 1.4; }
   .has-touch-controls .dining-panel { left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); max-height: calc(100dvh - 78px); padding: 14px; width: min(360px, 50vw); }

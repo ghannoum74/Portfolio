@@ -1,6 +1,31 @@
 import type { Keyboard } from "./Keyboard";
 import "./MobileControls.css";
 
+const ICONS = {
+  previous: '<path d="m15 5-7 7 7 7"/>',
+  next: '<path d="m9 5 7 7-7 7"/>',
+  action: '<path d="M8 13V5a1.5 1.5 0 0 1 3 0v6-2a1.5 1.5 0 0 1 3 0v2-1a1.5 1.5 0 0 1 3 0v2a1.5 1.5 0 0 1 3 0v4c0 4-2 6-6 6h-2c-2 0-3-1-4-3l-3-5a1.6 1.6 0 0 1 2-2Z"/>',
+  back: '<path d="m9 4-5 5 5 5M4 9h9a6 6 0 0 1 0 12h-2"/>',
+  project: '<path d="M6 21V4l10-2v19M3 21h18m-8-9h.01"/>',
+  jump: '<path d="M12 4v11m-5-6 5-5 5 5M5 20h14m-12-3v3m10-3v3"/>',
+  fullscreen: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/>',
+  landscape: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M18 10v4M5 3h10m0 0-2-2m2 2-2 2"/>',
+} as const;
+
+/** Finger travel in CSS pixels, deliberately larger than the displayed knob. */
+export const TOUCH_STICK = { radius: 84, runEnter: 78, runExit: 64 } as const;
+
+function shortAction(action: string): string {
+  if (action === "Continue") return "Next";
+  if (action === "Details") return "Inspect";
+  if (/^Talk/i.test(action)) return "Talk";
+  if (/^Enter/i.test(action)) return "Enter";
+  if (/^Exit|^Return/i.test(action)) return "Back";
+  if (/Brew|Cauldron|Side Quest/i.test(action)) return "Brew";
+  if (/Sit|Lie|Rest/i.test(action)) return "Rest";
+  return "Use";
+}
+
 export type MobileContext = {
   movement: boolean;
   action: string | null;
@@ -17,6 +42,8 @@ export class MobileControls {
   private readonly pad = document.createElement("div");
   private readonly knob = document.createElement("span");
   private readonly toolbar = document.createElement("div");
+  private readonly target = document.createElement("p");
+  private actionCaption!: HTMLSpanElement;
   private readonly action: HTMLButtonElement;
   private readonly back: HTMLButtonElement;
   private readonly previous: HTMLButtonElement;
@@ -34,6 +61,7 @@ export class MobileControls {
   private pointer: number | null = null;
   private originX = 0;
   private originY = 0;
+  private running = false;
   private blocking = false;
   private destroyed = false;
   private context?: MobileContext;
@@ -42,37 +70,42 @@ export class MobileControls {
     this.root.className = "mobile-controls";
     this.root.hidden = true;
     this.zone.className = "mobile-controls__zone";
-    this.zone.setAttribute("aria-label", "Touch and drag to move; drag farther to run");
+    this.zone.setAttribute("aria-label", "Touch and drag to move; drag farther up or down to run");
     this.pad.className = "mobile-controls__pad";
     this.pad.hidden = true;
     this.pad.setAttribute("aria-hidden", "true");
-    this.pad.innerHTML = '<span class="mobile-controls__up">▲</span><span class="mobile-controls__down">▼</span><span class="mobile-controls__left">◀</span><span class="mobile-controls__right">▶</span>';
+    this.pad.innerHTML = ["up", "down", "left", "right"].map(direction =>
+      `<span class="mobile-controls__${direction}"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg></span>`).join("");
     this.knob.className = "mobile-controls__knob";
     this.pad.appendChild(this.knob);
     this.toolbar.className = "mobile-controls__actions";
-    this.previous = this.button("←", "Previous item", () => this.send("ArrowLeft"));
-    this.next = this.button("→", "Next item", () => this.send("ArrowRight"));
-    this.action = this.button("Interact", "Interact with nearby object", () => this.send("KeyE"));
-    this.back = this.button("Back", "Return to exploring", () => this.send("Escape"));
-    this.project = this.button("Open website ↗", "Open current project website", () => this.send("KeyO"));
+    this.toolbar.setAttribute("role", "group");
+    this.toolbar.setAttribute("aria-label", "Adventure controls");
+    this.target.className = "mobile-controls__target";
+    this.target.setAttribute("aria-hidden", "true");
+    this.target.hidden = true;
+    this.previous = this.button("", "Previous item", () => this.send("ArrowLeft"), "previous");
+    this.next = this.button("", "Next item", () => this.send("ArrowRight"), "next");
+    this.action = this.button("Use", "Interact with nearby object", () => this.send("KeyE"), "action");
+    this.back = this.button("Back", "Return to exploring", () => this.send("Escape"), "back");
+    this.project = this.button("Visit", "Open current project website", () => this.send("KeyO"), "project");
     this.jump = this.button("Jump", "Jump", () => {
-      if (this.movement && !this.blocking) this.keyboard.queueJump();
-    });
-    this.toolbar.append(this.previous, this.next, this.project, this.action, this.jump, this.back);
-    this.fullscreen = this.button("⛶", "Enter fullscreen landscape", () => {
+      if (this.isTouch && this.worldActive && this.movement && !this.blocking && !document.hidden) this.keyboard.queueJump();
+    }, "jump");
+    this.toolbar.append(this.target, this.previous, this.next, this.project, this.action, this.jump, this.back);
+    this.fullscreen = this.button("", "Enter fullscreen landscape", () => {
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
       else void this.requestLandscape();
-    });
-    this.fullscreen.className = "mobile-controls__fullscreen";
+    }, "fullscreen");
     this.hint.className = "mobile-controls__hint";
-    this.hint.textContent = "Touch left to move · Drag farther to run · Drag right to look";
+    this.hint.textContent = "Left thumb: move · Push farther to run · Right thumb: look";
     this.hint.hidden = true;
     this.root.append(this.zone, this.pad, this.toolbar, this.fullscreen, this.hint);
     this.rotate.className = "mobile-rotate";
     this.rotate.setAttribute("aria-labelledby", "mobile-rotate-title");
     const title = document.createElement("h2"); title.id = "mobile-rotate-title"; title.textContent = "Turn your phone sideways";
     const message = document.createElement("p"); message.textContent = "Explore the world in landscape. Your adventure will resume when you rotate your phone.";
-    this.rotateButton = this.button("Play in landscape ⛶", "Try fullscreen landscape", () => void this.requestLandscape());
+    this.rotateButton = this.button("Play in landscape", "Try fullscreen landscape", () => void this.requestLandscape(), "landscape");
     const note = document.createElement("small"); note.textContent = "If your browser cannot rotate automatically, turn your phone manually.";
     this.rotate.append(title, message, this.rotateButton, note);
     this.rotate.addEventListener("cancel", event => event.preventDefault());
@@ -95,9 +128,16 @@ export class MobileControls {
   get isBlocking(): boolean { return this.blocking; }
   get isTouch(): boolean { return this.media.matches; }
 
-  private button(text: string, label: string, click: () => void): HTMLButtonElement {
+  private button(text: string, label: string, click: () => void, icon: keyof typeof ICONS): HTMLButtonElement {
     const button = document.createElement("button");
-    button.type = "button"; button.textContent = text; button.setAttribute("aria-label", label);
+    button.type = "button"; button.className = `mobile-controls__button mobile-controls__${icon}`;
+    button.setAttribute("aria-label", label);
+    const symbol = document.createElement("span"), caption = document.createElement("span");
+    symbol.className = "mobile-controls__icon"; symbol.setAttribute("aria-hidden", "true");
+    symbol.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${ICONS[icon]}</svg>`;
+    caption.className = "mobile-controls__label"; caption.textContent = text; caption.hidden = !text;
+    button.append(symbol, caption);
+    if (icon === "action") this.actionCaption = caption;
     let touchedAt = -Infinity;
     // Explicit touch release also works for the second finger while the first
     // holds the movement pad. Keep this a user gesture for links/fullscreen.
@@ -116,6 +156,7 @@ export class MobileControls {
   setWorldActive(active: boolean): void {
     if (active === this.worldActive) return;
     this.worldActive = active;
+    if (!active) this.reset();
     this.syncViewport();
   }
 
@@ -127,8 +168,10 @@ export class MobileControls {
     this.zone.hidden = !context.movement;
     this.jump.hidden = !context.movement;
     this.action.hidden = !context.action;
+    this.target.hidden = !context.action || context.action === "Continue" || context.action === "Details";
     if (context.action) {
-      this.action.textContent = context.action;
+      this.actionCaption.textContent = shortAction(context.action);
+      this.target.textContent = context.action;
       this.action.setAttribute("aria-label", context.action);
     }
     this.back.hidden = !context.back;
@@ -192,10 +235,14 @@ export class MobileControls {
     if (!this.keyboard.isEnabled || !this.movement || this.blocking) { this.reset(); return; }
     event.preventDefault(); event.stopPropagation();
     const dx = event.clientX - this.originX, dy = event.clientY - this.originY;
-    const length = Math.hypot(dx, dy), scale = Math.max(48, length);
+    const length = Math.hypot(dx, dy), scale = Math.max(TOUCH_STICK.radius, length);
     const x = dx / scale, y = dy / scale;
-    this.knob.style.transform = `translate(calc(-50% + ${x * 34}px), calc(-50% + ${y * 34}px))`;
-    this.keyboard.setTouchMovement(x, y, length > 42);
+    this.knob.style.transform = `translate(calc(-50% + ${x * 40}px), calc(-50% + ${y * 40}px))`;
+    this.running = Math.abs(y) > 0.65 && length > (this.running ? TOUCH_STICK.runExit : TOUCH_STICK.runEnter);
+    this.keyboard.setTouchMovement(x, y, this.running);
+    this.pad.dataset.pace = this.keyboard.run ? "run" : this.keyboard.forward || this.keyboard.backward ? "walk" : "idle";
+    this.pad.dataset.x = this.keyboard.left ? "left" : this.keyboard.right ? "right" : "none";
+    this.pad.dataset.y = this.keyboard.forward ? "up" : this.keyboard.backward ? "down" : "none";
   };
 
   private onUp = (event: PointerEvent): void => {
@@ -205,7 +252,11 @@ export class MobileControls {
   private reset = (): void => {
     const pointer = this.pointer;
     this.pointer = null;
+    this.running = false;
     this.pad.hidden = true;
+    this.pad.dataset.pace = "idle";
+    this.pad.dataset.x = this.pad.dataset.y = "none";
+    this.knob.style.transform = "translate(-50%, -50%)";
     this.keyboard.clearTouchMovement();
     if (pointer !== null && this.zone.hasPointerCapture(pointer)) this.zone.releasePointerCapture(pointer);
   };
