@@ -1179,7 +1179,7 @@ export class Game {
       /*
        * Completely cover the scene first.
        */
-      await this.sceneTransition.fadeIn();
+      await this.sceneTransition.fadeIn("house");
 
       // Keep light preparation deterministic while the opaque cover is visible.
       // The clock still ticks, so resuming does not simulate the preparation interval.
@@ -1241,6 +1241,7 @@ export class Game {
        * Do it while the screen is covered
        * so there is no visible hitch.
        */
+      this.sceneTransition.setHouseStage("lighting");
       await this.renderer.prepareScene(this.scene, this.playerCamera);
       const compile = () => this.renderer.instance.compileAsync(this.scene, this.playerCamera);
       if (this.furniture) {
@@ -1249,15 +1250,18 @@ export class Game {
         );
       } else await this.workshop?.prepareLightingVariants(compile);
 
+      this.sceneTransition.setHouseStage("finishing");
       await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
 
       this.insideHouse = true;
       this.preparingScene = false;
+      this.sceneTransition.setHouseStage("ready");
 
       await this.sceneTransition.fadeOut();
       entered = true;
     } catch (error) {
       console.error("Failed to enter house:", error);
+      this.sceneTransition.setHouseStage("error");
       this.insideHouse = false;
 
       house?.hide();

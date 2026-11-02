@@ -149,7 +149,9 @@ function gameEntryFixture() {
     keyboard: { setEnabled: enabled => events.push(['keyboard', enabled]) },
     houseGuide: { start: () => events.push(['guide']), cancel() {}, isControllingCamera: false },
     registerHouseInteractions: () => events.push(['registered']),
-    sceneTransition: { fadeIn: async () => {}, fadeOut: () => { events.push(['reveal']); return new Promise(resolve => { reveal = resolve; }); } },
+    sceneTransition: { fadeIn: async purpose => { events.push(['cover', purpose]); },
+      setHouseStage: stage => events.push(['loading-stage', stage]),
+      fadeOut: () => { events.push(['reveal']); return new Promise(resolve => { reveal = resolve; }); } },
     thirdPersonCamera: { setInteriorMode() {}, snap() {}, setInputEnabled() {} },
     renderer: { instance: { compileAsync: async () => {} }, prepareScene: async () => {}, prepareHighlights: async () => {}, setInteractionOutline() {} },
     interactionSystem: { highlightTargets: [] }, worldAudio: { setActive() {} },
@@ -158,7 +160,7 @@ function gameEntryFixture() {
   const house = { getSpawn: () => spawn, show() {}, hide() {} };
   game.world = { player: { model: new THREE.Object3D(), getFeetPosition: out => out.set(0, 0, 0), teleport() {} },
     loadHouseInterior: async () => house, setExteriorVisible() {}, setExteriorLightingEnabled() {} };
-  return { game, events, reveal: () => reveal() };
+  return { game, house, events, reveal: () => reveal() };
 }
 
 test('Game starts the guide only after the real entrance reveal resolves', async () => {
@@ -180,7 +182,47 @@ test('a failed entrance restores gameplay without consuming the guide', async ()
   try { await f.game.enterHouse(); } finally { console.error = error; }
   assert.equal(f.game.insideHouse, false); assert.equal(f.game.transitioning, false);
   assert.equal(f.events.filter(e => e[0] === 'guide').length, 0);
+  assert.ok(f.events.some(e => e[0] === 'loading-stage' && e[1] === 'error'));
   assert.deepEqual(f.events.at(-1), ['keyboard', true]);
+});
+
+test('door entry keeps its loading cover over a slow house and rejects duplicate entries', async () => {
+  const f = gameEntryFixture();
+  let release, requests = 0;
+  f.game.world.loadHouseInterior = () => { requests++; return new Promise(resolve => { release = resolve; }); };
+  const pending = f.game.enterHouse();
+  await new Promise(setImmediate);
+  assert.ok(f.events.some(e => e[0] === 'cover' && e[1] === 'house'));
+  assert.equal(f.game.preparingScene, true);
+  assert.ok(!f.events.some(e => e[0] === 'reveal'));
+  await f.game.enterHouse(); assert.equal(requests, 1);
+  release(f.house); await new Promise(setImmediate);
+  assert.deepEqual(f.events.filter(e => e[0] === 'loading-stage').map(e => e[1]), ['lighting', 'finishing', 'ready']);
+  assert.equal(f.game.transitioning, true);
+  f.reveal(); await pending;
+  assert.equal(f.game.insideHouse, true);
+  assert.equal(f.game.transitioning, false);
+});
+
+test('a preloaded house stays covered until scene, furniture lights and highlights are prepared', async () => {
+  const f = gameEntryFixture();
+  let sceneReady, lightsReady, highlightsReady;
+  f.game.renderer.prepareScene = () => new Promise(resolve => { sceneReady = resolve; });
+  f.game.furniture = { prepareLightingVariants: () => new Promise(resolve => { lightsReady = resolve; }) };
+  f.game.renderer.prepareHighlights = () => new Promise(resolve => { highlightsReady = resolve; });
+  const pending = f.game.enterHouse(); await new Promise(setImmediate);
+  assert.ok(f.events.some(e => e[0] === 'loading-stage' && e[1] === 'lighting'));
+  assert.ok(!f.events.some(e => e[0] === 'reveal'));
+  sceneReady(); await new Promise(setImmediate);
+  assert.ok(!f.events.some(e => e[0] === 'reveal'));
+  lightsReady(); await new Promise(setImmediate);
+  assert.ok(f.events.some(e => e[0] === 'loading-stage' && e[1] === 'finishing'));
+  assert.ok(!f.events.some(e => e[0] === 'reveal'));
+  highlightsReady(); await new Promise(setImmediate);
+  assert.ok(f.events.some(e => e[0] === 'loading-stage' && e[1] === 'ready'));
+  assert.equal(f.events.filter(e => e[0] === 'guide').length, 0);
+  f.reveal(); await pending;
+  assert.equal(f.events.at(-1)[0], 'guide');
 });
 
 test('an active tour blocks every competing exhibit camera', () => {
