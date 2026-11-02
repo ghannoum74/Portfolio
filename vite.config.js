@@ -4,7 +4,7 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
-    allowedHosts: ["moonlit-sensually-impurity.ngrok-free.dev"],
+    allowedHosts: ["moonlit-sensually-impurity.ngrok-free.dev", "terminal.local"],
   },
   resolve: {
     alias: {

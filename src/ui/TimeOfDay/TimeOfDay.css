@@ -1,0 +1,95 @@
+.world-time {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 160;
+  color: var(--paper-ink, #5c4534);
+  font-family: var(--font-root, system-ui);
+  pointer-events: auto;
+}
+
+.world-time[hidden], .world-time [hidden] { display: none !important; }
+
+.world-time button {
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.world-time svg {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.world-time__toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 7px 12px;
+  border: 2px solid currentColor;
+  border-radius: 12px 16px 11px 14px;
+  background: var(--paper-background, #f3e7c2);
+  box-shadow: 3px 3px 0 rgb(92 69 52 / 22%);
+  text-align: left;
+}
+
+.world-time__caption { display: block; font-size: 11px; line-height: 1.3; opacity: .8; }
+.world-time__current { display: block; font-size: 13px; line-height: 1.5; white-space: nowrap; }
+.world-time .world-time__chevron { width: 14px; height: 14px; flex-basis: 14px; }
+.world-time__toggle[aria-expanded="true"] .world-time__chevron { transform: rotate(180deg); }
+
+.world-time__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  box-sizing: border-box;
+  width: min(290px, calc(100vw - 28px));
+  max-height: calc(100dvh - 82px - env(safe-area-inset-top));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  border: 2px solid currentColor;
+  border-radius: 14px 11px 16px 12px;
+  background: var(--paper-background, #f3e7c2);
+  box-shadow: 4px 5px 0 rgb(92 69 52 / 22%);
+}
+
+.world-time__heading { margin: 0 0 12px; font-size: 14px; line-height: 1.4; }
+.world-time__presets { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.world-time__presets button, .world-time__local {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 6px;
+  border: 1px solid rgb(92 69 52 / 45%);
+  border-radius: 8px 10px 7px 9px;
+  background: transparent;
+  font-size: 13px;
+}
+
+.world-time button:hover { background: #e8d5aa; }
+.world-time__presets button[aria-pressed="true"] { background: var(--paper-ink, #5c4534); color: var(--paper-background, #f3e7c2); }
+.world-time button:focus-visible, .world-time input:focus-visible { outline: 3px solid #806747; outline-offset: 3px; }
+.world-time__slider-label { display: flex; justify-content: space-between; gap: 12px; margin-top: 15px; font-size: 12px; }
+.world-time__slider { display: block; width: 100%; height: 32px; margin: 0; accent-color: var(--paper-ink, #5c4534); cursor: pointer; }
+.world-time__local { width: 100%; margin-top: 8px; }
+.world-time__local[aria-pressed="true"] { background: #e8d5aa; }
+.world-time__check { visibility: hidden; }
+.world-time__local[aria-pressed="true"] .world-time__check { visibility: visible; }
+
+/* Leave the mobile fullscreen control in its existing top-right position. */
+.has-touch-controls .world-time { right: max(122px, calc(env(safe-area-inset-right) + 112px)); }
+@media (max-width: 480px) {
+  .world-time, .has-touch-controls .world-time { top: max(66px, calc(env(safe-area-inset-top) + 56px)); right: max(14px, env(safe-area-inset-right)); }
+  .world-time__panel { max-height: calc(100dvh - 138px - env(safe-area-inset-top)); }
+}

@@ -14,6 +14,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 
 import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
+import { TimeOfDay } from "../ui/TimeOfDay/TimeOfDay";
 
 import { StartupLoading } from "../loaders/StartupLoading";
 
@@ -81,15 +82,10 @@ export class Game {
   private cameraDebugMesh: THREE.Group;
   private cameraHelper: THREE.CameraHelper;
 
-  private gui: GUI;
-
-  private environmentDebugState: {
-    debugView: boolean;
-    realTime: boolean;
-    hour: number;
-  };
-
-  private debugUiElapsed = 0;
+  private gui?: GUI;
+  private readonly timeOfDay: TimeOfDay;
+  private readonly cameraDebugState = { debugView: false };
+  private controlsUiElapsed = 0;
 
   private timer = new THREE.Timer();
   private animationLoop: VisibleAnimationLoop;
@@ -248,7 +244,7 @@ export class Game {
       onClose: () => {
         if (this.phase === "rules") {
           this.phase = "playing";
-          this.showDebugUI();
+          this.showWorldControls();
           this.helpButton.setVisible(true);
         }
 
@@ -314,13 +310,9 @@ export class Game {
 
     this.scene.add(this.cameraHelper);
 
-    this.environmentDebugState = {
-      debugView: this.debugMode,
-      realTime: this.world.isUsingRealTime(),
-      hour: this.world.getTimeOfDay(),
-    };
-
-    this.gui = this.createGui();
+    this.timeOfDay = new TimeOfDay(uiRoot, this.world);
+    // Developer tools are opt-in; visitors only see the parchment time control.
+    if (performanceOptions.perfDiag) this.gui = this.createGui();
 
     this.mobileControls = new MobileControls(this.keyboard, code =>
       this.handleCommand({ code, repeat: false, preventDefault() {} }),
@@ -343,7 +335,7 @@ export class Game {
       },
     });
 
-    this.hideDebugUI();
+    this.hideWorldControls();
 
     window.addEventListener("keydown", this.onKeyDown);
 
@@ -435,12 +427,15 @@ export class Game {
 
     const delta = this.timer.getDelta();
 
-    this.debugUiElapsed += delta;
+    this.controlsUiElapsed += delta;
 
-    if (this.debugMode && this.debugUiElapsed >= 0.25) {
-      this.debugUiElapsed = 0;
+    if (this.phase === "playing" && this.controlsUiElapsed >= 1) {
+      this.controlsUiElapsed = 0;
       this.updateOverlay();
     }
+
+    this.timeOfDay.setVisible(this.phase === "playing" && !this.insideHouse &&
+      !this.transitioning && !this.preparingScene && !this.paperPanel.isOpen && !this.dialogueBox.isOpen);
 
     this.entrance.raf(performance.now());
 
@@ -674,14 +669,14 @@ export class Game {
     return this.debugMode ? this.debugCamera : this.playerCamera;
   }
 
-  private hideDebugUI(): void {
-    this.gui.domElement.style.display = "none";
-
+  private hideWorldControls(): void {
+    if (this.gui) this.gui.domElement.style.display = "none";
+    this.timeOfDay.setVisible(false);
   }
 
-  private showDebugUI(): void {
-    this.gui.domElement.style.display = "";
-
+  private showWorldControls(): void {
+    if (this.gui) this.gui.domElement.style.display = "";
+    this.timeOfDay.setVisible(!this.insideHouse);
   }
 
   private createCameraDebugMesh(): THREE.Group {
@@ -730,62 +725,13 @@ export class Game {
     });
 
     gui
-      .add(this.environmentDebugState, "debugView")
+      .add(this.cameraDebugState, "debugView")
       .name("Debug view")
       .onChange((value: boolean) => {
         this.debugMode = value;
 
         this.updateOverlay();
       });
-
-    const environmentFolder = gui.addFolder("Day / Night");
-
-    const hourController = environmentFolder
-      .add(this.environmentDebugState, "hour", 0, 23.99, 0.01)
-      .name("Preview hour")
-      .onChange((value: number) => {
-        if (this.environmentDebugState.realTime) {
-          return;
-        }
-
-        this.world.setTimeOfDay(value);
-
-        this.updateOverlay();
-      });
-
-    environmentFolder
-      .add(this.environmentDebugState, "realTime")
-      .name("Real time")
-      .onChange((realTime: boolean) => {
-        if (realTime) {
-          /*
-           * null means:
-           * return control to the visitor's
-           * actual local clock.
-           */
-          this.world.setTimeOfDay(null);
-
-          this.environmentDebugState.hour = this.world.getTimeOfDay();
-
-          hourController.disable();
-        } else {
-          /*
-           * Freeze the world at whatever
-           * hour the slider currently shows.
-           */
-          this.world.setTimeOfDay(this.environmentDebugState.hour);
-
-          hourController.enable();
-        }
-
-        this.updateOverlay();
-      });
-
-    if (this.environmentDebugState.realTime) {
-      hourController.disable();
-    }
-
-    environmentFolder.open();
 
     if (performanceOptions.perfDiag) {
       const performanceFolder = gui.addFolder("Performance");
@@ -899,11 +845,10 @@ export class Game {
   }
 
   private updateOverlay(): void {
-    this.environmentDebugState.debugView = this.debugMode;
+    this.timeOfDay.sync();
+    this.cameraDebugState.debugView = this.debugMode;
 
-    this.environmentDebugState.realTime = this.world.isUsingRealTime();
-
-    for (const controller of this.gui.controllersRecursive()) {
+    for (const controller of this.gui?.controllersRecursive() ?? []) {
       controller.updateDisplay();
     }
   }
@@ -1087,7 +1032,7 @@ export class Game {
       return;
     }
 
-    if (event.code === "KeyC") {
+    if (event.code === "KeyC" && performanceOptions.perfDiag) {
       this.debugMode = !this.debugMode;
 
       this.updateOverlay();
