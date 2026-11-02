@@ -10,19 +10,19 @@ export const ASSETS = {
   player: "/assets/models/player/player.glb",
 
   characters: {
-    fortyTwo: "/assets/models/player/42-optimized.glb",
+    fortyTwo: "/assets/models/player/42.glb",
 
-    mtc: "/assets/models/player/MTC-optimized.glb",
+    mtc: "/assets/models/player/MTC.glb",
 
-    bePro: "/assets/models/player/bePro-optimized.glb",
+    bePro: "/assets/models/player/bePro.glb",
 
-    frequenc: "/assets/models/player/frequenc-optimized.glb",
+    frequenc: "/assets/models/player/frequenc.glb",
 
-    interphase: "/assets/models/player/interphase-optimized.glb",
+    interphase: "/assets/models/player/interphase.glb",
 
-    prodigy: "/assets/models/player/prodigy-optimized.glb",
+    prodigy: "/assets/models/player/prodigy.glb",
 
-    seFactory: "/assets/models/player/se-factory-optimized.glb",
+    seFactory: "/assets/models/player/se-factory.glb",
   },
 
   animations: {
