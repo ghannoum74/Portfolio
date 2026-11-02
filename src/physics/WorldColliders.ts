@@ -10,8 +10,11 @@ export class WorldColliders {
     environment.updateMatrixWorld(true);
 
     environment.traverse((child) => {
-      // Ignore detection zones and their children.
+      // Meshopt and multi-primitive glTF meshes can put the authored name on a
+      // group and the proxy geometry on its children. Resolve the nearest named
+      // collision owner, keeping geometry transforms on the actual mesh.
       let current: THREE.Object3D | null = child;
+      let owner: THREE.Object3D | null = null;
 
       while (current) {
         if (current.name.startsWith("ZONE_")) {
@@ -21,22 +24,30 @@ export class WorldColliders {
           return;
         }
 
+        if (!owner && (current.name.startsWith("COL_") ||
+            (current === child && (current.name === "Land_01" || current.name === "Land_02")))) owner = current;
+
         current = current.parent;
       }
 
-      if (!(child instanceof THREE.Mesh)) {
+      // Hide the entire authored helper even if it is now a group. Its visible
+      // mesh children must never leak into the rendered/batched scene.
+      if (owner?.name.startsWith("COL_")) owner.visible = false;
+
+      if (!(child instanceof THREE.Mesh) || !owner) {
         return;
       }
 
-      const isGround = child.name === "Land_01" || child.name === "Land_02";
+      const name = owner.name;
+      const isGround = name === "Land_01" || name === "Land_02";
 
-      const isBox = child.name.startsWith("COL_BOX_");
+      const isBox = name.startsWith("COL_BOX_");
 
-      const isCylinder = child.name.startsWith("COL_CYL_");
+      const isCylinder = name.startsWith("COL_CYL_");
 
-      const isHull = child.name.startsWith("COL_HULL_");
+      const isHull = name.startsWith("COL_HULL_");
 
-      const isMesh = child.name.startsWith("COL_MESH_");
+      const isMesh = name.startsWith("COL_MESH_");
 
       /*
        * Backward compatibility with your current
@@ -49,7 +60,7 @@ export class WorldColliders {
        * COL_MESH_
        */
       const isOldCollider =
-        child.name.startsWith("COL_") && !isBox && !isCylinder && !isMesh;
+        name.startsWith("COL_") && !isBox && !isCylinder && !isMesh;
 
       if (isGround) {
         this.createTrimeshCollider(child);
@@ -234,61 +245,35 @@ export class WorldColliders {
   }
 
   private createConvexHullCollider(mesh: THREE.Mesh): void {
-    /*
-     * Clone so we don't modify the visual geometry.
-     */
-    const geometry = mesh.geometry.clone();
-
-    /*
-     * Bake:
-     *
-     * position
-     * rotation
-     * scale
-     * parent transforms
-     *
-     * directly into the collider vertices.
-     */
-    geometry.applyMatrix4(mesh.matrixWorld);
-
-    const position = geometry.getAttribute("position");
-
-    if (!position) {
-      geometry.dispose();
-      return;
-    }
-
-    /*
-     * Rapier convexHull expects:
-     *
-     * [
-     *   x, y, z,
-     *   x, y, z,
-     *   ...
-     * ]
-     */
-    const vertices = new Float32Array(position.count * 3);
-
-    for (let i = 0; i < position.count; i++) {
-      vertices[i * 3] = position.getX(i);
-
-      vertices[i * 3 + 1] = position.getY(i);
-
-      vertices[i * 3 + 2] = position.getZ(i);
-    }
+    const vertices = this.worldVertices(mesh);
+    if (!vertices) return;
 
     const colliderDesc = this.physics.rapier.ColliderDesc.convexHull(vertices);
 
     if (!colliderDesc) {
-      geometry.dispose();
       return;
     }
 
     this.physics.world.createCollider(colliderDesc);
 
     console.log(`🪨 Convex hull collider: ${mesh.name}`);
+  }
 
-    geometry.dispose();
+  private worldVertices(mesh: THREE.Mesh): Float32Array | null {
+    const position = mesh.geometry.getAttribute("position");
+    if (!position) return null;
+    const vertices = new Float32Array(position.count * 3);
+    const point = new THREE.Vector3();
+    for (let i = 0; i < position.count; i++) {
+      // Meshopt positions may be normalized Int16/Uint16 attributes. Decode
+      // first, then transform into a FLOAT buffer: applying Matrix4 in place
+      // would write world coordinates back into the bounded integer attribute.
+      point.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      vertices[i * 3] = point.x;
+      vertices[i * 3 + 1] = point.y;
+      vertices[i * 3 + 2] = point.z;
+    }
+    return vertices;
   }
 
   /*
@@ -298,35 +283,18 @@ export class WorldColliders {
    */
 
   private createTrimeshCollider(mesh: THREE.Mesh): void {
-    const geometry = mesh.geometry.clone();
-
-    geometry.applyMatrix4(mesh.matrixWorld);
-
-    const position = geometry.getAttribute("position");
-
-    if (!position) {
-      geometry.dispose();
-      return;
-    }
-
-    const vertices = new Float32Array(position.count * 3);
-
-    for (let i = 0; i < position.count; i++) {
-      vertices[i * 3] = position.getX(i);
-
-      vertices[i * 3 + 1] = position.getY(i);
-
-      vertices[i * 3 + 2] = position.getZ(i);
-    }
+    const geometry = mesh.geometry;
+    const vertices = this.worldVertices(mesh);
+    if (!vertices) return;
 
     let indices: Uint32Array;
 
     if (geometry.index) {
       indices = new Uint32Array(geometry.index.array);
     } else {
-      indices = new Uint32Array(position.count);
+      indices = new Uint32Array(vertices.length / 3);
 
-      for (let i = 0; i < position.count; i++) {
+      for (let i = 0; i < indices.length; i++) {
         indices[i] = i;
       }
     }
@@ -339,7 +307,5 @@ export class WorldColliders {
     this.physics.world.createCollider(colliderDesc);
 
     console.log(`🔺 Trimesh collider: ${mesh.name}`);
-
-    geometry.dispose();
   }
 }

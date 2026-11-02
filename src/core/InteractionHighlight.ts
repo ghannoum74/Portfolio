@@ -76,6 +76,13 @@ export class InteractionHighlight {
           proxy.skeleton = object.skeleton;
           proxy.morphTargetInfluences = object.morphTargetInfluences;
           proxy.morphTargetDictionary = object.morphTargetDictionary;
+          // WebGLRenderer also requests a sphere for depth sorting when culling
+          // is disabled. Leaving this null skins every vertex on the CPU for
+          // EACH of the eight new proxies, on every focus change. These proxies
+          // are never culled or raycast, so a local sorting anchor is sufficient.
+          // Own the sphere: never let proxy bounds mutate the source's bounds.
+          proxy.boundingSphere = (object.boundingSphere ?? object.geometry.boundingSphere)?.clone()
+            ?? new THREE.Sphere(new THREE.Vector3(), 0);
         }
         proxy.name = "INTERACTION_BORDER_SILHOUETTE";
         proxy.matrixAutoUpdate = false;
