@@ -586,7 +586,7 @@ test('the game loader resolves animated book page names and morph tracks', async
   assert.ok(weights.every(Number.isFinite));
 });
 
-test('beam batches preserve world positions, normals, UVs, material and shadow settings', () => {
+for (const storage of ['float', 'normalized', 'interleaved']) test(`beam batches preserve positions, normals, tangents, UVs and shadows (${storage})`, () => {
   const root = new THREE.Group();
   root.position.set(0, -30, 0);
   root.rotation.y = 0.4;
@@ -598,6 +598,18 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
   const sources = [0, 1].map(i => {
     const geometry = new THREE.BoxGeometry(0.2, 1, 0.2);
     geometry.clearGroups();
+    geometry.computeTangents();
+    if (storage !== 'float') {
+      for (const name of ['position', 'normal', 'tangent']) {
+        const attribute = geometry.getAttribute(name);
+        const values = Int16Array.from(attribute.array, value => Math.round(value * 32767));
+        if (storage === 'interleaved') {
+          const stride = attribute.itemSize + 1, interleaved = new Int16Array(attribute.count * stride);
+          for (let index = 0; index < attribute.count; index++) interleaved.set(values.subarray(index * attribute.itemSize, (index + 1) * attribute.itemSize), index * stride + 1);
+          geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(new THREE.InterleavedBuffer(interleaved, stride), attribute.itemSize, 1, true));
+        } else geometry.setAttribute(name, new THREE.Int16BufferAttribute(values, attribute.itemSize, true));
+      }
+    }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `BEAM_CORNER_${i}`;
     mesh.position.set(i, 2, 3);
@@ -609,7 +621,7 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     return mesh;
   });
   root.updateWorldMatrix(true, true);
-  const expectedPositions = [], expectedNormals = [], expectedUVs = [];
+  const expectedPositions = [], expectedNormals = [], expectedTangents = [], expectedUVs = [];
   for (const mesh of sources) {
     const position = mesh.geometry.getAttribute('position');
     const normal = mesh.geometry.getAttribute('normal');
@@ -618,6 +630,8 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     for (let i = 0; i < position.count; i++) {
       expectedPositions.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld));
       expectedNormals.push(new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix));
+      const tangent = mesh.geometry.getAttribute('tangent');
+      expectedTangents.push({ direction: new THREE.Vector3().fromBufferAttribute(tangent, i).transformDirection(mesh.matrixWorld), w: tangent.getW(i) });
       expectedUVs.push([uv.getX(i), uv.getY(i)]);
     }
   }
@@ -634,6 +648,9 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     const actualNormal = new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix);
     assert.ok(actualPosition.distanceTo(expectedPositions[i]) < 0.000002);
     assert.ok(actualNormal.distanceTo(expectedNormals[i]) < 0.000002);
+    const tangent = batch.geometry.getAttribute('tangent');
+    assert.ok(new THREE.Vector3().fromBufferAttribute(tangent, i).transformDirection(batch.matrixWorld).distanceTo(expectedTangents[i].direction) < 0.000002);
+    assert.equal(tangent.getW(i), expectedTangents[i].w);
     assert.deepEqual([uv.getX(i), uv.getY(i)], expectedUVs[i]);
   }
   assert.equal(batch.material, material);

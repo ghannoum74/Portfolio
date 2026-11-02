@@ -64,4 +64,52 @@ test('normalized hull and nonindexed mesh colliders honor parent transforms with
   }
 });
 
+test('the CLI can wrap a named collider in a group without losing collision or exposing its mesh', async () => {
+  await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
+    'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder,
+  });
+  const document = new Document(), buffer = document.createBuffer();
+  const box = new THREE.BoxGeometry(2, 2, 2).toNonIndexed();
+  const positions = document.createAccessor().setType('VEC3').setBuffer(buffer)
+    .setArray(new Float32Array(box.attributes.position.array));
+  const mesh = document.createMesh('PlantProxy').addPrimitive(document.createPrimitive().setAttribute('POSITION', positions));
+  const collider = document.createNode('COL_BOX_PLANT').setMesh(mesh).setTranslation([12, 0, -8]).setScale([4, .5, 3]);
+  // A child forces quantization to preserve the named transform on a wrapper.
+  collider.addChild(document.createNode('PLANT_MARKER').setTranslation([0, 1, 0]));
+  document.createScene().addChild(collider);
+  const source = `${temporary}/plant.glb`, optimized = `${temporary}/plant-meshopt.glb`;
+  await io.write(source, document);
+  await document.transform(meshopt({ encoder: MeshoptEncoder }));
+  await io.write(optimized, document);
+  const original = (await readGeometryGLB(source)).scene, compressed = (await readGeometryGLB(optimized)).scene;
+  const owner = compressed.getObjectByName('COL_BOX_PLANT');
+  assert.equal(owner instanceof THREE.Mesh, false, 'exercise the actual Meshopt wrapper');
+  assert.ok(owner.children.some(child => child instanceof THREE.Mesh));
+  const before = await rayAtFloor(original), after = await rayAtFloor(compressed);
+  assert.ok(Math.abs(before - 2.5) < .001);
+  assert.ok(Math.abs(before - after) < .001, 'the group must retain its authored physics shape');
+  assert.equal(owner.visible, false, 'the entire helper must be hidden');
+  owner.traverse(child => { if (child instanceof THREE.Mesh) assert.equal(child.visible, false); });
+});
+
+test('explicit collider groups use the nearest helper type and never turn zones or ordinary visual children into colliders', async () => {
+  const root = new THREE.Group(), owner = new THREE.Group(); owner.name = 'COL_BOX_OUTER'; root.add(owner);
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)); owner.add(cube);
+  const inner = new THREE.Group(); inner.name = 'COL_CYL_INNER'; owner.add(inner);
+  const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2)); inner.add(cylinder);
+  const zone = new THREE.Group(); zone.name = 'ZONE_DECOR'; root.add(zone);
+  const ignored = new THREE.Mesh(new THREE.BoxGeometry()); ignored.name = 'COL_BOX_IGNORED'; zone.add(ignored);
+  root.add(new THREE.Mesh(new THREE.BoxGeometry()));
+  const physics = new PhysicsWorld(); await physics.init();
+  try {
+    new WorldColliders(physics).createFromEnvironment(root);
+    const shapes = []; physics.world.colliders.forEach(collider => shapes.push(collider.shape.type));
+    assert.equal(shapes.length, 2);
+    assert.ok(shapes.includes(physics.rapier.ShapeType.Cuboid));
+    assert.ok(shapes.includes(physics.rapier.ShapeType.Cylinder));
+    assert.equal(owner.visible, false); assert.equal(inner.visible, false); assert.equal(zone.visible, false);
+  } finally { physics.world.free(); }
+});
+
 test.after(async () => { await rm(temporary, { recursive: true, force: true }); });
