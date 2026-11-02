@@ -6,12 +6,29 @@ export type DiningPanelMode = "alchemy" | "bookshelf";
 export type Potion = { name: string; description: string; color: number };
 
 const BOOKS = [
-  { name: "Building Worlds", description: "This portfolio brings together Blender models, Three.js and interaction design to make a world to explore." },
-  { name: "Thoughtful Interfaces", description: "A good interaction helps people understand what they can do, and gives them a clear way back." },
-  { name: "A Traveler's Guide", description: "Visit the Projects book, the Workshop, the Journey map and the Learning Milestones to discover more of the portfolio." },
+  {
+    name: "Building Worlds",
+    description:
+      "This portfolio brings together Blender models, Three.js and interaction design to make a world to explore.",
+  },
+  {
+    name: "Thoughtful Interfaces",
+    description:
+      "A good interaction helps people understand what they can do, and gives them a clear way back.",
+  },
+  {
+    name: "A Traveler's Guide",
+    description:
+      "Visit the Projects book, the Workshop, the Journey map and the Learning Milestones to discover more of the portfolio.",
+  },
 ] as const;
 
-type Callbacks = { onSelection: () => void; onBrew: (potion: Potion) => void; onClose: () => void; onContact?: () => void };
+type Callbacks = {
+  onSelection: () => void;
+  onBrew: (potion: Potion) => void;
+  onClose: () => void;
+  onContact?: () => void;
+};
 
 /** A small, reusable panel; it has no global listeners or per-frame work. */
 export class DiningPanel {
@@ -58,28 +75,41 @@ export class DiningPanel {
     this.contact.type = "button";
     this.contact.textContent = "Let’s build something →";
     this.contact.addEventListener("click", () => {
-      if (this.mode !== "alchemy" || this.index !== SCOPE_CREEP_STEPS.length - 1) return;
+      if (
+        this.mode !== "alchemy" ||
+        this.index !== SCOPE_CREEP_STEPS.length - 1
+      )
+        return;
       this.callbacks.onClose();
       this.callbacks.onContact?.();
     });
     this.contact.hidden = !callbacks.onContact;
     this.endingActions.appendChild(this.contact);
-    const project = PROJECTS.find(project => project.id === "project-two") ?? PROJECTS[0];
+    const project =
+      PROJECTS.find((project) => project.id === "project-two") ?? PROJECTS[0];
     for (const [label, href] of [
       [`See a real build: ${project.title} ↗`, project.projectUrl],
       ["Check my CV ↗", "/assets/documents/abdel-rahman-ghannoum-cv.pdf"],
     ]) {
       const link = document.createElement("a");
-      link.textContent = label; link.href = href; link.target = "_blank"; link.rel = "noopener noreferrer";
+      link.textContent = label;
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
       this.endingActions.appendChild(link);
     }
-    this.eyebrow.className = "dining-panel__eyebrow";
     this.description.className = "dining-panel__description";
     this.status.className = "dining-panel__status";
     this.count.className = "dining-panel__count";
     this.controls.className = "dining-panel__controls";
     this.keys.className = "dining-panel__keys";
-    for (const button of [this.previous, this.next, this.brewButton, this.closeButton]) button.type = "button";
+    for (const button of [
+      this.previous,
+      this.next,
+      this.brewButton,
+      this.closeButton,
+    ])
+      button.type = "button";
     this.previous.textContent = "← Previous";
     this.next.textContent = "Next →";
     this.brewButton.textContent = "Brew again";
@@ -90,26 +120,47 @@ export class DiningPanel {
     this.next.addEventListener("click", () => this.selectRelative(1));
     this.brewButton.addEventListener("click", () => this.brew());
     this.closeButton.addEventListener("click", () => this.callbacks.onClose());
-    this.controls.appendChild(this.previous); this.controls.appendChild(this.count);
-    this.controls.appendChild(this.next); this.controls.appendChild(this.brewButton); this.controls.appendChild(this.closeButton);
-    this.story.appendChild(this.title); this.story.appendChild(this.description); this.story.appendChild(this.status);
-    this.root.appendChild(this.eyebrow); this.root.appendChild(this.art); this.root.appendChild(this.story);
-    this.root.appendChild(this.endingActions); this.root.appendChild(this.controls); this.root.appendChild(this.keys);
-    this.root.addEventListener("keydown", event => {
+    this.controls.appendChild(this.previous);
+    this.controls.appendChild(this.count);
+    this.controls.appendChild(this.next);
+    this.controls.appendChild(this.brewButton);
+    this.controls.appendChild(this.closeButton);
+    this.story.appendChild(this.title);
+    this.story.appendChild(this.description);
+    this.story.appendChild(this.status);
+    this.root.appendChild(this.eyebrow);
+    this.root.appendChild(this.art);
+    this.root.appendChild(this.story);
+    this.root.appendChild(this.endingActions);
+    this.root.appendChild(this.controls);
+    this.root.appendChild(this.keys);
+    this.root.addEventListener("keydown", (event) => {
       event.stopPropagation();
-      if (event.code === "Escape") { event.preventDefault(); this.callbacks.onClose(); }
-      else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
-        event.preventDefault(); this.selectRelative(event.code === "ArrowRight" ? 1 : -1);
-      } else if (event.code === "KeyE" || ((event.code === "Enter" || event.code === "Space") && event.target === this.root)) {
-        event.preventDefault(); if (!event.repeat) this.brew();
+      if (event.code === "Escape") {
+        event.preventDefault();
+        this.callbacks.onClose();
+      } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
+        event.preventDefault();
+        this.selectRelative(event.code === "ArrowRight" ? 1 : -1);
+      } else if (
+        event.code === "KeyE" ||
+        ((event.code === "Enter" || event.code === "Space") &&
+          event.target === this.root)
+      ) {
+        event.preventDefault();
+        if (!event.repeat) this.brew();
       }
     });
     document.body.appendChild(this.root);
   }
 
   open(mode: DiningPanelMode): void {
-    this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    this.mode = mode; this.index = 0;
+    this.previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    this.mode = mode;
+    this.index = 0;
     this.root.hidden = false;
     if (mode === "alchemy") this.callbacks.onBrew(SCOPE_CREEP_STEPS[0]);
     this.render();
@@ -118,11 +169,15 @@ export class DiningPanel {
 
   selectRelative(direction: number): void {
     if (this.mode !== "alchemy" && this.mode !== "bookshelf") return;
-    const length = this.mode === "alchemy" ? SCOPE_CREEP_STEPS.length : BOOKS.length;
-    this.index = this.mode === "alchemy" ? Math.max(0, Math.min(length - 1, this.index + Math.sign(direction))) :
-      (this.index + direction % length + length) % length;
+    const length =
+      this.mode === "alchemy" ? SCOPE_CREEP_STEPS.length : BOOKS.length;
+    this.index =
+      this.mode === "alchemy"
+        ? Math.max(0, Math.min(length - 1, this.index + Math.sign(direction)))
+        : (this.index + (direction % length) + length) % length;
     this.callbacks.onSelection();
-    if (this.mode === "alchemy") this.callbacks.onBrew(SCOPE_CREEP_STEPS[this.index]);
+    if (this.mode === "alchemy")
+      this.callbacks.onBrew(SCOPE_CREEP_STEPS[this.index]);
     this.render();
   }
 
@@ -135,11 +190,19 @@ export class DiningPanel {
   }
 
   close(): void {
-    this.mode = null; this.root.hidden = true;
-    if (this.root.contains(document.activeElement) && this.previousFocus?.isConnected) this.previousFocus.focus({ preventScroll: true });
+    this.mode = null;
+    this.root.hidden = true;
+    if (
+      this.root.contains(document.activeElement) &&
+      this.previousFocus?.isConnected
+    )
+      this.previousFocus.focus({ preventScroll: true });
     this.previousFocus = null;
   }
-  destroy(): void { this.close(); this.root.remove(); }
+  destroy(): void {
+    this.close();
+    this.root.remove();
+  }
 
   private render(): void {
     const isAlchemy = this.mode === "alchemy";
@@ -147,28 +210,47 @@ export class DiningPanel {
     const finished = isAlchemy && this.index === SCOPE_CREEP_STEPS.length - 1;
     this.root.classList.toggle("dining-panel--ending", isAlchemy);
     this.root.dataset.stage = String(this.index);
-    this.root.setAttribute("aria-label", isAlchemy ? "One last side quest: the Scope Creep Cauldron" : "The bookshelf");
+    this.root.setAttribute(
+      "aria-label",
+      isAlchemy
+        ? "One last side quest: the Scope Creep Cauldron"
+        : "The bookshelf",
+    );
     this.art.hidden = !isAlchemy;
     this.endingActions.hidden = !finished;
-    this.eyebrow.textContent = isAlchemy ? `ONE LAST SIDE QUEST · ${this.index + 1} / ${SCOPE_CREEP_STEPS.length}` : "THE BOOKSHELF";
     this.title.textContent = item.name;
     this.description.textContent = item.description;
-    this.status.textContent = isAlchemy ? SCOPE_CREEP_STEPS[this.index].status : "";
+    this.status.textContent = isAlchemy
+      ? SCOPE_CREEP_STEPS[this.index].status
+      : "";
     if (isAlchemy) {
-      this.root.style.setProperty("--brew-color", `#${SCOPE_CREEP_STEPS[this.index].color.toString(16).padStart(6, "0")}`);
+      this.root.style.setProperty(
+        "--brew-color",
+        `#${SCOPE_CREEP_STEPS[this.index].color.toString(16).padStart(6, "0")}`,
+      );
       this.brewButton.textContent = SCOPE_CREEP_STEPS[this.index].action;
     }
-    this.count.textContent = item ? `${this.index + 1} / ${isAlchemy ? SCOPE_CREEP_STEPS.length : BOOKS.length}` : "";
+    this.count.textContent = item
+      ? `${this.index + 1} / ${isAlchemy ? SCOPE_CREEP_STEPS.length : BOOKS.length}`
+      : "";
     this.previous.hidden = isAlchemy && this.index === 0;
     this.previous.textContent = isAlchemy ? "← Back" : "← Previous";
     this.next.hidden = isAlchemy;
     this.closeButton.textContent = isAlchemy ? "×" : "Close";
-    this.closeButton.setAttribute("aria-label", isAlchemy ? (finished ? "Keep exploring" : "Leave the brew") : "Close bookshelf");
+    this.closeButton.setAttribute(
+      "aria-label",
+      isAlchemy
+        ? finished
+          ? "Keep exploring"
+          : "Leave the brew"
+        : "Close bookshelf",
+    );
     if (isAlchemy) this.root.insertBefore(this.closeButton, this.eyebrow);
     else this.controls.appendChild(this.closeButton);
     this.count.hidden = isAlchemy || !item;
     this.brewButton.hidden = !isAlchemy;
-    this.keys.textContent = isAlchemy ? "E Continue / replay   ·   ← / → Back / next   ·   Esc Leave" :
-      "← / → Turn page   ·   Esc Close";
+    this.keys.textContent = isAlchemy
+      ? "E Continue / replay   ·   ← / → Back / next   ·   Esc Leave"
+      : "← / → Turn page   ·   Esc Close";
   }
 }
