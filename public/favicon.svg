@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Abdel Rahman Ghannoum’s cottage</title>
+  <rect width="64" height="64" rx="15" fill="#f3e7c2"/>
+  <path d="m15 29 17-15 18 15v24c-11 1-24 1-35 0Z" fill="#f9efda" stroke="#5c4534" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M25 54V40a7 7 0 0 1 14 0v14" fill="#7b9d8c" stroke="#5c4534" stroke-width="3.5"/>
+  <path d="M9 30 31.5 10 55 30" fill="none" stroke="#5c4534" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
