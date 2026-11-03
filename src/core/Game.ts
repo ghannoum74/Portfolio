@@ -317,6 +317,7 @@ export class Game {
 
       this.phase = "introduction";
 
+      this.entrance.prepare();
       await this.loading.complete();
 
       this.loadNpcsInBackground();

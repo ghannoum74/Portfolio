@@ -3,7 +3,7 @@ import "lenis/dist/lenis.css";
 import "./WorldEntrance.css";
 import { OrganicPortalMask } from "./OrganicPortalMask";
 
-type EntranceState = "idle" | "active" | "complete";
+type EntranceState = "idle" | "prepared" | "active" | "complete";
 
 interface WorldEntranceOptions {
   onProgress?: (progress: number) => void;
@@ -59,31 +59,31 @@ export class WorldEntrance {
     this.finish();
   };
 
-  activate(): void {
+  prepare(): void {
     if (this.state !== "idle") return;
 
-    this.state = "active";
-
-    window.scrollTo(0, 0);
-
-    document.documentElement.classList.remove("is-loading");
-
+    this.state = "prepared";
     this.lenis = new Lenis({
       smoothWheel: true,
-
       lerp: 0.05,
-
       autoRaf: false,
-
       syncTouch: false,
-
       respectReducedMotion: true,
     });
+    this.lenis.stop();
+    this.lenis.scrollTo(0, { immediate: true, force: true });
+    this.renderProgress(0);
+  }
 
-    this.lenis.on("scroll", this.onSmoothScroll);
+  activate(): void {
+    if (this.state === "idle") this.prepare();
+    if (this.state !== "prepared") return;
 
+    this.state = "active";
+    document.documentElement.classList.remove("is-loading");
+    this.lenis?.start();
+    this.lenis?.on("scroll", this.onSmoothScroll);
     window.addEventListener("resize", this.onResize);
-
     this.update();
   }
 
