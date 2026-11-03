@@ -5,8 +5,6 @@ import { LoadingScreen } from "../ui/LoadingScreen/LoadingScreen";
 export class StartupLoading {
   private readonly assetManager = new GameLoadingManager();
 
-  private readonly screen = new LoadingScreen();
-
   private readonly expected = new Set<string>(STARTUP_ASSETS);
 
   private readonly completed = new Set<string>();
@@ -15,7 +13,7 @@ export class StartupLoading {
 
   readonly manager = this.assetManager.instance;
 
-  constructor() {
+  constructor(private readonly screen = new LoadingScreen()) {
     this.screen.setAssetProgress(0, this.expected.size);
 
     this.manager.onError = (url) => {

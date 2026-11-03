@@ -1,4 +1,4 @@
-import { Game } from "./core/Game";
+import { LoadingScreen } from "./ui/LoadingScreen/LoadingScreen";
 
 import entranceHtml from "./ui/WorldEntrance/WorldEntrance.html?raw";
 
@@ -20,4 +20,11 @@ if (!canvas) {
   throw new Error("WorldEntrance.html must contain #game");
 }
 
-new Game(canvas);
+const loadingScreen = new LoadingScreen();
+
+void import("./core/Game")
+  .then(({ Game }) => new Game(canvas, loadingScreen))
+  .catch((error) => {
+    console.error("World startup failed:", error);
+    loadingScreen.showError();
+  });

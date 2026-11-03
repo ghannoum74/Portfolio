@@ -14,6 +14,7 @@ import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 import { TimeOfDay } from "../ui/TimeOfDay/TimeOfDay";
 
 import { StartupLoading } from "../loaders/StartupLoading";
+import type { LoadingScreen } from "../ui/LoadingScreen/LoadingScreen";
 
 import { PaperPanel } from "../ui/PaperPanel/PaperPanel";
 
@@ -69,7 +70,7 @@ export class Game {
   private readonly paperPanel: PaperPanel;
   private readonly entrance: WorldEntrance;
 
-  private readonly loading = new StartupLoading();
+  private readonly loading: StartupLoading;
 
   private phase: GamePhase = "loading";
 
@@ -121,7 +122,8 @@ export class Game {
   private furniture: HouseFurnitureInteractions | null = null;
   private houseGuide: HouseFirstVisitGuide | null = null;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, screen?: LoadingScreen) {
+    this.loading = new StartupLoading(screen);
     this.scene = new THREE.Scene();
 
     this.playerCamera = new THREE.PerspectiveCamera(

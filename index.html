@@ -37,40 +37,168 @@
   <body>
     <noscript> JavaScript is required to explore this portfolio. </noscript>
 
-    <main id="world-root"></main>
+    <main id="world-root" inert></main>
 
-    <div id="loading-screen" class="loading-screen">
-      <div class="loader">
-        <div
-          id="loading-progress"
-          class="bar"
-          role="progressbar"
-          aria-label="Loading"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
+    <div id="loading-screen" class="loading-screen" data-state="loading">
+      <div class="loading-world">
+        <div class="loading-world_heading">
+          <p class="loading-world_eyebrow">A small world. Please knock.</p>
+          <h1>Waking up the<br />neighbourhood…</h1>
+        </div>
+        <button
+          class="loading-art"
+          type="button"
+          data-loading-knock
+          aria-label="Knock on the cottage while the world loads"
+          disabled
         >
-          <div id="loading-progress-fill" class="fill"></div>
+          <svg
+            viewBox="0 0 360 280"
+            fill="none"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <ellipse
+              cx="181"
+              cy="269"
+              rx="84"
+              ry="5"
+              fill="#5c4534"
+              opacity=".08"
+            />
+            <g
+              class="loading-island"
+              stroke="#5c4534"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <g
+                class="loading-cloud loading-cloud--left"
+                fill="#fff7e5"
+                stroke-width="2"
+              >
+                <path
+                  d="M28 98c-12 0-13-17-1-19 0-16 23-20 29-6 15-3 22 22 4 25Z"
+                />
+              </g>
+              <g
+                class="loading-cloud loading-cloud--right"
+                fill="#fff7e5"
+                stroke-width="2"
+              >
+                <path
+                  d="M270 56c-10 0-10-15 0-17 1-15 23-16 27-2 15-3 19 18 4 19Z"
+                />
+              </g>
+              <path
+                d="m43 211 25 28 43 15 71 13 69-15 39-16 27-25"
+                fill="#b79b77"
+              />
+              <path
+                d="m68 239 35-13 8 28m140-2-12-25 51 9m-108 31-9-31"
+                opacity=".28"
+                stroke-width="2"
+              />
+              <path
+                d="M43 211c13-24 253-24 274 0-12 24-256 24-274 0Z"
+                fill="#9aab8d"
+              />
+              <path
+                d="m70 214 9-2m187 7 14-3m-163 7 5-1"
+                opacity=".4"
+                stroke-width="2"
+              />
+              <g class="loading-cottage">
+                <path d="M94 110 157 55l65 55v99H94Z" fill="#f9efda" />
+                <path d="M182 67V35h17v47" fill="#d4b990" />
+                <path
+                  d="m80 114 77-73 79 73-14 4-65-60-64 60Z"
+                  fill="#b88c5f"
+                />
+                <path d="m99 102 58-54 59 54" opacity=".25" stroke-width="2" />
+                <g class="loading-door">
+                  <path d="M121 209v-53a24 24 0 0 1 48 0v53" fill="#7b9d8c" />
+                  <path
+                    d="M145 135v74m-18-45h36m-36 23h36"
+                    opacity=".25"
+                    stroke-width="2"
+                  />
+                  <circle cx="159" cy="177" r="3" fill="#d5b66e" />
+                </g>
+                <path d="M114 212h63" stroke-width="5" />
+                <circle
+                  class="loading-window"
+                  cx="196"
+                  cy="140"
+                  r="14"
+                  fill="#bad0c3"
+                />
+                <path d="M182 140h28m-14-14v28" />
+                <g class="loading-peek" fill="#5c4534" stroke="none">
+                  <circle cx="190" cy="146" r="2" />
+                  <circle cx="201" cy="146" r="2" />
+                </g>
+                <path
+                  class="loading-smoke"
+                  d="M190 29c-12-8 10-12 0-23"
+                  stroke="#9a8872"
+                  stroke-width="2"
+                />
+              </g>
+              <g class="loading-broom">
+                <path d="m251 175 13-72a4 4 0 0 1 8 1l-13 73" fill="#b88c5f" />
+                <path d="m245 174 18 3 8 29c-13 7-29 4-36-3Z" fill="#d9b86b" />
+                <path d="m245 174 18 3 2 7-23-3Z" fill="#7b9d8c" />
+                <path
+                  d="m246 184-4 17m11-16-1 20m7-18 3 16"
+                  opacity=".45"
+                  stroke-width="2"
+                />
+              </g>
+              <path d="m72 195 2-14 5 12m204 4 5-15 1 13" stroke="#6d8866" />
+              <path d="M58 135q7-8 14 0 7-8 14 0" stroke-width="2" />
+            </g>
+          </svg>
+        </button>
+        <div class="loading-world_copy">
+          <p class="loading-joke" data-loading-joke>
+            Convincing the clouds to stay put.
+          </p>
+          <div class="loading-meter">
+            <div class="loading-meter_caption">
+              <span class="loading-text" role="status" aria-live="polite"
+                >Packing the essentials…</span
+              ><span data-loading-percentage aria-hidden="true">0%</span>
+            </div>
+            <div
+              id="loading-progress"
+              class="loading-meter_track"
+              role="progressbar"
+              aria-label="Essential files loaded"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div id="loading-progress-fill" class="loading-meter_fill"></div>
+            </div>
+          </div>
+          <p
+            class="loading-reaction"
+            data-loading-reaction
+            role="status"
+            aria-live="polite"
+          >
+            Knock on the cottage while you wait.
+          </p>
+          <button class="loading-retry" data-loading-retry type="button" hidden>
+            Try waking it again ↻
+          </button>
         </div>
       </div>
-
-      <p class="loading-text" role="status" aria-live="polite">Loading...</p>
-
-      <svg aria-hidden="true" style="display: none">
-        <filter id="wobble">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="1"
-            numOctaves="1"
-            result="turbulence"
-          />
-
-          <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="2" />
-        </filter>
-      </svg>
     </div>
 
-    <div id="ui-root"></div>
+    <div id="ui-root" inert></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
