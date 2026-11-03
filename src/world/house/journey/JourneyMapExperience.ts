@@ -71,7 +71,9 @@ export class JourneyMapExperience {
   private duration = 1;
   private routeProgress = 0;
   private afterLeave: (() => void) | null = null;
-  private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private readonly reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
 
   constructor(
     private readonly house: THREE.Object3D,
@@ -83,7 +85,9 @@ export class JourneyMapExperience {
     this.root.name = "JOURNEY_MAP_MAGIC_ROUTE";
     const mapBounds = new THREE.Box3().setFromObject(mapTop, true);
     const table = house.getObjectByName("SEC_MAP_Table_Large");
-    const tableBounds = table ? new THREE.Box3().setFromObject(table, true) : mapBounds;
+    const tableBounds = table
+      ? new THREE.Box3().setFromObject(table, true)
+      : mapBounds;
     const sheet = mapBounds.isEmpty() ? tableBounds : mapBounds;
     const center = sheet.getCenter(new THREE.Vector3());
     const size = sheet.getSize(new THREE.Vector3());
@@ -101,7 +105,7 @@ export class JourneyMapExperience {
     const routeCoords = [
       [-0.42, -0.23],
       [-0.14, 0.22],
-      [0.15, -0.20],
+      [0.15, -0.2],
       [0.42, 0.18],
     ];
     const points: THREE.Vector3[] = [];
@@ -109,35 +113,58 @@ export class JourneyMapExperience {
       const marker = house.getObjectByName(`JOURNEY_NODE_0${i + 1}`);
       const candidate = marker
         ? marker.getWorldPosition(new THREE.Vector3())
-        : center.clone().add(new THREE.Vector3(routeCoords[i][0] * spreadX, 0, routeCoords[i][1] * spreadZ));
+        : center
+            .clone()
+            .add(
+              new THREE.Vector3(
+                routeCoords[i][0] * spreadX,
+                0,
+                routeCoords[i][1] * spreadZ,
+              ),
+            );
       if (marker) candidate.y += 0.02;
       points.push(this.house.worldToLocal(candidate).sub(this.root.position));
     }
     // Routes stay on the table, with gentle bends between the physical waypoints.
     const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.4);
-    const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(110));
-    this.baseRoute = new THREE.Line(geometry, new THREE.LineBasicMaterial({
-      color: 0x766044, transparent: true, opacity: 0.42, depthWrite: false,
-    }));
-    this.activeRoute = new THREE.Line(geometry.clone(), new THREE.LineBasicMaterial({
-      color: GOLD, transparent: true, opacity: 0.8, depthWrite: false,
-    }));
+    const geometry = new THREE.BufferGeometry().setFromPoints(
+      curve.getPoints(110),
+    );
+    this.baseRoute = new THREE.Line(
+      geometry,
+      new THREE.LineBasicMaterial({
+        color: 0x766044,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false,
+      }),
+    );
+    this.activeRoute = new THREE.Line(
+      geometry.clone(),
+      new THREE.LineBasicMaterial({
+        color: GOLD,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      }),
+    );
     this.activeRoute.geometry.setDrawRange(0, 0);
     this.root.add(this.baseRoute, this.activeRoute);
 
     this.glowTexture = this.createGlowTexture();
-    for (let i = 0; i < points.length; i++) this.createStop(JOURNEY_CHAPTERS[i], points[i], i);
+    for (let i = 0; i < points.length; i++)
+      this.createStop(JOURNEY_CHAPTERS[i], points[i], i);
 
     this.panel = document.createElement("section");
     this.panel.className = "journey-inspector";
     this.panel.setAttribute("aria-label", "Journey milestone");
     this.panel.setAttribute("aria-live", "polite");
     this.eyebrow = document.createElement("div");
-    this.eyebrow.className = "journey-inspector__eyebrow";
+    this.eyebrow.className = "journey-inspector_eyebrow";
     this.heading = document.createElement("h2");
     this.description = document.createElement("p");
     this.chips = document.createElement("div");
-    this.chips.className = "journey-inspector__chips";
+    this.chips.className = "journey-inspector_chips";
     this.panel.append(this.eyebrow, this.heading, this.description, this.chips);
     document.body.appendChild(this.panel);
 
@@ -161,10 +188,10 @@ export class JourneyMapExperience {
     this.next.setAttribute("aria-label", "Next chapter");
     this.next.addEventListener("click", this.onNext);
     this.navTitle = document.createElement("span");
-    this.navTitle.className = "journey-controls__title";
+    this.navTitle.className = "journey-controls_title";
     this.navTitle.textContent = "THE CARTOGRAPHER'S TRAIL";
     const keys = document.createElement("span");
-    keys.className = "journey-controls__keys";
+    keys.className = "journey-controls_keys";
     keys.innerHTML = "<kbd>E</kbd> Details <kbd>Esc</kbd> Return";
     this.nav.append(this.previous, this.navTitle, this.next, keys);
     document.body.appendChild(this.nav);
@@ -173,8 +200,12 @@ export class JourneyMapExperience {
     this.canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
 
-  get isControllingCamera(): boolean { return this.state !== "idle"; }
-  get mode(): State { return this.state; }
+  get isControllingCamera(): boolean {
+    return this.state !== "idle";
+  }
+  get mode(): State {
+    return this.state;
+  }
 
   enter(): boolean {
     if (this.state !== "idle" || !this.stops.length) return false;
@@ -208,7 +239,10 @@ export class JourneyMapExperience {
     this.nav.classList.remove("is-visible");
     this.hint.classList.remove("is-visible");
     this.setCursor(false);
-    this.beginTween({ position: this.savedPosition, rotation: this.savedRotation }, this.reducedMotion ? 0.02 : 0.72);
+    this.beginTween(
+      { position: this.savedPosition, rotation: this.savedRotation },
+      this.reducedMotion ? 0.02 : 0.72,
+    );
   }
 
   clickAt(clientX: number, clientY: number): boolean {
@@ -227,8 +261,12 @@ export class JourneyMapExperience {
 
   selectRelative(amount: number): void {
     if (this.state !== "active") return;
-    const next = this.selected === null ? (amount > 0 ? 0 : this.stops.length - 1)
-      : (this.selected + amount + this.stops.length) % this.stops.length;
+    const next =
+      this.selected === null
+        ? amount > 0
+          ? 0
+          : this.stops.length - 1
+        : (this.selected + amount + this.stops.length) % this.stops.length;
     this.inspect(next);
   }
 
@@ -236,29 +274,57 @@ export class JourneyMapExperience {
     if (!this.house.visible) return;
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.seconds += dt;
-    this.routeProgress = THREE.MathUtils.damp(this.routeProgress, this.state === "idle" ? 0 : 1, 2.8, dt);
+    this.routeProgress = THREE.MathUtils.damp(
+      this.routeProgress,
+      this.state === "idle" ? 0 : 1,
+      2.8,
+      dt,
+    );
     const count = this.activeRoute.geometry.getAttribute("position").count;
-    this.activeRoute.geometry.setDrawRange(0, this.state === "idle" ? 0 : Math.ceil(this.routeProgress * count));
+    this.activeRoute.geometry.setDrawRange(
+      0,
+      this.state === "idle" ? 0 : Math.ceil(this.routeProgress * count),
+    );
     for (let i = 0; i < this.stops.length; i++) {
       const stop = this.stops[i];
       const selected = this.state !== "idle" && i === this.selected;
       const hovered = this.state === "active" && i === this.hovered;
-      stop.shine = THREE.MathUtils.damp(stop.shine, selected ? 1 : hovered ? 0.7 : 0.12, 7, dt);
+      stop.shine = THREE.MathUtils.damp(
+        stop.shine,
+        selected ? 1 : hovered ? 0.7 : 0.12,
+        7,
+        dt,
+      );
       const wave = 0.5 + 0.5 * Math.sin(this.seconds * 1.8 + i * 1.7);
-      stop.gem.position.y = THREE.MathUtils.damp(stop.gem.position.y, 0.075 + 0.018 * wave + stop.shine * 0.075, 8, dt);
+      stop.gem.position.y = THREE.MathUtils.damp(
+        stop.gem.position.y,
+        0.075 + 0.018 * wave + stop.shine * 0.075,
+        8,
+        dt,
+      );
       stop.gem.rotation.y += dt * (0.17 + stop.shine * 0.3);
-      stop.gem.material.emissiveIntensity = 0.2 + stop.shine * 0.85 + 0.06 * wave;
+      stop.gem.material.emissiveIntensity =
+        0.2 + stop.shine * 0.85 + 0.06 * wave;
       stop.ring.material.opacity = 0.33 + stop.shine * 0.48;
       stop.ring.scale.setScalar(1 + stop.shine * 0.22 + wave * 0.03);
-      (stop.halo.material as THREE.SpriteMaterial).opacity = 0.08 + stop.shine * 0.24;
+      (stop.halo.material as THREE.SpriteMaterial).opacity =
+        0.08 + stop.shine * 0.24;
     }
     if (this.state === "idle") return;
     if (this.elapsed < this.duration) {
       this.elapsed = Math.min(this.duration, this.elapsed + dt);
       const t = this.elapsed / this.duration;
       const eased = t * t * (3 - 2 * t);
-      this.camera.position.lerpVectors(this.fromPosition, this.toPosition, eased);
-      this.camera.quaternion.slerpQuaternions(this.fromRotation, this.toRotation, eased);
+      this.camera.position.lerpVectors(
+        this.fromPosition,
+        this.toPosition,
+        eased,
+      );
+      this.camera.quaternion.slerpQuaternions(
+        this.fromRotation,
+        this.toRotation,
+        eased,
+      );
       this.camera.updateMatrixWorld(true);
       if (t === 1 && this.state === "entering") this.state = "active";
       if (t === 1 && this.state === "leaving") {
@@ -271,30 +337,59 @@ export class JourneyMapExperience {
     }
     if (this.state !== "active") return;
     // Read layout once before hover DOM writes; moving camera/targets are still picked each frame.
-    const rect = this.pointerInside ? this.canvas.getBoundingClientRect() : null;
+    const rect = this.pointerInside
+      ? this.canvas.getBoundingClientRect()
+      : null;
     this.hovered = rect ? this.pick(this.pointerX, this.pointerY, rect) : null;
     const over = this.hovered !== null;
     this.setCursor(over);
     if (this.hint.classList.contains("is-visible") !== over)
       this.hint.classList.toggle("is-visible", over);
     if (over && rect) {
-      const pos = this.stops[this.hovered!].group.getWorldPosition(this.hintPosition).project(this.camera);
-      const left = THREE.MathUtils.clamp(rect.left + (pos.x + 1) * rect.width / 2, 75, window.innerWidth - 75);
-      const top = THREE.MathUtils.clamp(rect.top + (1 - pos.y) * rect.height / 2 - 72, 35, window.innerHeight - 60);
+      const pos = this.stops[this.hovered!].group
+        .getWorldPosition(this.hintPosition)
+        .project(this.camera);
+      const left = THREE.MathUtils.clamp(
+        rect.left + ((pos.x + 1) * rect.width) / 2,
+        75,
+        window.innerWidth - 75,
+      );
+      const top = THREE.MathUtils.clamp(
+        rect.top + ((1 - pos.y) * rect.height) / 2 - 72,
+        35,
+        window.innerHeight - 60,
+      );
       // Cache desired numbers: CSSOM may round a pixel string when reading it back.
-      if (this.hintLeft !== left) { this.hint.style.left = `${left}px`; this.hintLeft = left; }
-      if (this.hintTop !== top) { this.hint.style.top = `${top}px`; this.hintTop = top; }
+      if (this.hintLeft !== left) {
+        this.hint.style.left = `${left}px`;
+        this.hintLeft = left;
+      }
+      if (this.hintTop !== top) {
+        this.hint.style.top = `${top}px`;
+        this.hintTop = top;
+      }
     }
   }
 
-  private createStop(data: JourneyChapter, point: THREE.Vector3, i: number): void {
+  private createStop(
+    data: JourneyChapter,
+    point: THREE.Vector3,
+    i: number,
+  ): void {
     const group = new THREE.Group();
     group.name = `JOURNEY_WAYPOINT_${i + 1}`;
     group.position.copy(point);
     this.root.add(group);
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.085, 0.12, 28),
-      new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.35, side: THREE.DoubleSide, forceSinglePass: true, depthWrite: false }),
+      new THREE.MeshBasicMaterial({
+        color: GOLD,
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+        depthWrite: false,
+      }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.012;
@@ -302,16 +397,26 @@ export class JourneyMapExperience {
     const gem = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.077, 0),
       new THREE.MeshStandardMaterial({
-        color: COLORS[i], emissive: COLORS[i], emissiveIntensity: 0.25,
-        metalness: 0.2, roughness: 0.38, flatShading: true,
+        color: COLORS[i],
+        emissive: COLORS[i],
+        emissiveIntensity: 0.25,
+        metalness: 0.2,
+        roughness: 0.38,
+        flatShading: true,
       }),
     );
     gem.position.y = 0.075;
     group.add(gem);
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: this.glowTexture, color: COLORS[i], transparent: true,
-      opacity: 0.1, depthWrite: false, blending: THREE.AdditiveBlending,
-    }));
+    const halo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: this.glowTexture,
+        color: COLORS[i],
+        transparent: true,
+        opacity: 0.1,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
     halo.position.y = 0.11;
     halo.scale.set(0.42, 0.42, 1);
     group.add(halo);
@@ -336,7 +441,9 @@ export class JourneyMapExperience {
       };
     }
     const distance = THREE.MathUtils.clamp(this.mapSpan * 1.18, 1.65, 3.15);
-    const position = this.mapCenter.clone().addScaledVector(this.approach, distance);
+    const position = this.mapCenter
+      .clone()
+      .addScaledVector(this.approach, distance);
     position.y += THREE.MathUtils.clamp(this.mapSpan * 0.88, 1.12, 2.0);
     return this.lookAt(position, this.mapCenter);
   }
@@ -344,7 +451,10 @@ export class JourneyMapExperience {
   private inspect(index: number): void {
     const stop = this.stops[index];
     if (!stop) return;
-    if (this.selected === index) { this.showOverview(); return; }
+    if (this.selected === index) {
+      this.showOverview();
+      return;
+    }
     this.selected = index;
     this.eyebrow.textContent = `${String(index + 1).padStart(2, "0")} / ${String(this.stops.length).padStart(2, "0")}   ·   ${stop.data.date}`;
     this.heading.textContent = stop.data.title;
@@ -358,20 +468,28 @@ export class JourneyMapExperience {
     this.navTitle.textContent = stop.data.date;
     this.panel.classList.add("is-visible");
     const world = stop.group.getWorldPosition(new THREE.Vector3());
-    const nextPos = this.overviewPosition.clone().lerp(world, 0.10);
+    const nextPos = this.overviewPosition.clone().lerp(world, 0.1);
     nextPos.y = this.overviewPosition.y - 0.08;
-    this.beginTween(this.lookAt(nextPos, world), this.reducedMotion ? 0.02 : 0.62);
+    this.beginTween(
+      this.lookAt(nextPos, world),
+      this.reducedMotion ? 0.02 : 0.62,
+    );
   }
 
   private showOverview(): void {
     this.selected = null;
     this.panel.classList.remove("is-visible");
     this.navTitle.textContent = "THE CARTOGRAPHER'S TRAIL";
-    this.beginTween({ position: this.overviewPosition, rotation: this.overviewRotation }, this.reducedMotion ? 0.02 : 0.62);
+    this.beginTween(
+      { position: this.overviewPosition, rotation: this.overviewRotation },
+      this.reducedMotion ? 0.02 : 0.62,
+    );
   }
 
   private lookAt(position: THREE.Vector3, target: THREE.Vector3): Shot {
-    const rotation = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(position, target, UP));
+    const rotation = new THREE.Quaternion().setFromRotationMatrix(
+      new THREE.Matrix4().lookAt(position, target, UP),
+    );
     return { position, rotation };
   }
 
@@ -384,14 +502,23 @@ export class JourneyMapExperience {
     this.duration = seconds;
   }
 
-  private pick(clientX: number, clientY: number, rect = this.canvas.getBoundingClientRect()): number | null {
+  private pick(
+    clientX: number,
+    clientY: number,
+    rect = this.canvas.getBoundingClientRect(),
+  ): number | null {
     if (!rect.width || !rect.height) return null;
-    this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.pointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     this.intersections.length = 0;
     this.raycaster.intersectObjects(this.hitTargets, false, this.intersections);
-    const index = this.intersections.length ? this.hitTargets.indexOf(this.intersections[0].object) : -1;
+    const index = this.intersections.length
+      ? this.hitTargets.indexOf(this.intersections[0].object)
+      : -1;
     this.intersections.length = 0;
     return index < 0 ? null : index;
   }
@@ -434,12 +561,14 @@ export class JourneyMapExperience {
     this.previous.removeEventListener("click", this.onPrevious);
     this.next.removeEventListener("click", this.onNext);
     this.setCursor(false);
-    this.root.traverse(object => {
+    this.root.traverse((object) => {
       if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
         object.geometry.dispose();
-        if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
+        if (Array.isArray(object.material))
+          object.material.forEach((m) => m.dispose());
         else object.material.dispose();
-      } else if (object instanceof THREE.Sprite) (object.material as THREE.SpriteMaterial).dispose();
+      } else if (object instanceof THREE.Sprite)
+        (object.material as THREE.SpriteMaterial).dispose();
     });
     this.glowTexture.dispose();
     this.root.removeFromParent();

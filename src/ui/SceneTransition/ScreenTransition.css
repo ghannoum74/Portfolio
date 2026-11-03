@@ -22,7 +22,9 @@
   background: radial-gradient(ellipse at 50% 38%, #fbf3df 0, #f3e7c2 72%);
 }
 
-.house-loading[hidden] { display: none; }
+.house-loading[hidden] {
+  display: none;
+}
 .house-loading {
   display: flex;
   flex-direction: column;
@@ -31,48 +33,174 @@
   width: min(740px, 100%);
   text-align: center;
 }
-.house-loading__art { display: block; flex-shrink: 0; width: min(340px, 74vw); height: auto; overflow: visible; }
-.house-loading__copy { width: min(430px, 100%); }
-.house-loading__eyebrow { margin: 0 0 12px; color: #8b7557; font: 11px/1.4 var(--font-root, "Coiny", system-ui); letter-spacing: .13em; }
-.house-loading h2 { margin: 0 0 16px; font: clamp(28px, 4.5vw, 42px)/1.18 var(--font-root, "Coiny", system-ui); }
-.house-loading__message { margin: 0 auto; min-height: 3.1em; max-width: 380px; font: 15px/1.55 var(--font-root, "Coiny", system-ui); color: #795f46; }
-.house-loading__phase { margin: 14px 0 0; color: #426f66; font: 12px/1.5 var(--font-root, "Coiny", system-ui); }
-.house-loading__dots { display: flex; justify-content: center; gap: 7px; margin-top: 14px; }
-.house-loading__dots span { width: 5px; height: 5px; border-radius: 50%; background: #8fa58c; }
-.house-loading__broom { transform-box: view-box; transform-origin: 244px 202px; }
-.scene-transition.is-visible .house-loading__broom { animation: cottage-sweep 1.4s ease-in-out infinite; will-change: transform; }
-.scene-transition.is-visible .house-loading__dust { animation: cottage-dust 1.4s ease-out infinite; will-change: transform, opacity; }
-.scene-transition.is-visible .house-loading__dust--two { animation-delay: -.65s; }
-.scene-transition.is-visible .house-loading__swoosh { animation: cottage-swoosh 1.4s ease-in-out infinite; }
-.scene-transition.is-visible .house-loading__dots span { animation: cottage-dot 1.2s ease-in-out infinite alternate; }
-.scene-transition.is-visible .house-loading__dots span:nth-child(2) { animation-delay: .2s; }
-.scene-transition.is-visible .house-loading__dots span:nth-child(3) { animation-delay: .4s; }
-.scene-transition[data-house-stage="ready"] .house-loading__dots,
-.scene-transition[data-house-stage="error"] .house-loading__dots { visibility: hidden; }
+.house-loading_art {
+  display: block;
+  flex-shrink: 0;
+  width: min(340px, 74vw);
+  height: auto;
+  overflow: visible;
+}
+.house-loading_copy {
+  width: min(430px, 100%);
+}
+.house-loading_eyebrow {
+  margin: 0 0 12px;
+  color: #8b7557;
+  font: 11px/1.4 var(--font-root, "Coiny", system-ui);
+  letter-spacing: 0.13em;
+}
+.house-loading h2 {
+  margin: 0 0 16px;
+  font: clamp(28px, 4.5vw, 42px)/1.18 var(--font-root, "Coiny", system-ui);
+}
+.house-loading_message {
+  margin: 0 auto;
+  min-height: 3.1em;
+  max-width: 380px;
+  font: 15px/1.55 var(--font-root, "Coiny", system-ui);
+  color: #795f46;
+}
+.house-loading_phase {
+  margin: 14px 0 0;
+  color: #426f66;
+  font: 12px/1.5 var(--font-root, "Coiny", system-ui);
+}
+.house-loading_dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+}
+.house-loading_dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8fa58c;
+}
+.house-loading_broom {
+  transform-box: view-box;
+  transform-origin: 244px 202px;
+}
+.scene-transition.is-visible .house-loading_broom {
+  animation: cottage-sweep 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+.scene-transition.is-visible .house-loading_dust {
+  animation: cottage-dust 1.4s ease-out infinite;
+  will-change: transform, opacity;
+}
+.scene-transition.is-visible .house-loading_dust--two {
+  animation-delay: -0.65s;
+}
+.scene-transition.is-visible .house-loading_swoosh {
+  animation: cottage-swoosh 1.4s ease-in-out infinite;
+}
+.scene-transition.is-visible .house-loading_dots span {
+  animation: cottage-dot 1.2s ease-in-out infinite alternate;
+}
+.scene-transition.is-visible .house-loading_dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.scene-transition.is-visible .house-loading_dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.scene-transition[data-house-stage="ready"] .house-loading_dots,
+.scene-transition[data-house-stage="error"] .house-loading_dots {
+  visibility: hidden;
+}
 
-@keyframes cottage-sweep { 0%, 100% { transform: rotate(-10deg); } 55% { transform: rotate(12deg); } }
-@keyframes cottage-dust { 0% { transform: translate(16px, 0); opacity: 0; } 25% { opacity: .9; } 100% { transform: translate(-24px, -8px); opacity: 0; } }
-@keyframes cottage-swoosh { 0%, 65%, 100% { opacity: 0; } 25%, 45% { opacity: .4; } }
-@keyframes cottage-dot { from { opacity: .3; } to { opacity: 1; } }
+@keyframes cottage-sweep {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  55% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes cottage-dust {
+  0% {
+    transform: translate(16px, 0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-24px, -8px);
+    opacity: 0;
+  }
+}
+@keyframes cottage-swoosh {
+  0%,
+  65%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  45% {
+    opacity: 0.4;
+  }
+}
+@keyframes cottage-dot {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 @media (max-height: 500px) and (min-width: 560px) {
-  .scene-transition { padding: 20px; }
-  .house-loading { flex-direction: row; justify-content: center; gap: 22px; text-align: left; }
-  .house-loading__art { width: clamp(150px, 27vw, 220px); }
-  .house-loading__copy { width: min(390px, 100%); }
-  .house-loading h2 { font-size: 29px; margin-bottom: 12px; }
-  .house-loading__eyebrow { margin-bottom: 8px; font-size: 10px; }
-  .house-loading__message { font-size: 13px; }
-  .house-loading__phase { margin-top: 12px; font-size: 11px; }
-  .house-loading__dots { justify-content: flex-start; margin-top: 12px; }
+  .scene-transition {
+    padding: 20px;
+  }
+  .house-loading {
+    flex-direction: row;
+    justify-content: center;
+    gap: 22px;
+    text-align: left;
+  }
+  .house-loading_art {
+    width: clamp(150px, 27vw, 220px);
+  }
+  .house-loading_copy {
+    width: min(390px, 100%);
+  }
+  .house-loading h2 {
+    font-size: 29px;
+    margin-bottom: 12px;
+  }
+  .house-loading_eyebrow {
+    margin-bottom: 8px;
+    font-size: 10px;
+  }
+  .house-loading_message {
+    font-size: 13px;
+  }
+  .house-loading_phase {
+    margin-top: 12px;
+    font-size: 11px;
+  }
+  .house-loading_dots {
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .scene-transition { transition: none; }
-  .scene-transition.is-visible .house-loading__broom,
-  .scene-transition.is-visible .house-loading__dust,
-  .scene-transition.is-visible .house-loading__swoosh,
-  .scene-transition.is-visible .house-loading__dots span { animation: none; will-change: auto; }
-  .house-loading__dust { opacity: .5; }
+  .scene-transition {
+    transition: none;
+  }
+  .scene-transition.is-visible .house-loading_broom,
+  .scene-transition.is-visible .house-loading_dust,
+  .scene-transition.is-visible .house-loading_swoosh,
+  .scene-transition.is-visible .house-loading_dots span {
+    animation: none;
+    will-change: auto;
+  }
+  .house-loading_dust {
+    opacity: 0.5;
+  }
 }
 
 .scene-transition.is-visible {

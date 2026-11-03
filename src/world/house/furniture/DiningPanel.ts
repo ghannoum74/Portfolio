@@ -64,14 +64,14 @@ export class DiningPanel {
     this.art.className = "scope-cauldron";
     this.art.setAttribute("aria-hidden", "true");
     this.art.innerHTML = `<svg viewBox="0 0 180 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path class="scope-cauldron__steam" d="M68 32c-18-14 13-15 0-28m24 26c18-13-12-15 0-26m25 29c-13-12 10-12 0-23"/>
-      <path class="scope-cauldron__pot" d="M48 43c-9 18-6 40 13 43h58c19-3 22-25 13-43Z"/>
-      <ellipse class="scope-cauldron__brew" cx="90" cy="43" rx="43" ry="10"/>
+      <path class="scope-cauldron_steam" d="M68 32c-18-14 13-15 0-28m24 26c18-13-12-15 0-26m25 29c-13-12 10-12 0-23"/>
+      <path class="scope-cauldron_pot" d="M48 43c-9 18-6 40 13 43h58c19-3 22-25 13-43Z"/>
+      <ellipse class="scope-cauldron_brew" cx="90" cy="43" rx="43" ry="10"/>
       <path d="M48 49c-21-8-23 20-5 18m90-18c21-8 23 20 5 18M60 85l-6 10m66-10 6 10"/>
-      <circle class="scope-cauldron__bubble" cx="65" cy="34" r="4"/><circle class="scope-cauldron__bubble" cx="108" cy="28" r="5"/><circle class="scope-cauldron__bubble" cx="91" cy="36" r="3"/>
-      <path class="scope-cauldron__spark" d="M27 19v12m-6-6h12m120-8v10m-5-5h10"/>
+      <circle class="scope-cauldron_bubble" cx="65" cy="34" r="4"/><circle class="scope-cauldron_bubble" cx="108" cy="28" r="5"/><circle class="scope-cauldron_bubble" cx="91" cy="36" r="3"/>
+      <path class="scope-cauldron_spark" d="M27 19v12m-6-6h12m120-8v10m-5-5h10"/>
     </svg>`;
-    this.endingActions.className = "dining-panel__ending-actions";
+    this.endingActions.className = "dining-panel_ending-actions";
     this.contact.type = "button";
     this.contact.textContent = "Let’s build something →";
     this.contact.addEventListener("click", () => {
@@ -98,11 +98,11 @@ export class DiningPanel {
       link.rel = "noopener noreferrer";
       this.endingActions.appendChild(link);
     }
-    this.description.className = "dining-panel__description";
-    this.status.className = "dining-panel__status";
-    this.count.className = "dining-panel__count";
-    this.controls.className = "dining-panel__controls";
-    this.keys.className = "dining-panel__keys";
+    this.description.className = "dining-panel_description";
+    this.status.className = "dining-panel_status";
+    this.count.className = "dining-panel_count";
+    this.controls.className = "dining-panel_controls";
+    this.keys.className = "dining-panel_keys";
     for (const button of [
       this.previous,
       this.next,
@@ -113,8 +113,8 @@ export class DiningPanel {
     this.previous.textContent = "← Previous";
     this.next.textContent = "Next →";
     this.brewButton.textContent = "Brew again";
-    this.brewButton.className = "dining-panel__brew";
-    this.closeButton.className = "dining-panel__close";
+    this.brewButton.className = "dining-panel_brew";
+    this.closeButton.className = "dining-panel_close";
     this.closeButton.textContent = "Close";
     this.previous.addEventListener("click", () => this.selectRelative(-1));
     this.next.addEventListener("click", () => this.selectRelative(1));

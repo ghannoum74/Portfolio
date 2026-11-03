@@ -11,21 +11,68 @@
   border: 2px solid #bea17a;
   border-radius: 12px;
   color: #513c2b;
-  background: rgba(245, 233, 200, .97);
-  box-shadow: 3px 4px 0 #4937273b, 0 12px 30px #2d211c33;
-  font: 14px/1.5 system-ui, sans-serif;
+  background: rgba(245, 233, 200, 0.97);
+  box-shadow:
+    3px 4px 0 #4937273b,
+    0 12px 30px #2d211c33;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
 }
-.dining-panel[hidden], .dining-panel [hidden] { display: none; }
-.dining-panel__eyebrow { font-size: 10px; letter-spacing: .14em; color: #806346; }
-.dining-panel h2 { margin: 6px 0; font: 18px/1.3 var(--font-root, "Coiny", system-ui); }
-.dining-panel__description { margin: 0; }
-.dining-panel__status { min-height: 1.3em; margin: 8px 0 0; color: #725338; }
-.dining-panel__status:empty { display: none; }
-.dining-panel__controls { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
-.dining-panel__controls button { border: 1px solid #a78660; border-radius: 7px; padding: 6px 9px; color: #513c2b; background: #fff5d9; cursor: pointer; }
-.dining-panel__controls button:hover, .dining-panel__controls button:focus-visible { background: #ecd9ae; outline-color: #725338; }
-.dining-panel__count { font-size: 11px; white-space: nowrap; }
-.dining-panel__keys { display: block; margin-top: 10px; color: #82694b; font-size: 11px; }
+.dining-panel[hidden],
+.dining-panel [hidden] {
+  display: none;
+}
+.dining-panel_eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #806346;
+}
+.dining-panel h2 {
+  margin: 6px 0;
+  font: 18px/1.3 var(--font-root, "Coiny", system-ui);
+}
+.dining-panel_description {
+  margin: 0;
+}
+.dining-panel_status {
+  min-height: 1.3em;
+  margin: 8px 0 0;
+  color: #725338;
+}
+.dining-panel_status:empty {
+  display: none;
+}
+.dining-panel_controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+.dining-panel_controls button {
+  border: 1px solid #a78660;
+  border-radius: 7px;
+  padding: 6px 9px;
+  color: #513c2b;
+  background: #fff5d9;
+  cursor: pointer;
+}
+.dining-panel_controls button:hover,
+.dining-panel_controls button:focus-visible {
+  background: #ecd9ae;
+  outline-color: #725338;
+}
+.dining-panel_count {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.dining-panel_keys {
+  display: block;
+  margin-top: 10px;
+  color: #82694b;
+  font-size: 11px;
+}
 
 .dining-panel--ending {
   width: min(440px, calc(100vw - 32px));
@@ -36,12 +83,41 @@
   scrollbar-width: thin;
   scrollbar-color: #a58c65 transparent;
 }
-.dining-panel--ending h2 { font-size: clamp(20px, 2vw, 25px); line-height: 1.3; margin: 0 0 10px; }
-.dining-panel--ending .dining-panel__eyebrow { font-size: 10px; letter-spacing: .1em; line-height: 1.6; }
-.dining-panel--ending .dining-panel__close { position: sticky; top: 0; float: right; z-index: 1; width: 44px; height: 44px; margin: -10px -10px 0 6px; padding: 0; border: 0; background: var(--paper-background, #f3e7c2); font: 28px/1 system-ui; }
-.dining-panel--ending .dining-panel__status { font-size: 12px; font-style: italic; margin-top: 12px; }
-.dining-panel--ending button, .dining-panel__ending-actions a { min-height: 44px; padding: 10px 12px; }
-.dining-panel--ending .dining-panel__brew, .dining-panel__ending-actions button {
+.dining-panel--ending h2 {
+  font-size: clamp(20px, 2vw, 25px);
+  line-height: 1.3;
+  margin: 0 0 10px;
+}
+.dining-panel--ending .dining-panel_eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  line-height: 1.6;
+}
+.dining-panel--ending .dining-panel_close {
+  position: sticky;
+  top: 0;
+  float: right;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px 0 6px;
+  padding: 0;
+  border: 0;
+  background: var(--paper-background, #f3e7c2);
+  font: 28px/1 system-ui;
+}
+.dining-panel--ending .dining-panel_status {
+  font-size: 12px;
+  font-style: italic;
+  margin-top: 12px;
+}
+.dining-panel--ending button,
+.dining-panel_ending-actions a {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.dining-panel--ending .dining-panel_brew,
+.dining-panel_ending-actions button {
   color: var(--paper-background, #f3e7c2);
   background: var(--paper-ink, #5c4534);
   border: 1px solid var(--paper-ink, #5c4534);
@@ -49,27 +125,101 @@
   font: 13px/1.4 var(--font-root, system-ui);
   cursor: pointer;
 }
-.dining-panel--ending .dining-panel__brew:hover, .dining-panel__ending-actions button:hover { background: #75583d; }
-.dining-panel__ending-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
-.dining-panel__ending-actions a { display: flex; align-items: center; justify-content: center; color: inherit; font-size: 13px; text-underline-offset: 3px; }
-.dining-panel__ending-actions a:hover { background: #e8d5aa; border-radius: 8px; }
-.dining-panel--ending[data-stage="4"] .dining-panel__brew { background: transparent; color: inherit; font: 12px system-ui; }
-.dining-panel--ending :is(a, button):focus-visible { outline: 3px solid #806747; outline-offset: 3px; }
-.scope-cauldron { height: 92px; margin: 8px auto 12px; text-align: center; }
-.scope-cauldron svg { width: 170px; height: 100%; stroke: var(--paper-ink, #5c4534); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.scope-cauldron__pot { fill: #5c4534; }
-.scope-cauldron__brew, .scope-cauldron__bubble { fill: var(--brew-color, #85dd9e); }
-.scope-cauldron__steam { stroke-dasharray: 3 5; opacity: .65; }
-.scope-cauldron__bubble { animation: scope-bubble 2s ease-in-out infinite alternate; }
-.scope-cauldron__bubble:nth-of-type(2) { animation-delay: -.8s; }
-.scope-cauldron__spark { opacity: 0; }
-.dining-panel--ending[data-stage="3"] .scope-cauldron__bubble { animation-duration: .65s; }
-.dining-panel--ending[data-stage="4"] .scope-cauldron__spark { opacity: 1; }
-@keyframes scope-bubble { to { transform: translateY(-7px); opacity: .55; } }
-.has-touch-controls .dining-panel--ending { width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 80px); }
-@media (max-height: 540px) {
-  .dining-panel--ending { max-height: calc(100dvh - 80px); padding: 16px; }
-  .scope-cauldron { height: 58px; margin: 4px auto 8px; }
-  .dining-panel--ending h2 { font-size: 19px; }
+.dining-panel--ending .dining-panel_brew:hover,
+.dining-panel_ending-actions button:hover {
+  background: #75583d;
 }
-@media (prefers-reduced-motion: reduce) { .scope-cauldron__bubble { animation: none; } }
+.dining-panel_ending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+}
+.dining-panel_ending-actions a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+.dining-panel_ending-actions a:hover {
+  background: #e8d5aa;
+  border-radius: 8px;
+}
+.dining-panel--ending[data-stage="4"] .dining-panel_brew {
+  background: transparent;
+  color: inherit;
+  font: 12px system-ui;
+}
+.dining-panel--ending :is(a, button):focus-visible {
+  outline: 3px solid #806747;
+  outline-offset: 3px;
+}
+.scope-cauldron {
+  height: 92px;
+  margin: 8px auto 12px;
+  text-align: center;
+}
+.scope-cauldron svg {
+  width: 170px;
+  height: 100%;
+  stroke: var(--paper-ink, #5c4534);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.scope-cauldron_pot {
+  fill: #5c4534;
+}
+.scope-cauldron_brew,
+.scope-cauldron_bubble {
+  fill: var(--brew-color, #85dd9e);
+}
+.scope-cauldron_steam {
+  stroke-dasharray: 3 5;
+  opacity: 0.65;
+}
+.scope-cauldron_bubble {
+  animation: scope-bubble 2s ease-in-out infinite alternate;
+}
+.scope-cauldron_bubble:nth-of-type(2) {
+  animation-delay: -0.8s;
+}
+.scope-cauldron_spark {
+  opacity: 0;
+}
+.dining-panel--ending[data-stage="3"] .scope-cauldron_bubble {
+  animation-duration: 0.65s;
+}
+.dining-panel--ending[data-stage="4"] .scope-cauldron_spark {
+  opacity: 1;
+}
+@keyframes scope-bubble {
+  to {
+    transform: translateY(-7px);
+    opacity: 0.55;
+  }
+}
+.has-touch-controls .dining-panel--ending {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - 80px);
+}
+@media (max-height: 540px) {
+  .dining-panel--ending {
+    max-height: calc(100dvh - 80px);
+    padding: 16px;
+  }
+  .scope-cauldron {
+    height: 58px;
+    margin: 4px auto 8px;
+  }
+  .dining-panel--ending h2 {
+    font-size: 19px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scope-cauldron_bubble {
+    animation: none;
+  }
+}

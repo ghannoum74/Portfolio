@@ -8,7 +8,10 @@
   pointer-events: auto;
 }
 
-.world-time[hidden], .world-time [hidden] { display: none !important; }
+.world-time[hidden],
+.world-time [hidden] {
+  display: none !important;
+}
 
 .world-time button {
   color: inherit;
@@ -28,7 +31,7 @@
   stroke-linejoin: round;
 }
 
-.world-time__toggle {
+.world-time_toggle {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -41,12 +44,28 @@
   text-align: left;
 }
 
-.world-time__caption { display: block; font-size: 11px; line-height: 1.3; opacity: .8; }
-.world-time__current { display: block; font-size: 13px; line-height: 1.5; white-space: nowrap; }
-.world-time .world-time__chevron { width: 14px; height: 14px; flex-basis: 14px; }
-.world-time__toggle[aria-expanded="true"] .world-time__chevron { transform: rotate(180deg); }
+.world-time_caption {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+.world-time_current {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.world-time .world-time_chevron {
+  width: 14px;
+  height: 14px;
+  flex-basis: 14px;
+}
+.world-time_toggle[aria-expanded="true"] .world-time_chevron {
+  transform: rotate(180deg);
+}
 
-.world-time__panel {
+.world-time_panel {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
@@ -62,9 +81,18 @@
   box-shadow: 4px 5px 0 rgb(92 69 52 / 22%);
 }
 
-.world-time__heading { margin: 0 0 12px; font-size: 14px; line-height: 1.4; }
-.world-time__presets { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.world-time__presets button, .world-time__local {
+.world-time_heading {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.world-time_presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.world-time_presets button,
+.world-time_local {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,19 +105,58 @@
   font-size: 13px;
 }
 
-.world-time button:hover { background: #e8d5aa; }
-.world-time__presets button[aria-pressed="true"] { background: var(--paper-ink, #5c4534); color: var(--paper-background, #f3e7c2); }
-.world-time button:focus-visible, .world-time input:focus-visible { outline: 3px solid #806747; outline-offset: 3px; }
-.world-time__slider-label { display: flex; justify-content: space-between; gap: 12px; margin-top: 15px; font-size: 12px; }
-.world-time__slider { display: block; width: 100%; height: 32px; margin: 0; accent-color: var(--paper-ink, #5c4534); cursor: pointer; }
-.world-time__local { width: 100%; margin-top: 8px; }
-.world-time__local[aria-pressed="true"] { background: #e8d5aa; }
-.world-time__check { visibility: hidden; }
-.world-time__local[aria-pressed="true"] .world-time__check { visibility: visible; }
+.world-time button:hover {
+  background: #e8d5aa;
+}
+.world-time_presets button[aria-pressed="true"] {
+  background: var(--paper-ink, #5c4534);
+  color: var(--paper-background, #f3e7c2);
+}
+.world-time button:focus-visible,
+.world-time input:focus-visible {
+  outline: 3px solid #806747;
+  outline-offset: 3px;
+}
+.world-time_slider-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+  font-size: 12px;
+}
+.world-time_slider {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  accent-color: var(--paper-ink, #5c4534);
+  cursor: pointer;
+}
+.world-time_local {
+  width: 100%;
+  margin-top: 8px;
+}
+.world-time_local[aria-pressed="true"] {
+  background: #e8d5aa;
+}
+.world-time_check {
+  visibility: hidden;
+}
+.world-time_local[aria-pressed="true"] .world-time_check {
+  visibility: visible;
+}
 
 /* Leave the mobile fullscreen control in its existing top-right position. */
-.has-touch-controls .world-time { right: max(122px, calc(env(safe-area-inset-right) + 112px)); }
+.has-touch-controls .world-time {
+  right: max(122px, calc(env(safe-area-inset-right) + 112px));
+}
 @media (max-width: 480px) {
-  .world-time, .has-touch-controls .world-time { top: max(66px, calc(env(safe-area-inset-top) + 56px)); right: max(14px, env(safe-area-inset-right)); }
-  .world-time__panel { max-height: calc(100dvh - 138px - env(safe-area-inset-top)); }
+  .world-time,
+  .has-touch-controls .world-time {
+    top: max(66px, calc(env(safe-area-inset-top) + 56px));
+    right: max(14px, env(safe-area-inset-right));
+  }
+  .world-time_panel {
+    max-height: calc(100dvh - 138px - env(safe-area-inset-top));
+  }
 }
