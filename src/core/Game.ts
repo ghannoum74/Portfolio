@@ -456,10 +456,7 @@ export class Game {
     }
     this.mobileControls?.setContext(this.mobileContext(gameplayActive));
 
-    const camera = this.playerCamera;
-    this.world.updateLod(camera, window.innerHeight);
-
-    this.renderer.render(this.scene, camera);
+    this.renderer.render(this.scene, this.playerCamera);
   };
 
   private onResize = (): void => {

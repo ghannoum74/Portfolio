@@ -7,12 +7,9 @@ import { PhysicsWorld } from "../../physics/PhysicsWorld";
 import { AnimatedBook3D } from "./AnimatedBook3D";
 
 import { batchHouseBeams } from "./batchHouseBeams";
-import { HouseStoneLod, type StoneLodData } from "./HouseStoneLod";
+
 import { ClosedSurfaceCulling } from "./ClosedSurfaceCulling";
-import {
-  StaticMeshBatches,
-  StaticTransforms,
-} from "../../optimization/StaticScene";
+import { freezeStaticTransforms } from "../../optimization/StaticTransforms";
 import { createHouseLighting } from "./HouseLighting";
 
 export class HouseInterior {
@@ -20,9 +17,7 @@ export class HouseInterior {
   private readonly loader: AssetLoader;
   private loaded = false;
   private loadPromise?: Promise<void>;
-  private stoneLod?: HouseStoneLod;
-  private stoneLodPromise?: Promise<void>;
-  private surfaceCulling?: ClosedSurfaceCulling;
+
   private readonly staticObjects = new Set<THREE.Object3D>();
 
   private readonly worldOffset = new THREE.Vector3(0, -30, 0);
@@ -36,7 +31,7 @@ export class HouseInterior {
 
   constructor(
     private readonly scene: THREE.Scene,
-    private readonly loadingManager: THREE.LoadingManager,
+    loadingManager: THREE.LoadingManager,
     private readonly physics: PhysicsWorld,
   ) {
     this.loader = new AssetLoader(loadingManager);
@@ -125,12 +120,7 @@ export class HouseInterior {
     batchHouseBeams(this.model, house.animations);
 
     try {
-      this.surfaceCulling = await ClosedSurfaceCulling.create(
-        this.model,
-        true,
-        house.animations,
-      );
-      this.surfaceCulling.setEnabled(true);
+      await ClosedSurfaceCulling.create(this.model, house.animations);
     } catch (error) {
       console.warn(
         "House surface culling unavailable; keeping authored materials:",
@@ -138,35 +128,9 @@ export class HouseInterior {
       );
     }
 
-    new StaticMeshBatches(this.model, house.animations, this.staticObjects);
-    new StaticTransforms(this.model, house.animations, this.staticObjects);
+    freezeStaticTransforms(this.model, house.animations, this.staticObjects);
 
     this.loaded = true;
-
-    this.loadStoneLods();
-  }
-
-  private loadStoneLods(): void {
-    if (this.stoneLod || this.stoneLodPromise) return;
-    this.stoneLodPromise = new THREE.FileLoader(this.loadingManager)
-      .setResponseType("json")
-      .loadAsync(ASSETS.houseStoneLods)
-      .then((data) =>
-        HouseStoneLod.create(this.model, data as unknown as StoneLodData),
-      )
-      .then((lod) => {
-        this.stoneLod = lod;
-        lod.setEnabled(true);
-      })
-      .catch((error) =>
-        console.warn(
-          "House stone LOD unavailable; using authored geometry:",
-          error,
-        ),
-      )
-      .finally(() => {
-        this.stoneLodPromise = undefined;
-      });
   }
 
   private createInteriorLighting(): void {
@@ -232,10 +196,6 @@ export class HouseInterior {
 
   get projectBook(): AnimatedBook3D | undefined {
     return this.animatedBook;
-  }
-
-  updateLod(camera: THREE.Camera, viewportHeight: number): void {
-    if (this.model.visible) this.stoneLod?.update(camera, viewportHeight);
   }
 
   update(delta: number): void {

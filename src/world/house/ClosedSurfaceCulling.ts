@@ -103,12 +103,9 @@ type Entry = {
 export class ClosedSurfaceCulling {
   private readonly entries: Entry[] = [];
   private readonly materials = new Set<THREE.Material>();
-  private enabled = false;
-  private triangles = 0;
 
   static async create(
     root: THREE.Object3D,
-    enabled: boolean,
     animations: readonly THREE.AnimationClip[] = [],
     options: { maxTriangles?: number } = {},
   ) {
@@ -235,12 +232,10 @@ export class ClosedSurfaceCulling {
           ? original.map(clone)
           : clone(original);
         result.entries.push({ mesh, original, prepared });
-        result.triangles +=
-          (mesh.geometry.index?.count ??
-            mesh.geometry.getAttribute("position").count) / 3;
+
         mesh.material = prepared;
       }
-      result.setEnabled(enabled);
+      result.enable();
       return result;
     } catch (error) {
       result.dispose();
@@ -248,8 +243,7 @@ export class ClosedSurfaceCulling {
     }
   }
 
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
+  private enable(): void {
     const materials = new Set(this.materials);
     for (const { mesh } of this.entries) {
       for (const material of Array.isArray(mesh.material)
@@ -259,21 +253,12 @@ export class ClosedSurfaceCulling {
       }
     }
     for (const material of materials) {
-      const side = enabled ? THREE.FrontSide : THREE.DoubleSide;
+      const side = THREE.FrontSide;
       if (material.side !== side) {
         material.side = side;
         material.needsUpdate = true;
       }
     }
-  }
-
-  get stats() {
-    return {
-      enabled: this.enabled,
-      meshes: this.entries.length,
-      triangles: this.triangles,
-      materials: this.materials.size,
-    };
   }
 
   dispose(): void {

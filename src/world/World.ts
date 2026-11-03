@@ -14,25 +14,13 @@ import type { Npc } from "./npc/Npc";
 import { Water } from "./environment/Water";
 import { HouseInterior } from "./house/HouseInterior";
 
-import {
-  StaticMeshBatches,
-  StaticMeshInstances,
-  StaticTransforms,
-} from "../optimization/StaticScene";
+import { freezeStaticTransforms } from "../optimization/StaticTransforms";
 
-import {
-  HouseStoneLod,
-  EXTERIOR_LOD_NAMES,
-  type StoneLodData,
-} from "./house/HouseStoneLod";
 import { ClosedSurfaceCulling } from "./house/ClosedSurfaceCulling";
 
 export class World {
   model!: THREE.Group;
 
-  private exteriorLod?: HouseStoneLod;
-  private exteriorLodPromise?: Promise<void>;
-  private exteriorSurfaceCulling?: ClosedSurfaceCulling;
   player!: Player;
   sun!: THREE.DirectionalLight;
   sunPivot!: THREE.Group;
@@ -127,59 +115,24 @@ export class World {
       this.prepareExteriorSurfaceCulling(),
     ]);
 
-    new StaticMeshBatches(this.model, asset.animations, this.staticObjects);
-    new StaticMeshInstances(this.model, asset.animations, this.staticObjects);
-    new StaticTransforms(this.model, asset.animations, this.staticObjects);
+    freezeStaticTransforms(this.model, asset.animations, this.staticObjects);
 
     this.initialized = true;
-    this.loadExteriorLods();
   }
 
   private async prepareExteriorSurfaceCulling(): Promise<void> {
     try {
-      this.exteriorSurfaceCulling = await ClosedSurfaceCulling.create(
+      await ClosedSurfaceCulling.create(
         this.model,
-        true,
         this.environmentAnimations,
         { maxTriangles: 10_000 },
       );
-      this.exteriorSurfaceCulling.setEnabled(true);
     } catch (error) {
       console.warn(
         "Exterior surface culling unavailable; keeping authored materials:",
         error,
       );
     }
-  }
-
-  private loadExteriorLods(): void {
-    if (!this.initialized || this.exteriorLod || this.exteriorLodPromise)
-      return;
-    this.exteriorLodPromise = new THREE.FileLoader()
-      .setResponseType("json")
-      .loadAsync(ASSETS.exteriorLods)
-      .then((data) =>
-        HouseStoneLod.create(
-          this.model,
-          data as unknown as StoneLodData,
-          EXTERIOR_LOD_NAMES,
-          3,
-        ),
-      )
-      .then((lod) => {
-        this.exteriorLod = lod;
-
-        lod.setEnabled(true);
-      })
-      .catch((error) =>
-        console.warn(
-          "Exterior LOD unavailable; using authored geometry:",
-          error,
-        ),
-      )
-      .finally(() => {
-        this.exteriorLodPromise = undefined;
-      });
   }
 
   get npcs(): readonly Npc[] {
@@ -236,12 +189,6 @@ export class World {
       ),
     );
     if (animationDelta > 0) this.player.updateAnimation(animationDelta);
-  }
-
-  updateLod(camera: THREE.Camera, viewportHeight: number): void {
-    if (this.model?.visible && this.model.parent)
-      this.exteriorLod?.update(camera, viewportHeight);
-    this.houseInterior?.updateLod(camera, viewportHeight);
   }
 
   private addLights(): void {

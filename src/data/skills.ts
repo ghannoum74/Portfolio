@@ -87,5 +87,3 @@ export const WORKSHOP_SKILLS: readonly WorkshopSkill[] = [
     artifact: "The Navigator",
   },
 ];
-
-export const FIRST_WORKSHOP_SKILL = WORKSHOP_SKILLS[0];
