@@ -57,14 +57,7 @@
   gap: 10px;
   text-align: center;
 }
-.loading-world_eyebrow {
-  margin: 0 0 9px;
-  color: #8b7557;
-  font-size: 11px;
-  line-height: 1.4;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
+
 .loading-world h1 {
   margin: 0;
   font-size: clamp(28px, 5.5vw, 42px);
