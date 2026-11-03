@@ -164,7 +164,9 @@ export class PlayerBody {
       z: position.z + correctedMovement.z,
     });
 
-    this.grounded = this.characterController.computedGrounded();
+    this.grounded =
+      this.verticalVelocity <= 0 &&
+      this.characterController.computedGrounded();
 
     if (this.grounded) {
       this.jumping = false;
