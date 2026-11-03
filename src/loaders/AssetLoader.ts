@@ -16,7 +16,6 @@ export class AssetLoader {
   async loadGLB(url: string) {
     const asset = await this.gltfLoader.loadAsync(url);
 
-    // Only count the asset after loading and parsing succeed.
     this.onAssetReady?.(url);
 
     return asset;

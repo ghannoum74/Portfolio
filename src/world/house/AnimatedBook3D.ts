@@ -3,12 +3,7 @@ import * as THREE from "three";
 import { PROJECTS } from "../../data/projects";
 import { ProjectPageTextures } from "./book/ProjectPageTexture";
 
-type BookState =
-  | "closed"
-  | "opening"
-  | "open"
-  | "preparing"
-  | "turning";
+type BookState = "closed" | "opening" | "open" | "preparing" | "turning";
 
 interface BookGLTF {
   scene: THREE.Group;
@@ -49,13 +44,11 @@ export class AnimatedBook3D {
 
     this.mixer = new THREE.AnimationMixer(this.model);
 
-    // Actual mesh names exported from Blender.
     this.detailsPage = this.model.getObjectByName("BOOK_DETAILS_PAGE");
 
     this.screenshotPage = this.model.getObjectByName("BOOK_SCREENSHOT_PAGE");
 
     this.turningPage = this.model.getObjectByName("BOOK_TURNING_PAGE");
-
 
     const hasMorphTracks = (clip: THREE.AnimationClip) =>
       clip.tracks.some((track) => track.name.includes("morphTargetInfluences"));
@@ -101,7 +94,6 @@ export class AnimatedBook3D {
     this.mixer.addEventListener("finished", (event) => {
       if (event.action === this.openAction) {
         this.state = "open";
-
       }
 
       if (event.action === this.pageAction) {
@@ -132,13 +124,8 @@ export class AnimatedBook3D {
       throw new Error("Missing required BOOK_* page objects in book.glb");
     }
 
-    // The Blender demo contains temporary geometry:
-    // PROJECT NOTES, decorative lines, and preview box.
-    // Hide those so they don't cover our real textures.
     this.hideBlenderPlaceholders();
 
-    // Keep the animated sheet hidden until we turn.
-    // This also avoids z-fighting with the static page.
     this.turningPage.visible = false;
 
     await this.textures.ready();
@@ -155,7 +142,6 @@ export class AnimatedBook3D {
 
     this.projectIndex = 0;
     this.pagesReady = true;
-
   }
 
   private hideBlenderPlaceholders(): void {
@@ -256,7 +242,6 @@ export class AnimatedBook3D {
     this.openAction.reset().play();
   }
 
-  /** Turn physical paper forward (+1) or backward (-1). */
   async turnPage(direction: 1 | -1 = 1): Promise<void> {
     if (
       this.state !== "open" ||
@@ -265,7 +250,8 @@ export class AnimatedBook3D {
       !this.turningPage ||
       !this.detailsPage ||
       !this.screenshotPage
-    ) return;
+    )
+      return;
 
     const nextIndex = this.projectIndex + direction;
     if (nextIndex < 0 || nextIndex >= PROJECTS.length) return;
@@ -281,17 +267,12 @@ export class AnimatedBook3D {
       ]);
 
       if (direction === 1) {
-        // Page goes from right to left. As it lifts, expose the next
-        // right-hand screenshot. Its back carries next project's details.
         this.paintTurningPage(
           currentScreenshot,
           this.textures.details(nextProject, false),
         );
         this.paintPage(this.screenshotPage, nextScreenshot);
       } else {
-        // Page goes from left to right. Its upper side initially shows
-        // current details, then its front reveals previous screenshot.
-        // The previous details are already beneath it on the left.
         this.paintTurningPage(
           nextScreenshot,
           this.textures.details(currentProject, false),
@@ -307,12 +288,13 @@ export class AnimatedBook3D {
       action.stop();
       action.reset();
       action.setEffectiveTimeScale(direction);
-      action.time = direction === 1 ? 0 : Math.max(0, action.getClip().duration - 0.0001);
+      action.time =
+        direction === 1 ? 0 : Math.max(0, action.getClip().duration - 0.0001);
 
       this.turningPage.visible = true;
       this.state = "turning";
       action.play();
-      // Sample the first frame at the correct endpoint before rendering.
+
       this.samplePose(0);
     } catch (error) {
       console.error("Could not prepare book page:", error);
@@ -336,8 +318,6 @@ export class AnimatedBook3D {
 
     const project = PROJECTS[this.pendingIndex];
     if (this.turnDirection === -1 && this.pendingScreenshot) {
-      // The page now covers the right stack. Update it before hiding
-      // the temporary sheet so there is no visible screenshot switch.
       this.paintPage(this.screenshotPage, this.pendingScreenshot);
     }
     this.paintPage(this.detailsPage, this.textures.details(project));
@@ -370,12 +350,7 @@ export class AnimatedBook3D {
     }
   }
 
-  // =======================================================
-  // GAME LOOP
-  // =======================================================
-
   update(delta: number): void {
-    // Clamped actions retain their final pose without reapplying every morph.
     if (this.state !== "opening" && this.state !== "turning") return;
     this.samplePose(Math.min(delta, 0.05));
   }
@@ -385,15 +360,10 @@ export class AnimatedBook3D {
     this.poseRevisionValue++;
   }
 
-  // =======================================================
-  // PUBLIC STATE
-  // =======================================================
-
   get currentState(): BookState {
     return this.state;
   }
 
-  /** Changes after animation sampling, including the initial page-turn endpoint. */
   get poseRevision(): number {
     return this.poseRevisionValue;
   }

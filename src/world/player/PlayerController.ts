@@ -25,7 +25,6 @@ export class PlayerController {
   update(delta: number): void {
     const jumpPressed = this.keyboard.consumeJump();
 
-    // Read the physics state before updating movement.
     const falling = this.body.isFalling;
     const jumping = this.body.isJumping;
 
@@ -41,12 +40,8 @@ export class PlayerController {
 
     const locked = this.animations.isLocked();
 
-    // Allow air control during an intentional jump,
-    // including the frame when the jump starts.
     const allowAirControl = jumping || canJump;
 
-    // Accidental falls remain locked.
-    // The jump animation no longer blocks air control.
     const movementBlocked = !allowAirControl && (locked || falling);
 
     let moveDirection = 0;
@@ -61,15 +56,15 @@ export class PlayerController {
       }
     }
 
-    // Allow rotation while jumping, but not during
-    // an accidental fall.
     if (!falling || allowAirControl) {
       if (this.keyboard.left) {
-        this.player.rotation.y += this.rotationSpeed * this.keyboard.turnStrength * delta;
+        this.player.rotation.y +=
+          this.rotationSpeed * this.keyboard.turnStrength * delta;
       }
 
       if (this.keyboard.right) {
-        this.player.rotation.y -= this.rotationSpeed * this.keyboard.turnStrength * delta;
+        this.player.rotation.y -=
+          this.rotationSpeed * this.keyboard.turnStrength * delta;
       }
     }
 
@@ -99,7 +94,6 @@ export class PlayerController {
           ? this.runSpeed
           : this.walkSpeed;
 
-    // Always update physics, even if movement is locked.
     this.body.update(
       moveDirection,
       this.player.rotation.y,
@@ -129,7 +123,6 @@ export class PlayerController {
       return;
     }
 
-    // Stair animation has priority over walking/running.
     if (ascending) {
       this.animations.play("ascending_stairs");
       this.animations.setPlaybackSpeed("ascending_stairs", 1.5);

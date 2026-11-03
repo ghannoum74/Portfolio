@@ -1,18 +1,10 @@
 import * as THREE from "three";
 import { PROJECTS, type PortfolioProject } from "../../../data/projects";
 
-/**
- * Visual-only redesign of the real book's two CanvasTextures.
- * AnimatedBook3D's public API and UV conventions remain unchanged.
- */
 const WIDTH = 1024;
 const HEIGHT = 1536;
 const EDGE = 88;
 
-/**
- * The preview component imports this exact rectangle for its raycast hit area.
- * Keep these values in sync with the frame drawn in drawScreenshot().
- */
 export const PROJECT_SCREENSHOT_FRAME = {
   textureWidth: WIDTH,
   textureHeight: HEIGHT,
@@ -36,11 +28,12 @@ const COLOR = {
 
 export class ProjectPageTextures {
   private readonly detailsCache = new Map<string, THREE.CanvasTexture>();
-  private readonly screenshotCache = new Map<string, Promise<THREE.CanvasTexture>>();
+  private readonly screenshotCache = new Map<
+    string,
+    Promise<THREE.CanvasTexture>
+  >();
 
   async ready(): Promise<void> {
-    // Coiny is already loaded by index.html; canvas needs the font ready
-    // BEFORE the text is painted into the GPU texture.
     await document.fonts.load('84px "Coiny"');
   }
 
@@ -60,13 +53,12 @@ export class ProjectPageTextures {
   private asTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.flipY = false; // Do not change: matches Blender's exported page UVs.
+    texture.flipY = false;
     texture.anisotropy = 8;
     return texture;
   }
 
   private paper(ctx: CanvasRenderingContext2D, showHeaderRule = true): void {
-    // Soft paper color with a hint of depth at the binding edge.
     const ground = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
     ground.addColorStop(0, COLOR.light);
     ground.addColorStop(0.55, COLOR.paper);
@@ -80,7 +72,6 @@ export class ProjectPageTextures {
     ctx.fillStyle = binding;
     ctx.fillRect(0, 0, 130, HEIGHT);
 
-    // Folio marks, not a heavy frame around every element.
     ctx.strokeStyle = COLOR.hairline;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -126,13 +117,15 @@ export class ProjectPageTextures {
   ): string {
     if (ctx.measureText(text).width <= maxWidth) return text;
     let end = text.length;
-    while (end > 0 && ctx.measureText(text.slice(0, end) + "…").width > maxWidth) {
+    while (
+      end > 0 &&
+      ctx.measureText(text.slice(0, end) + "…").width > maxWidth
+    ) {
       end--;
     }
     return text.slice(0, end).trimEnd() + "…";
   }
 
-  /** Word wrap without overflowing the physical page. Returns next baseline. */
   private wrap(
     ctx: CanvasRenderingContext2D,
     text: string,
@@ -158,11 +151,19 @@ export class ProjectPageTextures {
     if (line) lines.push(line);
     if (lines.length > maxLines) {
       lines.length = maxLines;
-      lines[maxLines - 1] = this.ellipsis(ctx, lines[maxLines - 1] + "…", maxWidth);
+      lines[maxLines - 1] = this.ellipsis(
+        ctx,
+        lines[maxLines - 1] + "…",
+        maxWidth,
+      );
     }
 
     lines.forEach((value, i) => {
-      ctx.fillText(this.ellipsis(ctx, value, maxWidth), x, top + i * lineHeight);
+      ctx.fillText(
+        this.ellipsis(ctx, value, maxWidth),
+        x,
+        top + i * lineHeight,
+      );
     });
     return top + lines.length * lineHeight;
   }
@@ -181,13 +182,15 @@ export class ProjectPageTextures {
     ctx.fillStyle = COLOR.muted;
     ctx.fillText("GHANNOUM  /  SELECTED WORK", EDGE, HEIGHT - 75);
     ctx.textAlign = "right";
-    ctx.fillText(`${number}  /  ${side === "left" ? "STORY" : "LIVE"}`, WIDTH - EDGE, HEIGHT - 75);
+    ctx.fillText(
+      `${number}  /  ${side === "left" ? "STORY" : "LIVE"}`,
+      WIDTH - EDGE,
+      HEIGHT - 75,
+    );
     ctx.textAlign = "left";
   }
 
   details(project: PortfolioProject, _forLeftPage = true): THREE.CanvasTexture {
-    // Resting and turning details use identical pixels and UV correction.
-    // Keep the role argument compatible with callers, but share the texture.
     const key = project.id;
     const cached = this.detailsCache.get(key);
     if (cached) return cached;
@@ -196,35 +199,41 @@ export class ProjectPageTextures {
     this.paper(ctx, false);
     const number = this.projectNumber(project);
 
-    // Title is the hero. Minimal decorative UI around it.
     ctx.fillStyle = COLOR.ink;
     ctx.font = '82px "Coiny", system-ui';
     const titleEnd = this.wrap(ctx, project.title, EDGE, 238, 830, 95, 3);
 
-    ctx.font = '31px system-ui, sans-serif';
+    ctx.font = "31px system-ui, sans-serif";
     ctx.fillStyle = COLOR.muted;
-    this.wrap(ctx, project.subtitle, EDGE + 3, Math.min(titleEnd + 24, 530), 816, 43, 2);
+    this.wrap(
+      ctx,
+      project.subtitle,
+      EDGE + 3,
+      Math.min(titleEnd + 24, 530),
+      816,
+      43,
+      2,
+    );
 
-    // One strong editorial divider instead of multiple colored cards.
     ctx.fillStyle = COLOR.accent;
     ctx.fillRect(EDGE, 644, 90, 7);
     this.label(ctx, "THE IDEA", EDGE, 708);
 
     ctx.fillStyle = COLOR.ink;
-    ctx.font = '34px system-ui, sans-serif';
+    ctx.font = "34px system-ui, sans-serif";
     this.wrap(ctx, project.description, EDGE, 766, 823, 52, 4);
 
     this.rule(ctx, 1000);
     this.label(ctx, "WHAT WENT INTO IT", EDGE, 1026);
 
     const featureY = [1091, 1164, 1237];
-    ctx.font = '28px system-ui, sans-serif';
+    ctx.font = "28px system-ui, sans-serif";
     project.highlights.slice(0, 3).forEach((item, index) => {
       ctx.fillStyle = COLOR.gold;
       ctx.font = '25px "Coiny", system-ui';
       ctx.fillText(String(index + 1).padStart(2, "0"), EDGE, featureY[index]);
       ctx.fillStyle = COLOR.ink;
-      ctx.font = '28px system-ui, sans-serif';
+      ctx.font = "28px system-ui, sans-serif";
       ctx.fillText(this.ellipsis(ctx, item, 746), EDGE + 72, featureY[index]);
     });
 
@@ -234,7 +243,7 @@ export class ProjectPageTextures {
     let visible = 0;
     for (const tech of project.technologies) {
       if (visible >= 7) break;
-      ctx.font = '24px system-ui, sans-serif';
+      ctx.font = "24px system-ui, sans-serif";
       const chipWidth = Math.min(ctx.measureText(tech).width + 36, 310);
       if (chipX + chipWidth > WIDTH - EDGE) {
         chipX = EDGE + 115;
@@ -246,7 +255,11 @@ export class ProjectPageTextures {
       ctx.roundRect(chipX, chipY, chipWidth, 42, 21);
       ctx.fill();
       ctx.fillStyle = COLOR.accent;
-      ctx.fillText(this.ellipsis(ctx, tech, chipWidth - 34), chipX + 18, chipY + 8);
+      ctx.fillText(
+        this.ellipsis(ctx, tech, chipWidth - 34),
+        chipX + 18,
+        chipY + 8,
+      );
       chipX += chipWidth + 11;
       visible++;
     }
@@ -254,8 +267,6 @@ export class ProjectPageTextures {
     this.numberFooter(ctx, number, "left");
     const texture = this.asTexture(canvas);
 
-    // CRITICAL: keep the proven Blender left-page correction on BOTH
-    // the resting page and the back of the page-turn animation.
     texture.rotation = 0;
     texture.center.set(0, 0);
     texture.repeat.set(-1, 1);
@@ -284,7 +295,9 @@ export class ProjectPageTextures {
     }
   }
 
-  private drawScreenshot(project: PortfolioProject): Promise<THREE.CanvasTexture> {
+  private drawScreenshot(
+    project: PortfolioProject,
+  ): Promise<THREE.CanvasTexture> {
     const { canvas, ctx } = this.canvas();
     const number = this.projectNumber(project);
     const f = PROJECT_SCREENSHOT_FRAME;
@@ -304,10 +317,9 @@ export class ProjectPageTextures {
 
     const site = this.destinationLabel(project);
     ctx.fillStyle = COLOR.muted;
-    ctx.font = '29px system-ui, sans-serif';
+    ctx.font = "29px system-ui, sans-serif";
     ctx.fillText(this.ellipsis(ctx, site, 824), EDGE, 415);
 
-    // An intentional little browser object printed on physical paper.
     ctx.save();
     ctx.shadowColor = "rgba(65,43,26,.16)";
     ctx.shadowBlur = 27;
@@ -323,22 +335,20 @@ export class ProjectPageTextures {
     ctx.roundRect(f.x + 2, f.y + 2, f.width - 4, f.height - 4, 20);
     ctx.clip();
 
-    // Minimal browser chrome. No fake traffic-light controls or huge CTA card.
     ctx.fillStyle = "#fff9eb";
     ctx.fillRect(f.x, f.y, f.width, toolbarHeight);
     ctx.fillStyle = COLOR.accent;
     ctx.beginPath();
     ctx.arc(f.x + 43, f.y + 38, 9, 0, Math.PI * 2);
     ctx.fill();
-    ctx.font = '25px system-ui, sans-serif';
+    ctx.font = "25px system-ui, sans-serif";
     ctx.fillStyle = COLOR.ink;
     ctx.fillText(this.ellipsis(ctx, site, f.width - 160), f.x + 70, f.y + 22);
     ctx.textAlign = "right";
-    ctx.font = '28px system-ui, sans-serif';
+    ctx.font = "28px system-ui, sans-serif";
     ctx.fillText("↗", f.x + f.width - 30, f.y + 20);
     ctx.textAlign = "left";
 
-    // Deliberate fallback if the screenshot asset is missing.
     ctx.fillStyle = COLOR.accentLight;
     ctx.fillRect(f.x, contentY, f.width, contentHeight);
     ctx.fillStyle = COLOR.accent;
@@ -368,7 +378,7 @@ export class ProjectPageTextures {
       ctx.fill();
       ctx.textAlign = "center";
       ctx.fillStyle = COLOR.white;
-      ctx.font = '43px system-ui, sans-serif';
+      ctx.font = "43px system-ui, sans-serif";
       ctx.fillText("↗", WIDTH - EDGE - 33, 1338);
       ctx.textAlign = "left";
 
@@ -381,20 +391,31 @@ export class ProjectPageTextures {
       const image = new Image();
       image.crossOrigin = "anonymous";
       image.onload = () => {
-        // Show the TOP of a web page, not a crop from its middle.
-        const sourceScale = Math.max(f.width / image.width, contentHeight / image.height);
+        const sourceScale = Math.max(
+          f.width / image.width,
+          contentHeight / image.height,
+        );
         const cropWidth = f.width / sourceScale;
         const cropHeight = contentHeight / sourceScale;
         const cropX = (image.width - cropWidth) * 0.5;
         ctx.drawImage(
           image,
-          cropX, 0, cropWidth, cropHeight,
-          f.x, contentY, f.width, contentHeight,
+          cropX,
+          0,
+          cropWidth,
+          cropHeight,
+          f.x,
+          contentY,
+          f.width,
+          contentHeight,
         );
         resolve(finish());
       };
       image.onerror = () => {
-        console.warn("Website screenshot could not be loaded:", project.screenshot);
+        console.warn(
+          "Website screenshot could not be loaded:",
+          project.screenshot,
+        );
         resolve(finish());
       };
       image.src = project.screenshot;

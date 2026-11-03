@@ -9,7 +9,6 @@ interface CameraCollisionResult {
 export class CameraCollision {
   private readonly radius = 0.25;
 
-  //Keep the camera slightly away from the surface it hits.
   private readonly padding = 0.08;
   private readonly shape;
   private readonly direction = new THREE.Vector3();
@@ -32,9 +31,14 @@ export class CameraCollision {
     desiredPosition: THREE.Vector3,
   ): CameraCollisionResult {
     const revision = this.physics.staticColliderRevision;
-    // This query includes ONLY_FIXED. Kinematic player/NPC motion cannot change it.
-    if (this.cached && revision === this.lastRevision &&
-        target.equals(this.lastTarget) && desiredPosition.equals(this.lastDesiredPosition)) return this.result;
+
+    if (
+      this.cached &&
+      revision === this.lastRevision &&
+      target.equals(this.lastTarget) &&
+      desiredPosition.equals(this.lastDesiredPosition)
+    )
+      return this.result;
     this.cached = false;
     this.direction.copy(desiredPosition).sub(target);
 
@@ -51,7 +55,6 @@ export class CameraCollision {
 
     this.direction.divideScalar(distance);
 
-    // this is check if the target between the player and the camera has any abstcled
     const hit = this.physics.world.castShape(
       target,
       this.queryRotation,
@@ -72,8 +75,6 @@ export class CameraCollision {
       return this.result;
     }
 
-    // A minimum boom length can put the camera through a nearby wall. Permit a
-    // fully shortened arm rather than advancing beyond the measured clearance.
     const safeDistance = Math.max(0, hit.time_of_impact - this.padding);
 
     this.result.position
@@ -86,7 +87,11 @@ export class CameraCollision {
     return this.result;
   }
 
-  private cache(target: THREE.Vector3, desiredPosition: THREE.Vector3, revision: number): void {
+  private cache(
+    target: THREE.Vector3,
+    desiredPosition: THREE.Vector3,
+    revision: number,
+  ): void {
     this.lastTarget.copy(target);
     this.lastDesiredPosition.copy(desiredPosition);
     this.lastRevision = revision;

@@ -14,7 +14,6 @@ export class ProjectBookInteraction implements Interactable {
   ) {
     this.highlightTarget = highlightTarget;
 
-    // Use world coordinates because the house is offset.
     anchor.updateWorldMatrix(true, false);
     anchor.getWorldPosition(this.position);
   }

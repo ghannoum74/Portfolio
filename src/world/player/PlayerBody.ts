@@ -48,11 +48,6 @@ export class PlayerBody {
   ) {
     const RAPIER = this.physics.rapier;
 
-    /*
-     * We control this body ourselves.
-     *
-     * Rapier does NOT decide where the player goes.
-     */
     const bodyDesc =
       RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(
         spawnPosition.x,
@@ -70,25 +65,13 @@ export class PlayerBody {
 
     this.collider = this.physics.world.createCollider(colliderDesc, this.body);
 
-    /*
-     * Small separation between player and surfaces.
-     */
     this.characterController =
       this.physics.world.createCharacterController(0.03);
 
-    /*
-     * Small stairs.
-     */
     this.characterController.enableAutostep(0.35, 0.2, false);
 
-    /*
-     * Keep player attached to descending terrain.
-     */
     this.characterController.enableSnapToGround(0.3);
 
-    /*
-     * Slope behavior.
-     */
     this.characterController.setMaxSlopeClimbAngle(
       THREE.MathUtils.degToRad(60),
     );
@@ -109,10 +92,8 @@ export class PlayerBody {
     this.previousTranslation.set(position.x, position.y, position.z);
     const wasGrounded = this.grounded;
 
-    // Calculate the player's facing direction.
     this.airForward.set(0, 0, 1).applyAxisAngle(this.up, rotationY);
 
-    // On the ground, movement responds immediately to input.
     if (wasGrounded) {
       this.horizontalVelocity
         .copy(this.airForward)
@@ -126,15 +107,12 @@ export class PlayerBody {
       this.grounded = false;
       this.jumping = true;
 
-      // Remember the player's speed at takeoff.
-      // Running jumps retain their faster momentum.
       this.airSpeedLimit = Math.max(
         this.horizontalVelocity.length(),
         this.MIN_AIR_SPEED,
       );
     }
 
-    // Limited forward/backward control during a jump.
     if (this.jumping && !jumpStarted) {
       if (moveDirection !== 0) {
         const targetSpeed = Math.max(
@@ -161,11 +139,9 @@ export class PlayerBody {
         );
       }
     } else if (!wasGrounded && !this.jumping) {
-      // Preserve your existing lock for accidental falls.
       this.horizontalVelocity.set(0, 0, 0);
     }
 
-    // Gravity continues to work during the entire jump.
     this.verticalVelocity += this.GRAVITY * delta;
 
     this.movement.set(
@@ -204,17 +180,18 @@ export class PlayerBody {
     }
   }
 
-  syncModel(model: THREE.Object3D, modelBottomY: number, interpolationAlpha = 1): void {
+  syncModel(
+    model: THREE.Object3D,
+    modelBottomY: number,
+    interpolationAlpha = 1,
+  ): void {
     const position = this.body.translation();
     const alpha = THREE.MathUtils.clamp(interpolationAlpha, 0, 1);
 
-    /*
-     * body.translation() = capsule center.
-     *
-     * We want the visual character's feet at the bottom of the capsule.
-     */
-    const capsuleBottom = THREE.MathUtils.lerp(this.previousTranslation.y, position.y, alpha)
-      - this.CAPSULE_HALF_HEIGHT - this.CAPSULE_RADIUS;
+    const capsuleBottom =
+      THREE.MathUtils.lerp(this.previousTranslation.y, position.y, alpha) -
+      this.CAPSULE_HALF_HEIGHT -
+      this.CAPSULE_RADIUS;
 
     model.position.set(
       THREE.MathUtils.lerp(this.previousTranslation.x, position.x, alpha),
@@ -250,12 +227,6 @@ export class PlayerBody {
   }
 
   teleport(feetPosition: THREE.Vector3): void {
-    /*
-     * The supplied position represents
-     * where the player's feet should be.
-     *
-     * Rapier stores the capsule center.
-     */
     const centerY =
       feetPosition.y + this.CAPSULE_HALF_HEIGHT + this.CAPSULE_RADIUS;
 
@@ -265,21 +236,12 @@ export class PlayerBody {
       z: feetPosition.z,
     };
 
-    /*
-     * Move immediately.
-     */
     this.body.setTranslation(translation, true);
 
-    /*
-     * Keep the kinematic target synchronized.
-     */
     this.body.setNextKinematicTranslation(translation);
-    // A scene change or seating return must never interpolate from the old area.
+
     this.previousTranslation.set(translation.x, translation.y, translation.z);
 
-    /*
-     * Clear movement from the previous area.
-     */
     this.verticalVelocity = 0;
 
     this.horizontalVelocity.set(0, 0, 0);

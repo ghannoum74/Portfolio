@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { performanceOptions } from "../../../core/PerformanceOptions";
+
 import { WORKSHOP_SKILLS, type WorkshopSkill } from "../../../data/skills";
 import "../../../ui/WorkshopExperience/WorkshopExperience.css";
 import { WorkshopSound } from "./WorkshopSound";
@@ -15,7 +15,7 @@ type Artifact = {
   floatOffset: number;
   hoverLevel: number;
   pulse: number;
-  /** Smoothed selection strength for frame-rate-independent treasure light. */
+
   glowSelection: number;
   glowHalo: THREE.Sprite;
   glowLight: THREE.PointLight;
@@ -66,14 +66,12 @@ export class WorkshopExperience {
   private pointerY = 0;
   private hoveredIndex = -1;
   private selectedIndex = -1;
-  private activeGlowIndex = 0;
-  private readonly lightCameraPosition = new THREE.Vector3();
-  private readonly lightPosition = new THREE.Vector3();
+
   private previousCursor = "";
   private exitCallback: (() => void) | null = null;
   private cameraDistance = 3.0;
   private readonly sound: WorkshopSound;
-  /** Shared 128px radial texture; four sprites, only one GPU texture. */
+
   private readonly glowTexture = WorkshopExperience.makeGlowTexture();
 
   private static makeGlowTexture(): THREE.CanvasTexture {
@@ -97,7 +95,6 @@ export class WorkshopExperience {
     return texture;
   }
 
-  /** An aura, local bounced light, and a quiet rune on the physical pedestal. */
   private makeTreasureGlow(
     index: number,
     anchor: THREE.Group,
@@ -124,10 +121,9 @@ export class WorkshopExperience {
     const glowLight = new THREE.PointLight(tint, 0.28, 1.65, 2);
     glowLight.name = `WORKSHOP_TREASURE_LIGHT_${index + 1}`;
     glowLight.castShadow = false;
-    glowLight.visible = performanceOptions.workshopLights === "all" ||
-      (performanceOptions.workshopLights === "focused" && index === 0);
+    glowLight.visible = false;
     glowLight.position.set(0, 0.04, 0.02);
-    if (performanceOptions.decorativeLights) floating.add(glowLight);
+    floating.add(glowLight);
 
     const glowRune = new THREE.Mesh(
       new THREE.RingGeometry(0.26, 0.335, 40),
@@ -159,8 +155,6 @@ export class WorkshopExperience {
     this.sound = new WorkshopSound(canPlaySound);
     house.updateWorldMatrix(true, true);
 
-    // The older prototype already fits this stand. Use the same reference
-    // for the four new objects until the optional Blender markers are added.
     const standBounds = new THREE.Box3().setFromObject(stand, true);
     const standCenter = standBounds.isEmpty()
       ? stand.getWorldPosition(new THREE.Vector3())
@@ -248,7 +242,7 @@ export class WorkshopExperience {
       this.stageCenter.add(world);
     });
     this.stageCenter.multiplyScalar(1 / WORKSHOP_SKILLS.length);
-    // Raise framing toward the artifacts instead of the rack's base.
+
     this.stageCenter.y += scale * 0.48;
 
     this.label.className = "workshop-label";
@@ -275,7 +269,6 @@ export class WorkshopExperience {
     this.canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
 
-  /** Distinct low-poly artifacts. No extra GLBs or expensive particles. */
   private makeArtifact(
     index: number,
     parent: THREE.Group,
@@ -330,7 +323,6 @@ export class WorkshopExperience {
       ring2.name = "WORKSHOP_RING_B";
       ring2.rotation.set(1.3, 0.5, 0.15);
     } else if (index === 1) {
-      // Clockwork gear with actual teeth and a punched-out center.
       const shape = new THREE.Shape();
       const count = 12;
       for (let i = 0; i <= count * 4; i++) {
@@ -423,7 +415,6 @@ export class WorkshopExperience {
     return materials;
   }
 
-  /** Only specific details move, rather than spinning every artifact identically. */
   private animationParts(
     index: number,
     floating: THREE.Group,
@@ -451,7 +442,6 @@ export class WorkshopExperience {
     this.returnPosition.copy(this.camera.position);
     this.returnQuaternion.copy(this.camera.quaternion);
 
-    // Default: approach from the visitor's side to prevent crossing walls.
     this.approach.copy(this.returnPosition).sub(this.stageCenter);
     this.approach.y = 0;
     if (this.approach.lengthSq() < 0.001) this.approach.set(0, 0, 1);
@@ -468,14 +458,12 @@ export class WorkshopExperience {
       4.2,
     );
 
-    // A positioned Blender CAMERA_WORKSHOP marker takes priority, if present.
     const cameraMarker = this.house.getObjectByName("CAMERA_WORKSHOP");
     if (cameraMarker) {
       const markerWorld = cameraMarker.getWorldPosition(new THREE.Vector3());
       const markerApproach = markerWorld.clone().sub(this.stageCenter);
       markerApproach.y = 0;
-      // Keep the established safe approach if the marker points behind the
-      // stand from the visitor's side (avoids flying through the wall).
+
       if (
         markerApproach.lengthSq() > 0.01 &&
         markerApproach.normalize().dot(this.approach) > 0.1
@@ -525,7 +513,6 @@ export class WorkshopExperience {
     return true;
   }
 
-  /** Existing Game.ts invokes this for E or Enter. */
   toggleSelection(): void {
     if (this.state !== "active") return;
     if (
@@ -543,7 +530,6 @@ export class WorkshopExperience {
     this.select(this.hoveredIndex >= 0 ? this.hoveredIndex : 0);
   }
 
-  /** Add to Game.ts ArrowLeft/ArrowRight while workshop is active. */
   selectRelative(direction: -1 | 1): void {
     if (this.state !== "active") return;
     const index =
@@ -581,7 +567,6 @@ export class WorkshopExperience {
   }
 
   private renderPanel(skill: WorkshopSkill): void {
-    // Data is text-only; never insert project data into innerHTML.
     this.panel.replaceChildren();
     this.panel.dataset.craft = skill.id;
     const artifactName = document.createElement("p");
@@ -622,8 +607,6 @@ export class WorkshopExperience {
     const dt = THREE.MathUtils.clamp(delta, 0, 0.05);
     this.clock += dt;
 
-    // Subtle shared hover and selection feedback, with a distinct mechanism
-    // for each object. All blending is frame-rate independent.
     this.artifacts.forEach((a, index) => {
       const hovered = this.state === "active" && this.hoveredIndex === index;
       const selected = this.state === "active" && this.selectedIndex === index;
@@ -647,7 +630,7 @@ export class WorkshopExperience {
       );
 
       switch (index) {
-        case 0: // Crystal: independent orbiting rings and calm continuous spin.
+        case 0:
           a.floating.rotation.y += dt * (selected ? 0.29 : 0.13);
           if (a.primary) a.primary.rotation.z += dt * (selected ? 0.7 : 0.36);
           if (a.secondary)
@@ -659,7 +642,7 @@ export class WorkshopExperience {
             dt,
           );
           break;
-        case 1: // Clockwork: meshing gears turning in opposite directions.
+        case 1:
           if (a.primary) a.primary.rotation.z += dt * (selected ? 0.7 : 0.19);
           if (a.secondary)
             a.secondary.rotation.z -= dt * (selected ? 1.1 : 0.3);
@@ -676,7 +659,7 @@ export class WorkshopExperience {
             dt,
           );
           break;
-        case 2: // Blueprint: page-like rocking instead of continuous spinning.
+        case 2:
           a.floating.rotation.z = THREE.MathUtils.damp(
             a.floating.rotation.z,
             Math.sin(this.clock * 0.85) * 0.028 + (hovered ? -0.055 : 0),
@@ -692,7 +675,7 @@ export class WorkshopExperience {
           if (a.secondary)
             a.secondary.rotation.z += dt * (selected ? 0.6 : 0.15);
           break;
-        case 3: // Compass: the needle searches, then settles on selection.
+        case 3:
           if (a.primary) {
             a.primary.rotation.z = THREE.MathUtils.damp(
               a.primary.rotation.z,
@@ -716,8 +699,6 @@ export class WorkshopExperience {
           break;
       }
 
-      // Treasure light complements existing materials, without recoloring
-      // bronze or flattening the different handcrafted artifact finishes.
       a.glowSelection = THREE.MathUtils.damp(
         a.glowSelection,
         selected ? 1 : 0,
@@ -820,17 +801,16 @@ export class WorkshopExperience {
       this.label.style.top = `${THREE.MathUtils.clamp(rect.top + (1 - ndc.y) * rect.height * 0.5 - 35, 45, innerHeight - 65)}px`;
     }
 
-    // Track the selected item a little without losing the whole collection.
     this.updateDesiredCamera();
     const alpha = 1 - Math.exp(-2.7 * dt);
     this.camera.position.lerp(this.desiredPosition, alpha);
     this.camera.quaternion.slerp(this.desiredQuaternion, alpha);
   }
 
-  /** Warm the zero/one-workshop-light variants under the house-entry cover. */
-  async prepareLightingVariants(compile: () => Promise<unknown>): Promise<void> {
-    if (!performanceOptions.decorativeLights || performanceOptions.workshopLights !== "inspect" ||
-        !this.artifacts.length) return;
+  async prepareLightingVariants(
+    compile: () => Promise<unknown>,
+  ): Promise<void> {
+    if (!this.artifacts.length) return;
     const light = this.artifacts[0].glowLight;
     const visible = light.visible;
     try {
@@ -841,42 +821,10 @@ export class WorkshopExperience {
     }
   }
 
-  /** Walking/overview has no workshop light; inspection lights only that craft. */
   private updateTreasureLights(): void {
-    if (!performanceOptions.decorativeLights) return;
-    if (performanceOptions.workshopLights === "inspect") {
-      const inspected = this.state === "active" ? this.selectedIndex : -1;
-      this.artifacts.forEach((artifact, index) => {
-        artifact.glowLight.visible = index === inspected;
-      });
-      return;
-    }
-    if (performanceOptions.workshopLights === "all") {
-      for (const artifact of this.artifacts) artifact.glowLight.visible = true;
-      return;
-    }
-    const focused = this.state === "active"
-      ? this.selectedIndex >= 0 ? this.selectedIndex : this.hoveredIndex
-      : -1;
-    if (focused >= 0 && focused < this.artifacts.length) {
-      this.activeGlowIndex = focused;
-    } else if (this.artifacts.length) {
-      this.camera.getWorldPosition(this.lightCameraPosition);
-      this.activeGlowIndex = Math.min(this.activeGlowIndex, this.artifacts.length - 1);
-      let distance = this.artifacts[this.activeGlowIndex].glowLight
-        .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
-      for (let index = 0; index < this.artifacts.length; index++) {
-        const candidate = this.artifacts[index].glowLight
-          .getWorldPosition(this.lightPosition).distanceToSquared(this.lightCameraPosition);
-        // Hysteresis prevents spill flicker near the midpoint of two artifacts.
-        if (candidate < distance * 0.8) {
-          this.activeGlowIndex = index;
-          distance = candidate;
-        }
-      }
-    }
+    const inspected = this.state === "active" ? this.selectedIndex : -1;
     this.artifacts.forEach((artifact, index) => {
-      artifact.glowLight.visible = index === this.activeGlowIndex;
+      artifact.glowLight.visible = index === inspected;
     });
   }
 

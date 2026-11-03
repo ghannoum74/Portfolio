@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-const flameVertex = /* glsl */`
+const flameVertex = `
   uniform float uTime;
   attribute vec3 flameData;
   varying vec2 vUv;
@@ -17,8 +17,6 @@ const flameVertex = /* glsl */`
     #include <defaultnormal_vertex>
     vNormal = normalize(transformedNormal);
     vec4 flamePosition = instanceMatrix * vec4(transformed, 1.0);
-    // Apply curls after the narrow instance radius, so tips can shed sideways
-    // while the fuel contact stays fixed at h=0.
     flamePosition.x += (sin(h * 8.0 - t * 4.6) * 0.25 + sin(h * 15.0 - t * 7.1) * 0.10) * h * h;
     flamePosition.z += (cos(h * 9.0 - t * 3.9) * 0.22 + sin(h * 17.0 - t * 6.3) * 0.08) * h * h;
     vec4 mvPosition = modelViewMatrix * flamePosition;
@@ -27,7 +25,7 @@ const flameVertex = /* glsl */`
   }
 `;
 
-const flameFragment = /* glsl */`
+const flameFragment = `
   uniform float uTime;
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -58,7 +56,7 @@ const flameFragment = /* glsl */`
   }
 `;
 
-const emberVertex = /* glsl */`
+const emberVertex = `
   uniform float uTime;
   attribute vec2 emberData;
   varying float vFade;
@@ -74,7 +72,7 @@ const emberVertex = /* glsl */`
   }
 `;
 
-const emberFragment = /* glsl */`
+const emberFragment = `
   varying float vFade;
   void main() {
     float radius = length(gl_PointCoord - 0.5) * 2.0;
@@ -85,7 +83,6 @@ const emberFragment = /* glsl */`
   }
 `;
 
-/** Colored 3D flame tongues and rising embers, animated by GPU uniforms. */
 export class FireplaceFire {
   readonly root = new THREE.Group();
   private readonly time = { value: 0 };
@@ -98,27 +95,56 @@ export class FireplaceFire {
   private readonly lightPosition = new THREE.Vector3();
   private disposed = false;
 
-  constructor(house: THREE.Object3D, visual: THREE.Object3D, anchor: THREE.Object3D) {
+  constructor(
+    house: THREE.Object3D,
+    visual: THREE.Object3D,
+    anchor: THREE.Object3D,
+  ) {
     house.updateWorldMatrix(true, true);
     const sourceBounds = new THREE.Box3().setFromObject(visual, true);
     const origin = anchor.getWorldPosition(new THREE.Vector3());
     let preferred = visual;
     const extras: THREE.Object3D[] = [];
-    house.traverse(object => {
-      // The existing imported flame was assigned a stone material. Hide that
-      // recognized fire only when it lies inside this hearth, never other props.
-      if (!(object instanceof THREE.Mesh) || object === visual || visual.getObjectById(object.id) ||
-          !/^(geometry_0|FIRE_FLAME|Flame)$/i.test(object.userData.portfolioAuthoringName ?? object.userData.name ?? object.name)) return;
-      const bounds = new THREE.Box3().setFromObject(object, true), size = bounds.getSize(new THREE.Vector3());
+    house.traverse((object) => {
+      if (
+        !(object instanceof THREE.Mesh) ||
+        object === visual ||
+        visual.getObjectById(object.id) ||
+        !/^(geometry_0|FIRE_FLAME|Flame)$/i.test(
+          object.userData.portfolioAuthoringName ??
+            object.userData.name ??
+            object.name,
+        )
+      )
+        return;
+      const bounds = new THREE.Box3().setFromObject(object, true),
+        size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
-      if (Math.hypot(center.x - origin.x, center.z - origin.z) > 0.7 || Math.abs(center.y - origin.y) > 1.5 ||
-          size.y < 0.15 || size.y > 1.6 || Math.max(size.x, size.z) > 1.2) return;
-      extras.push(object); preferred = object;
+      if (
+        Math.hypot(center.x - origin.x, center.z - origin.z) > 0.7 ||
+        Math.abs(center.y - origin.y) > 1.5 ||
+        size.y < 0.15 ||
+        size.y > 1.6 ||
+        Math.max(size.x, size.z) > 1.2
+      )
+        return;
+      extras.push(object);
+      preferred = object;
     });
-    this.sources = [...new Set([visual, ...extras])].map(object => ({ object, visible: object.visible }));
-    const bounds = preferred === visual ? sourceBounds : new THREE.Box3().setFromObject(preferred, true);
-    const size = bounds.isEmpty() ? new THREE.Vector3(0.55, 0.8, 0.55) : bounds.getSize(new THREE.Vector3());
-    const base = bounds.isEmpty() ? origin.clone() : bounds.getCenter(new THREE.Vector3());
+    this.sources = [...new Set([visual, ...extras])].map((object) => ({
+      object,
+      visible: object.visible,
+    }));
+    const bounds =
+      preferred === visual
+        ? sourceBounds
+        : new THREE.Box3().setFromObject(preferred, true);
+    const size = bounds.isEmpty()
+      ? new THREE.Vector3(0.55, 0.8, 0.55)
+      : bounds.getSize(new THREE.Vector3());
+    const base = bounds.isEmpty()
+      ? origin.clone()
+      : bounds.getCenter(new THREE.Vector3());
     if (!bounds.isEmpty()) base.y = bounds.min.y;
     const width = THREE.MathUtils.clamp(Math.max(size.x, size.z), 0.35, 1.2);
     const height = THREE.MathUtils.clamp(size.y, 0.55, 1.5);
@@ -126,55 +152,135 @@ export class FireplaceFire {
     this.root.name = "FIREPLACE_FIRE_RUNTIME";
     this.root.userData.portfolioHelper = true;
     this.root.matrixAutoUpdate = false;
-    this.root.matrix.copy(house.matrixWorld).invert().multiply(new THREE.Matrix4().compose(
-      base, new THREE.Quaternion(), new THREE.Vector3(width, height, width)));
+    this.root.matrix
+      .copy(house.matrixWorld)
+      .invert()
+      .multiply(
+        new THREE.Matrix4().compose(
+          base,
+          new THREE.Quaternion(),
+          new THREE.Vector3(width, height, width),
+        ),
+      );
 
-    this.geometry = new THREE.LatheGeometry(Array.from({ length: 13 }, (_, index) => {
-      const y = index / 12;
-      return new THREE.Vector2(0.16 * (1 - y) + 0.8 * Math.sin(Math.PI * y ** 0.65) + 0.012, y);
-    }), 10);
-    this.geometry.setAttribute("flameData", new THREE.InstancedBufferAttribute(new Float32Array([
-      0.2, 0.9, 0.1, 1.3, 1.13, 0.2, 2.1, 1.02, 0.5, 3.2, 1.27, 0.8,
-      4.3, 0.96, 0.7, 5.4, 1.17, 0.5, 6.1, 1.05, 1.0,
-    ]), 3));
+    this.geometry = new THREE.LatheGeometry(
+      Array.from({ length: 13 }, (_, index) => {
+        const y = index / 12;
+        return new THREE.Vector2(
+          0.16 * (1 - y) + 0.8 * Math.sin(Math.PI * y ** 0.65) + 0.012,
+          y,
+        );
+      }),
+      10,
+    );
+    this.geometry.setAttribute(
+      "flameData",
+      new THREE.InstancedBufferAttribute(
+        new Float32Array([
+          0.2, 0.9, 0.1, 1.3, 1.13, 0.2, 2.1, 1.02, 0.5, 3.2, 1.27, 0.8, 4.3,
+          0.96, 0.7, 5.4, 1.17, 0.5, 6.1, 1.05, 1.0,
+        ]),
+        3,
+      ),
+    );
     this.material = new THREE.ShaderMaterial({
-      uniforms: { uTime: this.time }, vertexShader: flameVertex, fragmentShader: flameFragment,
-      transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, forceSinglePass: true,
+      uniforms: { uTime: this.time },
+      vertexShader: flameVertex,
+      fragmentShader: flameFragment,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+      forceSinglePass: true,
     });
     const flames = new THREE.InstancedMesh(this.geometry, this.material, 7);
     this.flames = flames;
     flames.name = "FIREPLACE_FLAMES";
-    const positions = [[-0.27, 0, 0], [0.23, 0, -0.04], [0, 0, 0.05], [-0.1, 0, 0.18], [0.18, 0, -0.2], [-0.18, 0, -0.16], [0, 0, 0]];
-    const heights = [0.73, 0.85, 1, 0.62, 0.55, 0.67, 0.48], radii = [0.2, 0.19, 0.24, 0.16, 0.16, 0.17, 0.22];
-    for (let i = 0; i < positions.length; i++) flames.setMatrixAt(i, new THREE.Matrix4().compose(
-      new THREE.Vector3().fromArray(positions[i]), new THREE.Quaternion(), new THREE.Vector3(radii[i], heights[i], radii[i])));
+    const positions = [
+      [-0.27, 0, 0],
+      [0.23, 0, -0.04],
+      [0, 0, 0.05],
+      [-0.1, 0, 0.18],
+      [0.18, 0, -0.2],
+      [-0.18, 0, -0.16],
+      [0, 0, 0],
+    ];
+    const heights = [0.73, 0.85, 1, 0.62, 0.55, 0.67, 0.48],
+      radii = [0.2, 0.19, 0.24, 0.16, 0.16, 0.17, 0.22];
+    for (let i = 0; i < positions.length; i++)
+      flames.setMatrixAt(
+        i,
+        new THREE.Matrix4().compose(
+          new THREE.Vector3().fromArray(positions[i]),
+          new THREE.Quaternion(),
+          new THREE.Vector3(radii[i], heights[i], radii[i]),
+        ),
+      );
     flames.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.6, 0), 1.2);
     this.root.add(flames);
 
     this.emberGeometry = new THREE.BufferGeometry();
-    this.emberGeometry.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(8 * 3), 3));
-    this.emberGeometry.setAttribute("emberData", new THREE.Float32BufferAttribute(Array.from({ length: 8 }, (_, i) => [i * 0.137, 0.25 + i % 3 * 0.07]).flat(), 2));
-    this.emberGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.8, 0), 1.2);
+    this.emberGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(new Float32Array(8 * 3), 3),
+    );
+    this.emberGeometry.setAttribute(
+      "emberData",
+      new THREE.Float32BufferAttribute(
+        Array.from({ length: 8 }, (_, i) => [
+          i * 0.137,
+          0.25 + (i % 3) * 0.07,
+        ]).flat(),
+        2,
+      ),
+    );
+    this.emberGeometry.boundingSphere = new THREE.Sphere(
+      new THREE.Vector3(0, 0.8, 0),
+      1.2,
+    );
     this.emberMaterial = new THREE.ShaderMaterial({
-      uniforms: { uTime: this.time }, vertexShader: emberVertex, fragmentShader: emberFragment,
-      transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending,
+      uniforms: { uTime: this.time },
+      vertexShader: emberVertex,
+      fragmentShader: emberFragment,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+      blending: THREE.AdditiveBlending,
     });
     const embers = new THREE.Points(this.emberGeometry, this.emberMaterial);
-    embers.name = "FIREPLACE_EMBERS"; this.root.add(embers);
-    this.sources.forEach(source => { source.object.visible = false; });
+    embers.name = "FIREPLACE_EMBERS";
+    this.root.add(embers);
+    this.sources.forEach((source) => {
+      source.object.visible = false;
+    });
     house.add(this.root);
   }
 
-  getLightPosition(target: THREE.Vector3): THREE.Vector3 { return target.copy(this.lightPosition); }
-  get flicker(): number { return 0.92 + Math.sin(this.time.value * 13) * 0.045 + Math.sin(this.time.value * 21) * 0.025; }
-  update(delta: number): void { this.time.value += Math.max(0, Math.min(delta, 0.05)); }
+  getLightPosition(target: THREE.Vector3): THREE.Vector3 {
+    return target.copy(this.lightPosition);
+  }
+  get flicker(): number {
+    return (
+      0.92 +
+      Math.sin(this.time.value * 13) * 0.045 +
+      Math.sin(this.time.value * 21) * 0.025
+    );
+  }
+  update(delta: number): void {
+    this.time.value += Math.max(0, Math.min(delta, 0.05));
+  }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.root.removeFromParent();
     this.flames.dispose();
-    this.geometry.dispose(); this.emberGeometry.dispose(); this.material.dispose(); this.emberMaterial.dispose();
-    this.sources.forEach(source => { source.object.visible = source.visible; });
+    this.geometry.dispose();
+    this.emberGeometry.dispose();
+    this.material.dispose();
+    this.emberMaterial.dispose();
+    this.sources.forEach((source) => {
+      source.object.visible = source.visible;
+    });
   }
 }

@@ -6,7 +6,6 @@ interface ShapeKeyframe {
 }
 
 const SHAPES: readonly ShapeKeyframe[] = [
-  // 0%: Tiny opening.
   {
     at: 0,
     points: [
@@ -31,7 +30,6 @@ const SHAPES: readonly ShapeKeyframe[] = [
     ],
   },
 
-  // 24%: Initial reference opening.
   {
     at: 0.24,
     points: [
@@ -56,8 +54,6 @@ const SHAPES: readonly ShapeKeyframe[] = [
     ],
   },
 
-  // 48%: Broad asymmetric opening.
-  // The upper-right curve rises noticeably.
   {
     at: 0.48,
     points: [
@@ -82,8 +78,6 @@ const SHAPES: readonly ShapeKeyframe[] = [
     ],
   },
 
-  // 67%: The opening spreads toward
-  // the viewport's right edge.
   {
     at: 0.67,
     points: [
@@ -108,8 +102,6 @@ const SHAPES: readonly ShapeKeyframe[] = [
     ],
   },
 
-  // 84%: Two large upper waves develop.
-  // The left edge spreads significantly.
   {
     at: 0.84,
     points: [
@@ -134,8 +126,6 @@ const SHAPES: readonly ShapeKeyframe[] = [
     ],
   },
 
-  // 100%: The entire viewport is covered.
-  // All boundaries extend beyond the screen.
   {
     at: 1,
     points: [
@@ -188,8 +178,6 @@ export class OrganicPortalMask {
       }
     }
 
-    // Clear transforms left over from
-    // the previous scaling implementation.
     this.path.removeAttribute("transform");
 
     this.setProgress(0);
@@ -198,7 +186,6 @@ export class OrganicPortalMask {
   setProgress(progress: number, sourceRect?: DOMRect): void {
     const p = this.clamp(progress);
 
-    // Find the two surrounding keyframes.
     let upperIndex = 1;
 
     while (upperIndex < SHAPES.length - 1 && p > SHAPES[upperIndex].at) {
@@ -216,7 +203,6 @@ export class OrganicPortalMask {
 
     const t = this.clamp((p - from.at) / duration);
 
-    // Interpolate all corresponding points.
     const points: Point[] = from.points.map((point, index) => {
       const next = to.points[index];
 
@@ -247,8 +233,6 @@ export class OrganicPortalMask {
       ];
     });
 
-    // Preserve physical proportions across
-    // different viewport aspect ratios.
     const fittedPoints = this.fitViewport(points, p);
 
     const finalPoints = sourceRect
@@ -258,18 +242,6 @@ export class OrganicPortalMask {
     this.path.setAttribute("d", this.createPath(finalPoints));
   }
 
-  /**
-   * Viewport fitting.
-   *
-   * The reference was captured on a landscape
-   * viewport. Without correction, its shape
-   * would become too tall on portrait screens
-   * or too wide on ultrawide monitors.
-   *
-   * The correction gradually disappears
-   * near the end so the entire screen can
-   * always be revealed.
-   */
   private fitViewport(points: readonly Point[], progress: number): Point[] {
     const aspect = window.innerWidth / Math.max(window.innerHeight, 1);
 
@@ -279,8 +251,6 @@ export class OrganicPortalMask {
 
     const yFit = Math.min(1, aspect / referenceAspect);
 
-    // Gradually remove aspect correction
-    // during the final expansion.
     const restoreProgress = this.clamp((progress - 0.62) / 0.38);
 
     const eased = restoreProgress * restoreProgress * (3 - 2 * restoreProgress);
@@ -291,8 +261,6 @@ export class OrganicPortalMask {
 
     const scaleY = 1 + (yFit - 1) * influence;
 
-    // Approximate center of the reference's
-    // small and medium-sized openings.
     const centerX = 0.1;
     const centerY = 0.3;
 
@@ -302,12 +270,6 @@ export class OrganicPortalMask {
     ]);
   }
 
-  /**
-   * Cubic Hermite interpolation.
-   *
-   * Each point follows a smooth trajectory
-   * through the shape keyframes.
-   */
   private interpolate(
     previous: number,
     start: number,
@@ -347,12 +309,6 @@ export class OrganicPortalMask {
     );
   }
 
-  /**
-   * Build a smooth closed SVG path.
-   *
-   * Convert neighboring points to
-   * cubic Bézier control points.
-   */
   private createPath(points: readonly Point[]): string {
     const count = points.length;
 
@@ -401,7 +357,6 @@ export class OrganicPortalMask {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // Starting shape bounds, in normalized viewport space.
     const startPoints = this.fitViewport(SHAPES[0].points, 0);
 
     const minX = Math.min(...startPoints.map((p) => p[0]));
@@ -417,8 +372,6 @@ export class OrganicPortalMask {
     const targetWidth = rect.width / width;
     const targetHeight = rect.height / height;
 
-    // At progress zero, transform the existing organic shape
-    // so its bounds fit the screenshot rectangle.
     const scaleX = targetWidth / shapeWidth;
     const scaleY = targetHeight / shapeHeight;
 

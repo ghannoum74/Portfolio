@@ -52,15 +52,12 @@ export class StartupLoading {
   async complete(): Promise<void> {
     this.screen.complete();
 
-    // Display the completed loading bar
-    // before beginning the fade-out.
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => resolve());
       });
     });
 
-    // Wait until the overlay has disappeared.
     await this.screen.hide();
   }
 

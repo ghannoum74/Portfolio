@@ -10,7 +10,7 @@ export class PhysicsWorld {
   private fixedRevision = 0;
 
   init(): Promise<void> {
-    this.initPromise ??= this.initialize().catch(error => {
+    this.initPromise ??= this.initialize().catch((error) => {
       this.initPromise = undefined;
       throw error;
     });
@@ -29,14 +29,15 @@ export class PhysicsWorld {
     });
 
     this.initialized = true;
-
-    console.log("Rapier physics initialized");
   }
 
-  get staticColliderRevision(): number { return this.fixedRevision; }
+  get staticColliderRevision(): number {
+    return this.fixedRevision;
+  }
 
-  /** Invalidate cached fixed-only queries after adding, moving or removing fixed colliders. */
-  invalidateStaticQueries(): void { this.fixedRevision++; }
+  invalidateStaticQueries(): void {
+    this.fixedRevision++;
+  }
 
   beginFrame(delta: number): void {
     if (!this.initialized) {

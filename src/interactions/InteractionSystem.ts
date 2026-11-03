@@ -20,10 +20,16 @@ export class InteractionSystem {
   }
 
   get highlightTargets(): THREE.Object3D[] {
-    return [...new Set(this.interactables.map(interactable => interactable.highlightTarget))];
+    return [
+      ...new Set(
+        this.interactables.map((interactable) => interactable.highlightTarget),
+      ),
+    ];
   }
 
-  get activeHint(): string | null { return this.active?.getHint() ?? null; }
+  get activeHint(): string | null {
+    return this.active?.getHint() ?? null;
+  }
 
   clear(): void {
     this.active = null;
@@ -36,7 +42,9 @@ export class InteractionSystem {
     let closesDistance = Infinity;
 
     for (const interactable of this.interactables) {
-      const distance = interactable.distanceTo?.(playerPositin) ?? playerPositin.distanceTo(interactable.position);
+      const distance =
+        interactable.distanceTo?.(playerPositin) ??
+        playerPositin.distanceTo(interactable.position);
 
       if (
         distance <= interactable.interactionDistance &&

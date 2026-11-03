@@ -93,8 +93,6 @@ export class LoadingScreen {
         ? parseFloat(duration)
         : parseFloat(duration) * 1000;
 
-      // Fallback if a browser interrupts
-      // the CSS transition.
       timeoutId = window.setTimeout(finish, milliseconds + 200);
 
       if (milliseconds === 0) {

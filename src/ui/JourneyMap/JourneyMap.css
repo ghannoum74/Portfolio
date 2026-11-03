@@ -1,4 +1,3 @@
-/* Small parchment chapter plaque; the route itself lives on the physical map. */
 .journey-inspector {
   position: fixed;
   right: clamp(15px, 3.5vw, 58px);

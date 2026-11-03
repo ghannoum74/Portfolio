@@ -3,10 +3,6 @@
   background: var(--paper-background);
 }
 
-/*
- * The world stays behind the introduction
- * while the entrance section is scrolling.
- */
 .world-entrance_sticky {
   position: sticky;
   top: 0;
@@ -18,12 +14,6 @@
   isolation: isolate;
   z-index: 0;
 }
-
-/*
- * The canvas remains full-screen.
- * The animated SVG clip-path controls
- * how much of the world is visible.
- */
 
 .world-entrance_portal {
   position: absolute;
@@ -46,35 +36,6 @@
   pointer-events: none;
 }
 
-/*
- * Pull the introduction over the sticky layer.
- *
- * It stays in normal document flow and will
- * move upward as the visitor scrolls.
- */
-/* .world-mask_container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: auto;
-  inset: 0;
-  touch-action: none;
-  mask-image: url(/public/assets/edge-mask.webp);
-  mask-repeat: no-repeat;
-  mask-size: 100% 100%;
-  mask-position: center;
-  -webkit-mask-image: url(/public/assets/edge-mask.webp);
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-position: center;
-  -webkit-user-select: none;
-  user-select: none;
-  z-index: 8;
-  pointer-events: none;
-  border: 3px solid #5c4534;
-} */
-
 .world-entrance_intro {
   position: relative;
   z-index: 2;
@@ -89,16 +50,10 @@
   padding: 8dvh 24px 5dvh;
 }
 
-/*
- * No visible second section.
- * This element only supplies scroll distance.
- */
 .world-entrance_scroll-space {
   height: 180svh;
   pointer-events: none;
 }
-
-/* Introduction appearance */
 
 .world-entrance_content {
   width: min(600px, 100%);
@@ -173,8 +128,6 @@
   color: #795b3d;
   font-size: 13px;
 }
-
-/* Irreversible completed state */
 
 .world-entrance_complete {
   height: 100dvh;

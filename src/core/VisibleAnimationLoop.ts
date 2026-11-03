@@ -1,8 +1,10 @@
-/** Stop all 3D frame work while hidden; resume from a fresh clock/sample window. */
 export class VisibleAnimationLoop {
   private running?: boolean;
   constructor(
-    private readonly visibility: Pick<Document, "hidden" | "addEventListener" | "removeEventListener">,
+    private readonly visibility: Pick<
+      Document,
+      "hidden" | "addEventListener" | "removeEventListener"
+    >,
     private readonly setLoop: (callback: (() => void) | null) => void,
     private readonly tick: () => void,
     private readonly resume: () => void,

@@ -1,26 +1,42 @@
 import * as THREE from "three";
-import { performanceOptions } from "../../../core/PerformanceOptions";
+
 import type { Interactable } from "../../../interactions/Interactable";
 import { createCouchSupport } from "../../player/CouchSeat";
 import { FireplaceFire } from "./FireplaceFire";
-import { authoredObject, findFiresideSeat, type FurnitureSeat } from "./FiresideSeat";
+import {
+  authoredObject,
+  findFiresideSeat,
+  type FurnitureSeat,
+} from "./FiresideSeat";
 import { createSinkWater } from "./SinkWater";
 import { inspectBed, type BedGeometry } from "../../player/BedGeometry";
 import { DiningPanel, type DiningPanelMode, type Potion } from "./DiningPanel";
 
-/**
- * All small, tactile furniture interactions in one system.
- * Uses existing Blender objects; no new GLB or physics colliders needed.
- * Main experiences (book, workshop, awards, journey map) remain independent.
- */
-
 type FurnitureKind =
-  | "cauldron" | "potion" | "drawer" | "sink" | "flame"
-  | "books" | "bookshelf" | "rest" | "notice" | "plant" | "seat" | "fireplace";
+  | "cauldron"
+  | "sink"
+  | "flame"
+  | "books"
+  | "bookshelf"
+  | "rest"
+  | "notice"
+  | "plant"
+  | "seat"
+  | "fireplace";
 
 type FurnitureId =
-  | "cauldron" | "sink" | "candle" | "torch" | "bookStack"
-  | "bed" | "fireside" | "noticeBoard" | "houseplant" | "couch" | "fireplace" | "bookshelf"
+  | "cauldron"
+  | "sink"
+  | "candle"
+  | "torch"
+  | "bookStack"
+  | "bed"
+  | "fireside"
+  | "noticeBoard"
+  | "houseplant"
+  | "couch"
+  | "fireplace"
+  | "bookshelf"
   | `dining:${string}`;
 
 type FurnitureDefinition = {
@@ -34,21 +50,116 @@ type FurnitureDefinition = {
   initialOn?: boolean;
 };
 
-// These are verified object names in house-v2(9).blend.
-// Avoid targets owned by the Book, Workshop, Awards Hall or Journey Map.
 const FURNITURE: readonly FurnitureDefinition[] = [
-  { id: "cauldron", objectName: "SEC_ALCHEMY_Cauldron", kind: "cauldron", label: "One Last Side Quest", message: "The cauldron has received a small request.", color: 0x70d9a5, range: 2.5 },
-  { id: "sink", objectName: "SEC_KITCHEN_Kitchen_Sink", kind: "sink", label: "Turn On Water", message: "A tiny stream of magical spring water.", color: 0x96dceb, range: 1.9 },
-  { id: "candle", objectName: "SEC_REST_Candle_2", kind: "flame", label: "Light Candle", message: "A warm candlelight fills the room.", color: 0xffbd71, range: 1.75 },
-  { id: "torch", objectName: "SEC_WORKSHOP_Torch_Metal", kind: "flame", label: "Light Torch", message: "The workshop torch awakens.", color: 0xffac65, range: 1.7 },
-  { id: "bookStack", objectName: "SEC_LIBRARY_Book_Stack_2", kind: "books", label: "Examine Old Books", message: "Old books, new ideas. Every adventure starts somewhere.", color: 0xd8b88a, range: 1.8 },
-  { id: "bookshelf", objectName: "Bookcase_2", kind: "bookshelf", label: "Explore Bookshelf", message: "Stories from the bookshelf.", color: 0xd8b88a, range: 1.8 },
-  { id: "bed", objectName: "SEC_REST_Bed_King", kind: "rest", label: "Rest on Bed", message: "A quiet moment on the bed.", color: 0xe5c9a8, range: 1.15 },
-  { id: "fireside", objectName: "SEC_HEARTH_Pouf", kind: "rest", label: "Relax by the Hearth", message: "A peaceful pause beside the fire.", color: 0xf4b77e, range: 1.9 },
-  { id: "noticeBoard", objectName: "SEC_ENTRANCE_NoticeBoard", kind: "notice", label: "Read Notice Board", message: "Traveler's note: seek the book, workshop, awards and map — and take your time exploring.", color: 0xe6c889, range: 1.9 },
-  { id: "houseplant", objectName: "SEC_DECOR_Houseplant_4", kind: "plant", label: "Greet the Houseplant", message: "Even the houseplants enjoy a little company.", color: 0x96c99a, range: 1.65 },
-  { id: "couch", objectName: "", kind: "seat", label: "Sit on Couch", message: "A quiet moment on the couch.", color: 0xe5c9a8, range: 2.25 },
-  { id: "fireplace", objectName: "", kind: "fireplace", label: "Sit by the Fire", message: "A quiet moment beside the fire.", color: 0xffac65, range: 1.85 },
+  {
+    id: "cauldron",
+    objectName: "SEC_ALCHEMY_Cauldron",
+    kind: "cauldron",
+    label: "One Last Side Quest",
+    message: "The cauldron has received a small request.",
+    color: 0x70d9a5,
+    range: 2.5,
+  },
+  {
+    id: "sink",
+    objectName: "SEC_KITCHEN_Kitchen_Sink",
+    kind: "sink",
+    label: "Turn On Water",
+    message: "A tiny stream of magical spring water.",
+    color: 0x96dceb,
+    range: 1.9,
+  },
+  {
+    id: "candle",
+    objectName: "SEC_REST_Candle_2",
+    kind: "flame",
+    label: "Light Candle",
+    message: "A warm candlelight fills the room.",
+    color: 0xffbd71,
+    range: 1.75,
+  },
+  {
+    id: "torch",
+    objectName: "SEC_WORKSHOP_Torch_Metal",
+    kind: "flame",
+    label: "Light Torch",
+    message: "The workshop torch awakens.",
+    color: 0xffac65,
+    range: 1.7,
+  },
+  {
+    id: "bookStack",
+    objectName: "SEC_LIBRARY_Book_Stack_2",
+    kind: "books",
+    label: "Examine Old Books",
+    message: "Old books, new ideas. Every adventure starts somewhere.",
+    color: 0xd8b88a,
+    range: 1.8,
+  },
+  {
+    id: "bookshelf",
+    objectName: "Bookcase_2",
+    kind: "bookshelf",
+    label: "Explore Bookshelf",
+    message: "Stories from the bookshelf.",
+    color: 0xd8b88a,
+    range: 1.8,
+  },
+  {
+    id: "bed",
+    objectName: "SEC_REST_Bed_King",
+    kind: "rest",
+    label: "Rest on Bed",
+    message: "A quiet moment on the bed.",
+    color: 0xe5c9a8,
+    range: 1.15,
+  },
+  {
+    id: "fireside",
+    objectName: "SEC_HEARTH_Pouf",
+    kind: "rest",
+    label: "Relax by the Hearth",
+    message: "A peaceful pause beside the fire.",
+    color: 0xf4b77e,
+    range: 1.9,
+  },
+  {
+    id: "noticeBoard",
+    objectName: "SEC_ENTRANCE_NoticeBoard",
+    kind: "notice",
+    label: "Read Notice Board",
+    message:
+      "Traveler's note: seek the book, workshop, awards and map — and take your time exploring.",
+    color: 0xe6c889,
+    range: 1.9,
+  },
+  {
+    id: "houseplant",
+    objectName: "SEC_DECOR_Houseplant_4",
+    kind: "plant",
+    label: "Greet the Houseplant",
+    message: "Even the houseplants enjoy a little company.",
+    color: 0x96c99a,
+    range: 1.65,
+  },
+  {
+    id: "couch",
+    objectName: "",
+    kind: "seat",
+    label: "Sit on Couch",
+    message: "A quiet moment on the couch.",
+    color: 0xe5c9a8,
+    range: 2.25,
+  },
+  {
+    id: "fireplace",
+    objectName: "",
+    kind: "fireplace",
+    label: "Sit by the Fire",
+    message: "A quiet moment beside the fire.",
+    color: 0xffac65,
+    range: 1.85,
+  },
 ];
 
 type FurnitureNode = {
@@ -77,14 +188,19 @@ type FurnitureNode = {
 type FocusState = "idle" | "entering" | "resting" | "leaving";
 
 export type FurnitureOptions = {
-  /** Called before taking the player camera. Return false to cancel. */
   onFocusStart: (showPlayer?: boolean) => boolean;
-  /** Called only after the camera has returned to the saved position. */
+
   onFocusEnd: () => void;
-  /** A successful sit can return an adjusted world-space camera target. */
-  onSitStart?: (seat: THREE.Vector3, look: THREE.Vector3, couch: THREE.Object3D) => boolean | THREE.Vector3;
+
+  onSitStart?: (
+    seat: THREE.Vector3,
+    look: THREE.Vector3,
+    couch: THREE.Object3D,
+  ) => boolean | THREE.Vector3;
   onSitEnd?: () => void;
-  onLieStart?: (bed: THREE.Object3D) => { target: THREE.Vector3; headDirection: THREE.Vector3 } | false;
+  onLieStart?: (
+    bed: THREE.Object3D,
+  ) => { target: THREE.Vector3; headDirection: THREE.Vector3 } | false;
   onLieEnd?: () => void;
   onEndingContact?: () => void;
   isMuted?: () => boolean;
@@ -120,17 +236,30 @@ class FurnitureInteractable implements Interactable {
       node.model.getWorldPosition(this.position);
     } else {
       bounds.getCenter(this.position);
-      // World-space player proximity, not the top of tall shelves.
-      this.position.y = bounds.min.y + Math.min(0.95, bounds.max.y - bounds.min.y);
+
+      this.position.y =
+        bounds.min.y + Math.min(0.95, bounds.max.y - bounds.min.y);
     }
   }
 
-  getHint(): string { return this.owner.getHint(this.node.def.id); }
-  interact(): void { this.owner.interact(this.node.def.id); }
+  getHint(): string {
+    return this.owner.getHint(this.node.def.id);
+  }
+  interact(): void {
+    this.owner.interact(this.node.def.id);
+  }
   distanceTo(position: THREE.Vector3): number {
-    if (this.cauldronBounds) return position.distanceTo(this.nearest.copy(position).clamp(this.cauldronBounds.min, this.cauldronBounds.max));
+    if (this.cauldronBounds)
+      return position.distanceTo(
+        this.nearest
+          .copy(position)
+          .clamp(this.cauldronBounds.min, this.cauldronBounds.max),
+      );
     if (!this.bed) return position.distanceTo(this.position);
-    this.nearest.copy(position).applyMatrix4(this.bed.inverse).clamp(this.bed.bounds.min, this.bed.bounds.max)
+    this.nearest
+      .copy(position)
+      .applyMatrix4(this.bed.inverse)
+      .clamp(this.bed.bounds.min, this.bed.bounds.max)
       .applyMatrix4(this.bed.world);
     return position.distanceTo(this.nearest);
   }
@@ -193,17 +322,27 @@ export class HouseFurnitureInteractions {
     document.body.appendChild(this.notice);
 
     for (const def of FURNITURE) {
-      if (def.id === "fireside" && house.getObjectByName("INTERACT_FIREPLACE")?.userData.portfolioInteraction === "fireplace") continue;
+      if (
+        def.id === "fireside" &&
+        house.getObjectByName("INTERACT_FIREPLACE")?.userData
+          .portfolioInteraction === "fireplace"
+      )
+        continue;
       if (def.kind === "seat" || def.kind === "fireplace") {
         this.addAuthoredInteraction(def);
         continue;
       }
-      const markerName = def.id === "cauldron" ? "INTERACT_ALCHEMY_CAULDRON" :
-        def.id === "bookshelf" ? "INTERACT_LIBRARY_SHELF" : undefined;
+      const markerName =
+        def.id === "cauldron"
+          ? "INTERACT_ALCHEMY_CAULDRON"
+          : def.id === "bookshelf"
+            ? "INTERACT_LIBRARY_SHELF"
+            : undefined;
       const marker = markerName ? house.getObjectByName(markerName) : undefined;
-      const model = marker ? authoredObject(house, marker.userData.targetObject) : authoredObject(house, def.objectName);
+      const model = marker
+        ? authoredObject(house, marker.userData.targetObject)
+        : authoredObject(house, def.objectName);
       if (!model) {
-        console.info(`[Furniture] Optional object not present: ${def.objectName}`);
         continue;
       }
       const node = this.makeNode(def, model);
@@ -211,45 +350,55 @@ export class HouseFurnitureInteractions {
       this.nodes.set(def.id, node);
     }
     this.addDiningSeats();
-    console.info(`[Furniture] Loaded ${this.activeCount}/${FURNITURE.length} furniture interactions.`);
   }
 
   private addDiningSeats(): void {
     const markers: THREE.Object3D[] = [];
     const missingProperties: string[] = [];
-    let sawMarker = false;
-    this.house.traverse(object => {
+    this.house.traverse((object) => {
       if (!/^INTERACT_DINING_CHAIR_\d+$/.test(object.name)) return;
-      sawMarker = true;
-      if (object.userData.portfolioInteraction === "diningChair") markers.push(object);
-      else if (object.userData.portfolioInteraction !== "unusedDiningChair") missingProperties.push(object.name);
+      if (object.userData.portfolioInteraction === "diningChair")
+        markers.push(object);
+      else if (object.userData.portfolioInteraction !== "unusedDiningChair")
+        missingProperties.push(object.name);
     });
-    if (missingProperties.length) console.warn(
-      `[Furniture] Dining markers lack valid custom properties: ${missingProperties.join(", ")}. Export the house with Custom Properties enabled.`,
-    );
-    if (!sawMarker && authoredObject(this.house, "SEC_PROJECTS_Chair_1")) {
-      console.info("[Furniture] No dining chair markers were exported. Run the Blender setup and export the complete house.");
-    }
+    if (missingProperties.length)
+      console.warn(
+        `[Furniture] Dining markers lack valid custom properties: ${missingProperties.join(", ")}.`,
+      );
     for (const marker of markers) {
       const target = authoredObject(this.house, marker.userData.targetObject);
       const position = authoredObject(this.house, marker.userData.seatObject);
       const look = authoredObject(this.house, marker.userData.lookObject);
       const camera = authoredObject(this.house, marker.userData.cameraObject);
       if (!target || !position || !look || !camera) {
-        console.warn(`[Furniture] Incomplete dining chair markers: ${marker.name}`);
+        console.warn(
+          `[Furniture] Incomplete dining chair markers: ${marker.name}`,
+        );
         continue;
       }
-      const def: FurnitureDefinition = { id: `dining:${marker.name}`, objectName: "", kind: "seat",
-        label: "Sit at Table", message: "A quiet moment at the table.", color: 0xe5c9a8, range: 1.15 };
+      const def: FurnitureDefinition = {
+        id: `dining:${marker.name}`,
+        objectName: "",
+        kind: "seat",
+        label: "Sit at Table",
+        message: "A quiet moment at the table.",
+        color: 0xe5c9a8,
+        range: 1.15,
+      };
       const node = this.makeNode(def, target);
       node.interactionAnchor = marker;
-      // A nearby table or another chair is not part of this chair's seat.
-      node.seat = { position, look, camera, support: createCouchSupport(this.house, target, false) };
+
+      node.seat = {
+        position,
+        look,
+        camera,
+        support: createCouchSupport(this.house, target, false),
+      };
       this.nodes.set(def.id, node);
     }
   }
 
-  /** Register all remaining props with the *existing* E-key InteractionSystem. */
   register(registerInteraction: (interaction: Interactable) => void): number {
     let count = 0;
     for (const node of this.nodes.values()) {
@@ -261,13 +410,19 @@ export class HouseFurnitureInteractions {
   }
 
   private addAuthoredInteraction(def: FurnitureDefinition): void {
-    const marker = this.house.getObjectByName(def.kind === "seat" ? "INTERACT_COUCH" : "INTERACT_FIREPLACE");
+    const marker = this.house.getObjectByName(
+      def.kind === "seat" ? "INTERACT_COUCH" : "INTERACT_FIREPLACE",
+    );
     if (!marker || marker.userData.portfolioInteraction !== def.id) return;
-    const named = (field: string) => authoredObject(this.house, marker.userData[field]);
+    const named = (field: string) =>
+      authoredObject(this.house, marker.userData[field]);
     const model = named("targetObject");
     if (!model) return;
-    const position = named("seatObject"), look = named("lookObject"), camera = named("cameraObject");
-    const visual = named("flameObject"), flameAnchor = named("flameAnchor");
+    const position = named("seatObject"),
+      look = named("lookObject"),
+      camera = named("cameraObject");
+    const visual = named("flameObject"),
+      flameAnchor = named("flameAnchor");
     if (def.kind === "seat" && (!position || !look || !camera)) return;
     if (def.kind === "fireplace" && (!visual || !flameAnchor)) return;
     if (visual && flameAnchor && def.kind === "fireplace") {
@@ -275,23 +430,43 @@ export class HouseFurnitureInteractions {
       const firePosition = fire.getLightPosition(new THREE.Vector3());
       const fireside = findFiresideSeat(this.house, marker, firePosition);
       const node = this.makeNode(def, fireside?.model ?? model);
-      node.hearth = fire; node.seat = fireside?.seat;
+      node.hearth = fire;
+      node.seat = fireside?.seat;
       node.anchor.position.copy(houseWorldToLocal(this.house, firePosition));
-      node.active = true; node.progress = 1; node.aura.visible = false;
-      if (node.light) { node.light.color.setHex(0xff8c39); node.light.intensity = 1.1 * fire.flicker; node.light.visible = true; }
+      node.active = true;
+      node.progress = 1;
+      node.aura.visible = false;
+      if (node.light) {
+        node.light.color.setHex(0xff8c39);
+        node.light.intensity = 1.1 * fire.flicker;
+        node.light.visible = true;
+      }
       this.nodes.set(def.id, node);
-      if (!fireside) console.info("[Furniture] Fireplace prepared; no nearby chair/pouf or explicit seatTargetObject was found.");
+
       return;
     }
     const node = this.makeNode(def, model);
     node.interactionAnchor = marker;
-    if (position && look && camera) node.seat = { position, look, camera, support: createCouchSupport(this.house, model) };
+    if (position && look && camera)
+      node.seat = {
+        position,
+        look,
+        camera,
+        support: createCouchSupport(this.house, model),
+      };
     this.nodes.set(def.id, node);
   }
 
-  get isControllingCamera(): boolean { return this.focusState !== "idle"; }
-  get isPanelOpen(): boolean { return this.diningMode !== null; }
-  get activeCount(): number { return [...this.nodes.values()].filter(node => !node.hearth || node.seat).length; }
+  get isControllingCamera(): boolean {
+    return this.focusState !== "idle";
+  }
+  get isPanelOpen(): boolean {
+    return this.diningMode !== null;
+  }
+  get activeCount(): number {
+    return [...this.nodes.values()].filter((node) => !node.hearth || node.seat)
+      .length;
+  }
 
   getHint(id: FurnitureId): string {
     const node = this.nodes.get(id);
@@ -299,16 +474,18 @@ export class HouseFurnitureInteractions {
     if (node.seat || id === "cauldron") return node.def.label;
     if (!node.active) return node.def.label;
     switch (node.def.kind) {
-      case "cauldron": return "Settle Cauldron";
-      case "potion": return "Set Down Elixir";
-      case "drawer": return "Close Alchemy Drawer";
-      case "sink": return "Turn Off Water";
-      case "flame": return "Extinguish Flame";
-      default: return node.def.label;
+      case "cauldron":
+        return "Settle Cauldron";
+
+      case "sink":
+        return "Turn Off Water";
+      case "flame":
+        return "Extinguish Flame";
+      default:
+        return node.def.label;
     }
   }
 
-  /** Invoked through the normal proximity E key. */
   interact(id: FurnitureId): void {
     if (this.focusState !== "idle" || !this.house.visible) return;
     const node = this.nodes.get(id);
@@ -326,36 +503,45 @@ export class HouseFurnitureInteractions {
       return;
     }
     if (node.hearth) return;
-    if (["cauldron", "potion", "drawer", "sink", "flame"].includes(node.def.kind)) {
+    if (["sink", "flame"].includes(node.def.kind)) {
       node.active = !node.active;
     }
     node.burst = 1;
-    if (node.def.kind === "books" || node.def.kind === "notice" || node.def.kind === "plant") {
+    if (
+      node.def.kind === "books" ||
+      node.def.kind === "notice" ||
+      node.def.kind === "plant"
+    ) {
       node.progress = 0;
     }
-    const verb = node.active ? node.def.message : this.getTurnOffMessage(node.def.kind);
+    const verb = node.active
+      ? node.def.message
+      : this.getTurnOffMessage(node.def.kind);
     this.showMessage(verb || node.def.message, 2.7);
-    this.playNote(node.def.kind === "drawer" ? 290 : node.def.kind === "flame" ? 470 : 590);
+    this.playNote(node.def.kind === "flame" ? 470 : 590);
   }
 
-  /** During a rest camera shot, Escape or E returns the player. */
   leaveFocus(): void {
-    if (this.diningMode) { this.closeDiningPanel(); return; }
+    if (this.diningMode) {
+      this.closeDiningPanel();
+      return;
+    }
     if (this.focusState === "idle" || this.focusState === "leaving") return;
     this.focusState = "leaving";
     this.beginCameraTween(this.savedPosition, this.savedRotation, 0.78);
     this.showMessage("Returning to your adventure…", 0.8);
   }
 
-  /** Furniture focus owns E/Esc and arrows while its panel or seat is open. */
   handleFocusKey(code: string): void {
     if (this.diningMode) {
       if (code === "Escape") this.closeDiningPanel();
-      else if (code === "ArrowLeft" || code === "ArrowRight") this.diningPanel?.selectRelative(code === "ArrowRight" ? 1 : -1);
+      else if (code === "ArrowLeft" || code === "ArrowRight")
+        this.diningPanel?.selectRelative(code === "ArrowRight" ? 1 : -1);
       else if (code === "KeyE" || code === "Enter") {
         if (this.diningMode === "alchemy") this.diningPanel?.brew();
       }
-    } else if (code === "Escape" || code === "KeyE" || code === "Enter") this.leaveFocus();
+    } else if (code === "Escape" || code === "KeyE" || code === "Enter")
+      this.leaveFocus();
   }
 
   private openDiningPanel(mode: DiningPanelMode): void {
@@ -363,7 +549,7 @@ export class HouseFurnitureInteractions {
     try {
       this.diningPanel ??= new DiningPanel({
         onSelection: () => this.stopBrewing(),
-        onBrew: potion => this.brew(potion),
+        onBrew: (potion) => this.brew(potion),
         onClose: () => this.closeDiningPanel(),
         onContact: this.options.onEndingContact,
       });
@@ -384,14 +570,21 @@ export class HouseFurnitureInteractions {
     if (!node || this.diningMode !== "alchemy") return;
     node.auraMaterial.color.setHex(potion.color);
     node.light?.color.setHex(potion.color);
-    if (node.bubbles) (node.bubbles.material as THREE.MeshBasicMaterial).color.setHex(potion.color);
-    node.active = true; node.burst = 1;
+    if (node.bubbles)
+      (node.bubbles.material as THREE.MeshBasicMaterial).color.setHex(
+        potion.color,
+      );
+    node.active = true;
+    node.burst = 1;
     this.playNote(590);
   }
 
   private stopBrewing(): void {
     const node = this.nodes.get("cauldron");
-    if (node) { node.active = false; node.burst = 0; }
+    if (node) {
+      node.active = false;
+      node.burst = 0;
+    }
   }
 
   private closeDiningPanel(): void {
@@ -416,11 +609,18 @@ export class HouseFurnitureInteractions {
     }
     for (const node of this.nodes.values()) this.animateNode(node, dt);
     if (this.focusState === "idle" || this.focusState === "resting") return;
-    this.transitionElapsed = Math.min(this.transitionLength, this.transitionElapsed + dt);
+    this.transitionElapsed = Math.min(
+      this.transitionLength,
+      this.transitionElapsed + dt,
+    );
     const t = this.transitionElapsed / this.transitionLength;
     const ease = t * t * (3 - 2 * t);
     this.camera.position.lerpVectors(this.cameraFrom, this.cameraTo, ease);
-    this.camera.quaternion.slerpQuaternions(this.rotationFrom, this.rotationTo, ease);
+    this.camera.quaternion.slerpQuaternions(
+      this.rotationFrom,
+      this.rotationTo,
+      ease,
+    );
     if (t >= 1) {
       if (this.focusState === "entering") this.focusState = "resting";
       else {
@@ -438,44 +638,67 @@ export class HouseFurnitureInteractions {
     }
   }
 
-  /** Precompile reachable point-light counts without changing effect state or brightness. */
-  async prepareLightingVariants(compile: () => Promise<unknown>, atMaximum?: () => Promise<unknown>): Promise<void> {
-    const hearths = [...this.nodes.values()].flatMap(node => node.hearth ? [node.hearth] : []);
-    const fireState = hearths.map(hearth => hearth.root.visible);
-    const lights = [...this.nodes.values()].flatMap(node => node.light ? [node.light] : []);
-    const visibility = lights.map(light => light.visible);
+  async prepareLightingVariants(
+    compile: () => Promise<unknown>,
+    atMaximum?: () => Promise<unknown>,
+  ): Promise<void> {
+    const hearths = [...this.nodes.values()].flatMap((node) =>
+      node.hearth ? [node.hearth] : [],
+    );
+    const fireState = hearths.map((hearth) => hearth.root.visible);
+    const lights = [...this.nodes.values()].flatMap((node) =>
+      node.light ? [node.light] : [],
+    );
+    const visibility = lights.map((light) => light.visible);
     try {
-      hearths.forEach(hearth => { hearth.root.visible = true; });
-      if (!performanceOptions.decorativeLights || !performanceOptions.activeLightsOnly) {
-        if (hearths.length) await compile();
-        await atMaximum?.();
-        return;
-      }
-      lights.forEach(light => { light.visible = false; });
+      hearths.forEach((hearth) => {
+        hearth.root.visible = true;
+      });
+      lights.forEach((light) => {
+        light.visible = false;
+      });
       await compile();
       for (const light of lights) {
         light.visible = true;
         await compile();
       }
-      // Workshop inspection can add one more light to the largest furniture state.
+
       await atMaximum?.();
     } finally {
-      lights.forEach((light, index) => { light.visible = visibility[index]; });
-      hearths.forEach((hearth, index) => { hearth.root.visible = fireState[index]; });
+      lights.forEach((light, index) => {
+        light.visible = visibility[index];
+      });
+      hearths.forEach((hearth, index) => {
+        hearth.root.visible = fireState[index];
+      });
     }
   }
 
-  private makeNode(def: FurnitureDefinition, model: THREE.Object3D): FurnitureNode {
+  private makeNode(
+    def: FurnitureDefinition,
+    model: THREE.Object3D,
+  ): FurnitureNode {
     model.updateWorldMatrix(true, true);
     const bounds = new THREE.Box3().setFromObject(model, true);
-    const size = bounds.isEmpty() ? new THREE.Vector3(0.6, 0.6, 0.6) : bounds.getSize(new THREE.Vector3());
-    const center = bounds.isEmpty() ? model.getWorldPosition(new THREE.Vector3()) : bounds.getCenter(new THREE.Vector3());
+    const size = bounds.isEmpty()
+      ? new THREE.Vector3(0.6, 0.6, 0.6)
+      : bounds.getSize(new THREE.Vector3());
+    const center = bounds.isEmpty()
+      ? model.getWorldPosition(new THREE.Vector3())
+      : bounds.getCenter(new THREE.Vector3());
     const width = Math.max(size.x, size.z);
-    const effectSize = THREE.MathUtils.clamp(Math.min(width, size.y) * 0.4, 0.11, 0.33);
-    if (def.kind === "cauldron") center.y = bounds.isEmpty() ? center.y + 0.4 : bounds.max.y - 0.06;
-    if (def.kind === "sink") center.y = bounds.isEmpty() ? center.y + 0.2 : bounds.max.y - 0.18;
-    if (def.kind === "flame") center.y = bounds.isEmpty() ? center.y + 0.2 : bounds.max.y + 0.04;
-    if (def.kind === "potion") center.y = bounds.isEmpty() ? center.y : bounds.max.y + 0.055;
+    const effectSize = THREE.MathUtils.clamp(
+      Math.min(width, size.y) * 0.4,
+      0.11,
+      0.33,
+    );
+    if (def.kind === "cauldron")
+      center.y = bounds.isEmpty() ? center.y + 0.4 : bounds.max.y - 0.06;
+    if (def.kind === "sink")
+      center.y = bounds.isEmpty() ? center.y + 0.2 : bounds.max.y - 0.18;
+    if (def.kind === "flame")
+      center.y = bounds.isEmpty() ? center.y + 0.2 : bounds.max.y + 0.04;
+
     if (def.kind === "notice") center.y += size.y * 0.08;
     const anchor = new THREE.Group();
     anchor.name = `FURNITURE_EFFECT_${def.id}`;
@@ -495,20 +718,38 @@ export class HouseFurnitureInteractions {
     aura.scale.setScalar(Math.max(0.32, effectSize * 3.2));
     anchor.add(aura);
     const node: FurnitureNode = {
-      def, model, initialPosition: model.position.clone(), initialRotation: model.rotation.clone(),
-      anchor, aura, auraMaterial, progress: 0, active: !!def.initialOn,
-      burst: 0, phase: Math.random() * Math.PI * 2, effectSize,
+      def,
+      model,
+      initialPosition: model.position.clone(),
+      initialRotation: model.rotation.clone(),
+      anchor,
+      aura,
+      auraMaterial,
+      progress: 0,
+      active: !!def.initialOn,
+      burst: 0,
+      phase: Math.random() * Math.PI * 2,
+      effectSize,
     };
-    if (["cauldron", "potion", "flame", "sink", "fireplace"].includes(def.kind)) {
-      node.light = new THREE.PointLight(def.color, 0,
-        def.kind === "fireplace" ? 3.6 : def.kind === "cauldron" ? 1.9 : 1.1, 2);
-      node.light.visible = !performanceOptions.activeLightsOnly;
+    if (["cauldron", "flame", "sink", "fireplace"].includes(def.kind)) {
+      node.light = new THREE.PointLight(
+        def.color,
+        0,
+        def.kind === "fireplace" ? 3.6 : def.kind === "cauldron" ? 1.9 : 1.1,
+        2,
+      );
+      node.light.visible = false;
       node.light.castShadow = false;
-      if (performanceOptions.decorativeLights) anchor.add(node.light);
+      anchor.add(node.light);
     }
     if (def.kind === "cauldron") {
       node.bubbleGeometry = new THREE.SphereGeometry(0.043, 7, 5);
-      const mat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.75, depthWrite: false });
+      const mat = new THREE.MeshBasicMaterial({
+        color: def.color,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false,
+      });
       node.bubbles = new THREE.InstancedMesh(node.bubbleGeometry, mat, 11);
       node.bubbles.frustumCulled = false;
       node.bubbles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -518,7 +759,14 @@ export class HouseFurnitureInteractions {
       node.stream = createSinkWater(model, anchor, def.color);
     }
     if (def.kind === "flame") {
-      const mat = new THREE.MeshBasicMaterial({ color: 0xffce79, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xffce79,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
       node.flame = new THREE.Mesh(new THREE.ConeGeometry(0.062, 0.19, 5), mat);
       node.flame.position.y = 0.08;
       anchor.add(node.flame);
@@ -539,39 +787,37 @@ export class HouseFurnitureInteractions {
     const power = node.progress + node.burst * 0.35;
     node.aura.visible = power > 0.001;
     node.auraMaterial.opacity = Math.min(0.34, power * 0.18 * pulse);
-    const halo = Math.max(0.3, node.effectSize * 3.2) * (1 + node.burst * 0.2 + node.progress * 0.06);
+    const halo =
+      Math.max(0.3, node.effectSize * 3.2) *
+      (1 + node.burst * 0.2 + node.progress * 0.06);
     node.aura.scale.set(halo, halo, 1);
     if (node.light) {
-      node.light.intensity = Math.max(0, power * (k === "cauldron" ? 0.8 : 0.43) * pulse);
-      // Zero-power lights otherwise still occupy shader light slots/uniforms.
-      node.light.visible = !performanceOptions.activeLightsOnly || node.light.intensity > 0.001;
+      node.light.intensity = Math.max(
+        0,
+        power * (k === "cauldron" ? 0.8 : 0.43) * pulse,
+      );
+
+      node.light.visible = node.light.intensity > 0.001;
     }
 
-    if (k === "potion") {
-      // Bottles only: a tiny physical lift, restored when set down.
-      node.model.position.y = THREE.MathUtils.damp(
-        node.model.position.y, node.initialPosition.y + node.progress * 0.045 + node.burst * 0.022,
-        8, dt,
-      );
-    }
-    if (k === "drawer") {
-      // Conservative local-Z movement. If Blender has a different drawer axis,
-      // change the constant below; never move colliders or other furniture.
-      const target = node.initialPosition.z + node.progress * 0.095;
-      node.model.position.z = THREE.MathUtils.damp(node.model.position.z, target, 8, dt);
-    }
     if (k === "books" || k === "plant") {
       node.model.rotation.z = THREE.MathUtils.damp(
         node.model.rotation.z,
-        node.initialRotation.z + Math.sin(this.elapsed * (k === "plant" ? 5 : 8)) * 0.028 * node.burst,
-        9, dt,
+        node.initialRotation.z +
+          Math.sin(this.elapsed * (k === "plant" ? 5 : 8)) * 0.028 * node.burst,
+        9,
+        dt,
       );
     }
     if (node.flame) {
       const mat = node.flame.material as THREE.MeshBasicMaterial;
       mat.opacity = node.progress * (0.72 + 0.22 * pulse);
       node.flame.visible = node.progress > 0.02;
-      node.flame.scale.set(0.8 + pulse * 0.2, 0.82 + pulse * 0.24, 0.8 + pulse * 0.2);
+      node.flame.scale.set(
+        0.8 + pulse * 0.2,
+        0.82 + pulse * 0.24,
+        0.8 + pulse * 0.2,
+      );
       node.flame.rotation.y += dt * 0.6;
     }
     if (node.stream) {
@@ -581,10 +827,10 @@ export class HouseFurnitureInteractions {
     }
     if (node.bubbles) {
       node.bubbles.visible = node.progress > 0.035;
-      // Hidden bubbles need neither matrix math nor a GPU buffer upload.
+
       if (!node.bubbles.visible) return;
       for (let i = 0; i < node.bubbles.count; i++) {
-        const t = this.elapsed * (0.6 + i % 3 * 0.19) + i * 0.82;
+        const t = this.elapsed * (0.6 + (i % 3) * 0.19) + i * 0.82;
         const lift = t % 1.8;
         const radius = node.effectSize * 0.85;
         this.bubblePosition.set(
@@ -592,8 +838,17 @@ export class HouseFurnitureInteractions {
           lift * 0.23,
           Math.cos(t * 2.5 + i) * radius,
         );
-        this.bubbleScale.setScalar(Math.max(0.001, node.progress * (0.42 + 0.28 * Math.sin(i + this.elapsed))));
-        this.bubbleMatrix.compose(this.bubblePosition, this.bubbleQuaternion.identity(), this.bubbleScale);
+        this.bubbleScale.setScalar(
+          Math.max(
+            0.001,
+            node.progress * (0.42 + 0.28 * Math.sin(i + this.elapsed)),
+          ),
+        );
+        this.bubbleMatrix.compose(
+          this.bubblePosition,
+          this.bubbleQuaternion.identity(),
+          this.bubbleScale,
+        );
         node.bubbles.setMatrixAt(i, this.bubbleMatrix);
       }
       node.bubbles.instanceMatrix.needsUpdate = true;
@@ -615,21 +870,34 @@ export class HouseFurnitureInteractions {
     const seat = node.seat.position.getWorldPosition(new THREE.Vector3());
     const look = node.seat.look.getWorldPosition(new THREE.Vector3());
     const camera = node.seat.camera.getWorldPosition(new THREE.Vector3());
-    if (![...seat.toArray(), ...look.toArray(), ...camera.toArray()].every(Number.isFinite) ||
-        Math.hypot(look.x - seat.x, look.z - seat.z) < 0.01 || camera.distanceToSquared(seat) < 0.04) return;
+    if (
+      ![...seat.toArray(), ...look.toArray(), ...camera.toArray()].every(
+        Number.isFinite,
+      ) ||
+      Math.hypot(look.x - seat.x, look.z - seat.z) < 0.01 ||
+      camera.distanceToSquared(seat) < 0.04
+    )
+      return;
     if (!this.options.onFocusStart(true)) return;
     const sitting = this.options.onSitStart(seat, look, node.seat.support);
     if (!sitting) {
       this.options.onFocusEnd();
-      this.showMessage("Move onto clear floor in front of the seat and try again.", 2);
+      this.showMessage(
+        "Move onto clear floor in front of the seat and try again.",
+        2,
+      );
       return;
     }
     this.camera.updateWorldMatrix(true, false);
     this.savedPosition.copy(this.camera.position);
     this.savedRotation.copy(this.camera.quaternion);
-    const target = sitting instanceof THREE.Vector3 ? sitting.clone() : seat.clone().add(new THREE.Vector3(0, 0.55, 0));
+    const target =
+      sitting instanceof THREE.Vector3
+        ? sitting.clone()
+        : seat.clone().add(new THREE.Vector3(0, 0.55, 0));
     if (node.def.id.startsWith("dining:")) target.y -= 0.12;
-    if (node.hearth) target.lerp(node.hearth.getLightPosition(new THREE.Vector3()), 0.33);
+    if (node.hearth)
+      target.lerp(node.hearth.getLightPosition(new THREE.Vector3()), 0.33);
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(camera, target, new THREE.Vector3(0, 1, 0)),
     );
@@ -651,7 +919,9 @@ export class HouseFurnitureInteractions {
     node.model.getWorldPosition(this.workPoint);
     const box = new THREE.Box3().setFromObject(node.model, true);
     if (!box.isEmpty()) box.getCenter(this.workPoint);
-    this.workPoint.y = box.isEmpty() ? this.workPoint.y + 0.4 : Math.max(box.min.y + 0.5, box.max.y - 0.35);
+    this.workPoint.y = box.isEmpty()
+      ? this.workPoint.y + 0.4
+      : Math.max(box.min.y + 0.5, box.max.y - 0.35);
     const approach = this.camera.position.clone().sub(this.workPoint);
     approach.y = 0;
     if (approach.lengthSq() < 0.001) approach.set(0, 0, 1);
@@ -659,7 +929,11 @@ export class HouseFurnitureInteractions {
     const desired = this.workPoint.clone().addScaledVector(approach, 1.75);
     desired.y += 0.6;
     const quaternion = new THREE.Quaternion().setFromRotationMatrix(
-      new THREE.Matrix4().lookAt(desired, this.workPoint, new THREE.Vector3(0, 1, 0)),
+      new THREE.Matrix4().lookAt(
+        desired,
+        this.workPoint,
+        new THREE.Vector3(0, 1, 0),
+      ),
     );
     this.beginCameraTween(desired, quaternion, 0.98);
     this.focusState = "entering";
@@ -672,17 +946,31 @@ export class HouseFurnitureInteractions {
     const pose = this.options.onLieStart(node.model);
     if (!pose) {
       this.options.onFocusEnd();
-      this.showMessage("Move onto clear floor beside the bed and try again.", 2);
+      this.showMessage(
+        "Move onto clear floor beside the bed and try again.",
+        2,
+      );
       return;
     }
     this.camera.updateWorldMatrix(true, false);
     this.savedPosition.copy(this.camera.position);
     this.savedRotation.copy(this.camera.quaternion);
-    const side = pose.headDirection.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
-    if (this.savedPosition.clone().sub(pose.target).dot(side) < 0) side.negate();
-    const desired = pose.target.clone().addScaledVector(side, 3.1).add(new THREE.Vector3(0, 2.1, 0));
+    const side = pose.headDirection
+      .clone()
+      .cross(new THREE.Vector3(0, 1, 0))
+      .normalize();
+    if (this.savedPosition.clone().sub(pose.target).dot(side) < 0)
+      side.negate();
+    const desired = pose.target
+      .clone()
+      .addScaledVector(side, 3.1)
+      .add(new THREE.Vector3(0, 2.1, 0));
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
-      new THREE.Matrix4().lookAt(desired, pose.target, new THREE.Vector3(0, 1, 0)),
+      new THREE.Matrix4().lookAt(
+        desired,
+        pose.target,
+        new THREE.Vector3(0, 1, 0),
+      ),
     );
     this.beginCameraTween(desired, rotation, 0.98);
     this.lying = true;
@@ -691,7 +979,11 @@ export class HouseFurnitureInteractions {
     this.playNote(390);
   }
 
-  private beginCameraTween(target: THREE.Vector3, rotation: THREE.Quaternion, seconds: number): void {
+  private beginCameraTween(
+    target: THREE.Vector3,
+    rotation: THREE.Quaternion,
+    seconds: number,
+  ): void {
     this.cameraFrom.copy(this.camera.position);
     this.rotationFrom.copy(this.camera.quaternion);
     this.cameraTo.copy(target);
@@ -716,12 +1008,15 @@ export class HouseFurnitureInteractions {
 
   private getTurnOffMessage(kind: FurnitureKind): string {
     switch (kind) {
-      case "cauldron": return "The cauldron settles into a quiet simmer.";
-      case "potion": return "The elixir is set gently back in place.";
-      case "drawer": return "The ingredient drawer closes.";
-      case "sink": return "The spring water stops flowing.";
-      case "flame": return "The little flame goes out.";
-      default: return "";
+      case "cauldron":
+        return "The cauldron settles into a quiet simmer.";
+
+      case "sink":
+        return "The spring water stops flowing.";
+      case "flame":
+        return "The little flame goes out.";
+      default:
+        return "";
     }
   }
 
@@ -751,7 +1046,10 @@ export class HouseFurnitureInteractions {
       const now = this.audio.currentTime;
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(frequency, now);
-      oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.18, now + 0.13);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        frequency * 1.18,
+        now + 0.13,
+      );
       volume.gain.setValueAtTime(0.0001, now);
       volume.gain.exponentialRampToValueAtTime(0.022, now + 0.018);
       volume.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
@@ -759,8 +1057,11 @@ export class HouseFurnitureInteractions {
       volume.connect(this.audio.destination);
       oscillator.start(now);
       oscillator.stop(now + 0.22);
-      oscillator.onended = () => { oscillator.disconnect(); volume.disconnect(); };
-    } catch { /* Audio unsupported or user gesture blocked — visual effects still work. */ }
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        volume.disconnect();
+      };
+    } catch {}
   }
 
   destroy(): void {
@@ -803,6 +1104,9 @@ export class HouseFurnitureInteractions {
   }
 }
 
-function houseWorldToLocal(house: THREE.Object3D, world: THREE.Vector3): THREE.Vector3 {
+function houseWorldToLocal(
+  house: THREE.Object3D,
+  world: THREE.Vector3,
+): THREE.Vector3 {
   return house.worldToLocal(world.clone());
 }

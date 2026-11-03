@@ -34,12 +34,12 @@ export class NpcManager {
     onAssetReady?: (url: string) => void,
   ) {
     this.startupLoader = new AssetLoader(loadingManager, onAssetReady);
-    // Optional characters cannot affect the initial loading gate or its errors.
+
     this.loader = new AssetLoader(new THREE.LoadingManager());
   }
 
   loadStartup(): Promise<void> {
-    this.startupPromise ??= this.loadStartupAssets().catch(error => {
+    this.startupPromise ??= this.loadStartupAssets().catch((error) => {
       this.startupPromise = undefined;
       throw error;
     });
@@ -47,8 +47,11 @@ export class NpcManager {
   }
 
   private async loadStartupAssets(): Promise<void> {
-    const definition = NPC_DEFINITIONS.find(npc => npc.asset === ASSETS.characters.frequenc);
-    if (!definition) throw new Error("Missing startup Frequenc character definition");
+    const definition = NPC_DEFINITIONS.find(
+      (npc) => npc.asset === ASSETS.characters.frequenc,
+    );
+    if (!definition)
+      throw new Error("Missing startup Frequenc character definition");
     const [asset, animationClips] = await Promise.all([
       this.startupLoader.loadGLB(definition.asset),
       this.loadAnimations(),
@@ -58,7 +61,7 @@ export class NpcManager {
   }
 
   load(): Promise<void> {
-    this.loadPromise ??= this.loadAssets().catch(error => {
+    this.loadPromise ??= this.loadAssets().catch((error) => {
       this.loadPromise = undefined;
       throw error;
     });
@@ -66,25 +69,35 @@ export class NpcManager {
   }
 
   private async loadAssets(): Promise<void> {
-    // Reuse the already visible character and its clips, including concurrent calls.
     await this.loadStartup();
     const animationClips = await this.loadAnimations();
-    const loadedIds = new Set(this.npcs.map(npc => npc.id));
-    const remaining = NPC_DEFINITIONS.filter(npc => !loadedIds.has(npc.id));
+    const loadedIds = new Set(this.npcs.map((npc) => npc.id));
+    const remaining = NPC_DEFINITIONS.filter((npc) => !loadedIds.has(npc.id));
     const failures: Error[] = [];
-    // Keep two requests in flight, but let each available guide appear even if
-    // another model is missing. Retry only the missing IDs on the next load().
-    await mapConcurrent(remaining, 2, async definition => {
+
+    await mapConcurrent(remaining, 2, async (definition) => {
       try {
         const asset = await this.loader.loadGLB(definition.asset);
         this.createNpc(definition, asset.scene, animationClips);
       } catch (cause) {
-        failures.push(new Error(`Could not load guide ${definition.id}: ${definition.asset}`, { cause }));
+        failures.push(
+          new Error(
+            `Could not load guide ${definition.id}: ${definition.asset}`,
+            { cause },
+          ),
+        );
       }
     });
-    this.npcs.sort((a, b) => NPC_DEFINITIONS.findIndex(npc => npc.id === a.id) -
-      NPC_DEFINITIONS.findIndex(npc => npc.id === b.id));
-    if (failures.length) throw new AggregateError(failures, "Some optional career guides could not load");
+    this.npcs.sort(
+      (a, b) =>
+        NPC_DEFINITIONS.findIndex((npc) => npc.id === a.id) -
+        NPC_DEFINITIONS.findIndex((npc) => npc.id === b.id),
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures,
+        "Some optional career guides could not load",
+      );
   }
 
   private createNpc(
@@ -122,12 +135,13 @@ export class NpcManager {
 
     model.updateMatrixWorld(true);
 
-    /*
-     * Create the animation system only AFTER
-     * the NPC has its final transform.
-     */
     const animator = new NpcAnimator(model, animationClips);
-    const collision = createNpcCollider(model, this.physics, this.visible, definition.collision);
+    const collision = createNpcCollider(
+      model,
+      this.physics,
+      this.visible,
+      definition.collision,
+    );
 
     this.npcs.push({
       id: definition.id,
@@ -143,7 +157,7 @@ export class NpcManager {
   }
 
   private loadAnimations(): Promise<NpcAnimationClips> {
-    this.animationsPromise ??= this.loadAnimationAssets().catch(error => {
+    this.animationsPromise ??= this.loadAnimationAssets().catch((error) => {
       this.animationsPromise = undefined;
       throw error;
     });
@@ -177,12 +191,10 @@ export class NpcManager {
       npc.collision?.sync();
       const distanceSq = npc.model.position.distanceToSquared(playerPosition);
 
-      // Animation
       if (distanceSq <= this.animationDistanceSq) {
         npc.animator.update(delta);
       }
 
-      //Shadows
       const shouldCastShadow = distanceSq <= this.shadowDistanceSq;
 
       if (shouldCastShadow !== npc.shadowsEnabled) {
@@ -195,9 +207,6 @@ export class NpcManager {
     }
   }
 
-  // because of the animation that is sticky to the character
-  // so this cause make the character bigger then the idle character and re shrink it
-  // so i override this
   private prepareNpcClip(clip: THREE.AnimationClip): THREE.AnimationClip {
     const cleanClip = clip.clone();
 

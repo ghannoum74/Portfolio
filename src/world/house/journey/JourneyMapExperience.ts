@@ -18,11 +18,6 @@ const UP = new THREE.Vector3(0, 1, 0);
 const GOLD = new THREE.Color("#ddbb76");
 const COLORS = ["#a7caba", "#e3b978", "#a9b5d2", "#c9b59a"];
 
-/**
- * A physical, symbolic journey drawn over SEC_MAP_MapTop. Uses Blender Empty
- * markers when available, otherwise fits a subtle route to the map's bounds.
- * No separate GLB, heavy particles, postprocessing, or gameplay colliders.
- */
 export class JourneyMapExperience {
   private readonly root = new THREE.Group();
   private readonly stops: Stop[] = [];
@@ -92,7 +87,7 @@ export class JourneyMapExperience {
     const center = sheet.getCenter(new THREE.Vector3());
     const size = sheet.getSize(new THREE.Vector3());
     const tabletop = tableBounds.isEmpty() ? center.y : tableBounds.max.y;
-    // Place route slightly above the map's upper surface; fallback for thin/oddly-oriented exports.
+
     center.y = Math.max(sheet.max.y, tabletop) + 0.035;
     this.mapCenter.copy(center);
     this.mapSpan = THREE.MathUtils.clamp(Math.max(size.x, size.z), 1.0, 4.0);
@@ -125,7 +120,7 @@ export class JourneyMapExperience {
       if (marker) candidate.y += 0.02;
       points.push(this.house.worldToLocal(candidate).sub(this.root.position));
     }
-    // Routes stay on the table, with gentle bends between the physical waypoints.
+
     const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.4);
     const geometry = new THREE.BufferGeometry().setFromPoints(
       curve.getPoints(110),
@@ -336,7 +331,7 @@ export class JourneyMapExperience {
       }
     }
     if (this.state !== "active") return;
-    // Read layout once before hover DOM writes; moving camera/targets are still picked each frame.
+
     const rect = this.pointerInside
       ? this.canvas.getBoundingClientRect()
       : null;
@@ -359,7 +354,7 @@ export class JourneyMapExperience {
         35,
         window.innerHeight - 60,
       );
-      // Cache desired numbers: CSSOM may round a pixel string when reading it back.
+
       if (this.hintLeft !== left) {
         this.hint.style.left = `${left}px`;
         this.hintLeft = left;
@@ -424,7 +419,7 @@ export class JourneyMapExperience {
       new THREE.SphereGeometry(0.23, 12, 8),
       new THREE.MeshBasicMaterial({ visible: false }),
     );
-    // Material is invisible but the object stays visible so the raycaster can hit it.
+
     hit.position.y = 0.085;
     group.add(hit);
     this.stops.push({ data, group, gem, ring, halo, hit, shine: 0 });

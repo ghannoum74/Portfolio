@@ -1,8 +1,11 @@
-import { createWorkshopCue, WORKSHOP_CUE_VOLUME, type WorkshopCue } from "./WorkshopCue";
+import {
+  createWorkshopCue,
+  WORKSHOP_CUE_VOLUME,
+  type WorkshopCue,
+} from "./WorkshopCue";
 
 type Clip = { url: string; voices: HTMLAudioElement[]; nextVoice: number };
 
-/** Cached procedural feedback, triggered by user interaction only. */
 export class WorkshopSound {
   private readonly clips = new Map<string, Clip>();
   private destroyed = false;
@@ -10,17 +13,21 @@ export class WorkshopSound {
   constructor(private readonly isEnabled: () => boolean) {}
 
   play(cue: WorkshopCue, index = 0): void {
-    if (this.destroyed || !this.isEnabled() || typeof Audio === "undefined") return;
+    if (this.destroyed || !this.isEnabled() || typeof Audio === "undefined")
+      return;
 
     try {
-      const noteIndex = Number.isFinite(index) ? Math.max(0, Math.min(3, Math.trunc(index))) : 0;
+      const noteIndex = Number.isFinite(index)
+        ? Math.max(0, Math.min(3, Math.trunc(index)))
+        : 0;
       const key = `${cue}:${noteIndex}`;
       let clip = this.clips.get(key);
       if (!clip) {
-        const url = URL.createObjectURL(new Blob([createWorkshopCue(cue, noteIndex)], { type: "audio/wav" }));
+        const url = URL.createObjectURL(
+          new Blob([createWorkshopCue(cue, noteIndex)], { type: "audio/wav" }),
+        );
         const voices: HTMLAudioElement[] = [];
         try {
-          // Allow two quick overlapping clicks without allocating more players.
           for (let voice = 0; voice < 2; voice++) {
             const audio = new Audio(url);
             voices.push(audio);
@@ -40,9 +47,7 @@ export class WorkshopSound {
       audio.pause();
       if (audio.currentTime !== 0) audio.currentTime = 0;
       void audio.play().catch(() => {});
-    } catch {
-      // Audio is enhancement only; never block an interaction.
-    }
+    } catch {}
   }
 
   destroy(): void {

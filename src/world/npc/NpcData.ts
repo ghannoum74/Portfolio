@@ -32,8 +32,6 @@ export interface NpcDefinition {
   dialogues: readonly NpcDialogue[];
 }
 
-// Local-space capsules measured against the current GLBs in their initial idle
-// pose. They are physics-only and do not depend on world.blend or extra meshes.
 export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
   {
     id: "frequenc",
@@ -101,7 +99,7 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
     name: "Training · Learning Guide",
     company: "Prodigy InfoTech",
     asset: ASSETS.characters.prodigy,
-    collision: { radius: 0.312, height: 1.871, center: [0, 0.980, 0.023] },
+    collision: { radius: 0.312, height: 1.871, center: [0, 0.98, 0.023] },
     position: new THREE.Vector3(10, 3, -8),
     rotationY: 0,
     dialogues: [

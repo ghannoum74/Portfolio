@@ -9,8 +9,6 @@ export class ThirdPersonCamera {
   private readonly interiorLookAtOffset = new THREE.Vector3(0, 1.25, 0);
   private interiorMode = false;
 
-  // Temporary orbit produced by dragging. These always return to zero when the mouse is released.
-
   private orbitYaw = 0;
   private orbitPitch = 0;
   private dragging = false;
@@ -19,21 +17,10 @@ export class ThirdPersonCamera {
   private lastPointerX = 0;
   private lastPointerY = 0;
 
-  // Camera drag tuning.
   private readonly dragSensitivity = 0.005;
-  /*
-   * Maximum temporary rotation.
-   *
-   * Horizontal:
-   * about 80 degrees left/right.
-   *
-   * Vertical:
-   * about 20 degrees up/down.
-   */
 
   private readonly maxOrbitPitch = THREE.MathUtils.degToRad(30);
 
-  // How quickly camera returns behind the player after mouse release.
   private readonly returnSpeed = 5;
   private exteriorZoom = 1;
   private targetExteriorZoom = 1;
@@ -41,7 +28,6 @@ export class ThirdPersonCamera {
   private readonly maxExteriorZoom = 2;
   private readonly zoomStep = 0.08;
 
-  // Entrance camera.
   private readonly entranceOffset = new THREE.Vector3(16, 8, 8);
   private readonly entranceControlOffset = new THREE.Vector3(9, 10, 2);
   private readonly tempPosition = new THREE.Vector3();
@@ -52,7 +38,6 @@ export class ThirdPersonCamera {
   private readonly entranceLookAt = new THREE.Vector3();
   private readonly gameplayLookAt = new THREE.Vector3();
 
-  // Reused objects so we're not allocating Spherical/Vector objects every frame.
   private readonly baseSpherical = new THREE.Spherical();
   private readonly cameraSpherical = new THREE.Spherical();
   private readonly cameraOffset = new THREE.Vector3();
@@ -69,8 +54,7 @@ export class ThirdPersonCamera {
   private plannedTurnDistance = 0;
   private plannedTurnDirection = 0;
   private readonly plannedTurnTarget = new THREE.Vector3();
-  // Follow the requested shot continuously, including while obstructed. Feeding
-  // the shortened camera position back into follow switches behavior at edges.
+
   private readonly followPosition = new THREE.Vector3();
   private followReady = false;
   private recoveringDistance = false;
@@ -145,10 +129,6 @@ export class ThirdPersonCamera {
   }
 
   update(delta: number): void {
-    /*
-     * Once dragging stops, return the
-     * temporary camera rotation to zero.
-     */
     if (!this.dragging) {
       const returnSmoothness = 1 - Math.exp(-this.returnSpeed * delta);
 
@@ -160,10 +140,6 @@ export class ThirdPersonCamera {
         returnSmoothness,
       );
 
-      /*
-       * Avoid tiny floating point values
-       * continuing forever.
-       */
       if (Math.abs(this.orbitYaw) < 0.0001) {
         this.orbitYaw = 0;
       }
@@ -173,10 +149,6 @@ export class ThirdPersonCamera {
       }
     }
 
-    /*
-     * Smooth exterior zoom rather than
-     * jumping instantly on wheel input.
-     */
     const zoomSmoothness = 1 - Math.exp(-7 * delta);
 
     this.exteriorZoom = THREE.MathUtils.lerp(
@@ -185,17 +157,24 @@ export class ThirdPersonCamera {
       zoomSmoothness,
     );
 
-    // Higher response while dragging, softer normal follow otherwise.
-
     const followSpeed = this.dragging ? 14 : 5;
     const smoothness = 1 - Math.exp(-followSpeed * delta);
     const lookAt = this.getIdealLookAt();
     const idealPosition = this.getIdealPosition();
-    const idealYaw = Math.atan2(idealPosition.x - lookAt.x, idealPosition.z - lookAt.z);
-    const turnRate = this.turnReady && delta > 0
-      ? this.normalizeAngle(idealYaw - this.previousIdealYaw) / delta : 0;
-    this.turnVelocity = THREE.MathUtils.damp(this.turnVelocity,
-      THREE.MathUtils.clamp(turnRate, -10, 10), 12, delta);
+    const idealYaw = Math.atan2(
+      idealPosition.x - lookAt.x,
+      idealPosition.z - lookAt.z,
+    );
+    const turnRate =
+      this.turnReady && delta > 0
+        ? this.normalizeAngle(idealYaw - this.previousIdealYaw) / delta
+        : 0;
+    this.turnVelocity = THREE.MathUtils.damp(
+      this.turnVelocity,
+      THREE.MathUtils.clamp(turnRate, -10, 10),
+      12,
+      delta,
+    );
     this.previousIdealYaw = idealYaw;
     this.turnReady = true;
     if (!this.followReady) {
@@ -203,38 +182,54 @@ export class ThirdPersonCamera {
       this.followReady = true;
     }
     this.followPosition.lerp(idealPosition, smoothness);
-    // Finish tiny residual follow motion so stationary physics queries can cache.
+
     if (this.followPosition.distanceToSquared(idealPosition) < 1e-8) {
       this.followPosition.copy(idealPosition);
     }
 
-    // Query the smoothed shot. Its heading no longer jumps to the unsmoothed
-    // player heading just because a wall, post or piece of furniture is hit.
     const collision = this.cameraCollision.resolve(lookAt, this.followPosition);
     const requestedDistance = lookAt.distanceTo(this.followPosition);
     const safeDistance = lookAt.distanceTo(collision.position);
     if (!this.recoveringDistance) this.collisionDistance = requestedDistance;
-    const prediction = this.predictTurn(lookAt, Math.min(this.collisionDistance, safeDistance));
+    const prediction = this.predictTurn(
+      lookAt,
+      Math.min(this.collisionDistance, safeDistance),
+    );
     this.holdTurnPrediction(lookAt, delta);
     if (collision.blocked || prediction.blocked) {
       if (prediction.blocked && prediction.distance < this.collisionDistance) {
-        // Reach the anticipated clearance before the orbit reaches the obstacle.
-        // A final clamp against the present sweep still handles sudden blockers.
-        const approach = Math.min(1, delta / Math.max(0.001, delta, prediction.time));
-        this.collisionDistance = Math.max(this.collisionDistance - this.anticipationSpeed * delta,
-          THREE.MathUtils.lerp(this.collisionDistance, prediction.distance, approach));
+        const approach = Math.min(
+          1,
+          delta / Math.max(0.001, delta, prediction.time),
+        );
+        this.collisionDistance = Math.max(
+          this.collisionDistance - this.anticipationSpeed * delta,
+          THREE.MathUtils.lerp(
+            this.collisionDistance,
+            prediction.distance,
+            approach,
+          ),
+        );
       } else {
-        this.collisionDistance = THREE.MathUtils.lerp(this.collisionDistance, safeDistance, smoothness);
+        this.collisionDistance = THREE.MathUtils.lerp(
+          this.collisionDistance,
+          safeDistance,
+          smoothness,
+        );
       }
       this.collisionDistance = Math.min(safeDistance, this.collisionDistance);
       this.recoveringDistance = true;
       this.clearTime = 0;
     } else if (this.recoveringDistance) {
       this.clearTime += delta;
-      // A closer requested shot must still be respected during the release delay.
+
       this.collisionDistance = Math.min(this.collisionDistance, safeDistance);
       if (this.clearTime >= this.clearanceDelay) {
-        this.collisionDistance = THREE.MathUtils.lerp(this.collisionDistance, safeDistance, smoothness);
+        this.collisionDistance = THREE.MathUtils.lerp(
+          this.collisionDistance,
+          safeDistance,
+          smoothness,
+        );
       }
       if (safeDistance - this.collisionDistance < 0.001) {
         this.recoveringDistance = false;
@@ -242,9 +237,11 @@ export class ThirdPersonCamera {
     }
 
     if (this.recoveringDistance && requestedDistance > 0.001) {
-      // Shorten immediately for safety; expand smoothly along the checked path.
-      this.camera.position.lerpVectors(lookAt, this.followPosition,
-        Math.min(1, this.collisionDistance / requestedDistance));
+      this.camera.position.lerpVectors(
+        lookAt,
+        this.followPosition,
+        Math.min(1, this.collisionDistance / requestedDistance),
+      );
     } else this.camera.position.copy(collision.position);
 
     this.camera.lookAt(lookAt);
@@ -253,17 +250,20 @@ export class ThirdPersonCamera {
   private predictTurn(target: THREE.Vector3, distance: number) {
     const prediction = this.turnPrediction;
     prediction.blocked = false;
-    // Straight movement and rest retain the single cached follow query.
-    if (Math.abs(this.turnVelocity) < 0.05 || distance < 0.05) return prediction;
+
+    if (Math.abs(this.turnVelocity) < 0.05 || distance < 0.05)
+      return prediction;
     this.turnOffset.copy(this.followPosition).sub(target).setLength(distance);
-    // Three future headings catch short occluders along the approaching arc.
-    // Refinement bounds the first impact time without per-frame allocations.
+
     const horizon = Math.min(0.45, Math.PI / (2 * Math.abs(this.turnVelocity)));
     let clear = 0;
     for (let sample = 1; sample <= 3; sample++) {
-      let blocked = horizon * sample / 3;
+      let blocked = (horizon * sample) / 3;
       const hit = this.sampleTurn(target, blocked);
-      if (!hit.blocked) { clear = blocked; continue; }
+      if (!hit.blocked) {
+        clear = blocked;
+        continue;
+      }
       let clearance = target.distanceTo(hit.position);
       for (let refine = 0; refine < 3; refine++) {
         const time = (clear + blocked) / 2;
@@ -282,8 +282,10 @@ export class ThirdPersonCamera {
   }
 
   private sampleTurn(target: THREE.Vector3, time: number) {
-    this.turnPosition.copy(this.turnOffset)
-      .applyAxisAngle(this.up, this.turnVelocity * time).add(target);
+    this.turnPosition
+      .copy(this.turnOffset)
+      .applyAxisAngle(this.up, this.turnVelocity * time)
+      .add(target);
     return this.turnCollision.resolve(target, this.turnPosition);
   }
 
@@ -291,11 +293,18 @@ export class ThirdPersonCamera {
     const prediction = this.turnPrediction;
     const direction = Math.sign(this.turnVelocity);
     this.plannedTurnTime = Math.max(0, this.plannedTurnTime - delta);
-    if (Math.abs(this.turnVelocity) < 0.05 || direction !== this.plannedTurnDirection ||
-        target.distanceToSquared(this.plannedTurnTarget) > 0.04) this.plannedTurnTime = 0;
+    if (
+      Math.abs(this.turnVelocity) < 0.05 ||
+      direction !== this.plannedTurnDirection ||
+      target.distanceToSquared(this.plannedTurnTarget) > 0.04
+    )
+      this.plannedTurnTime = 0;
     if (prediction.blocked) {
       if (this.plannedTurnTime > 0) {
-        prediction.distance = Math.min(prediction.distance, this.plannedTurnDistance);
+        prediction.distance = Math.min(
+          prediction.distance,
+          this.plannedTurnDistance,
+        );
         prediction.time = Math.min(prediction.time, this.plannedTurnTime);
       }
       this.plannedTurnTime = prediction.time;
@@ -303,8 +312,6 @@ export class ThirdPersonCamera {
       this.plannedTurnDirection = direction;
       this.plannedTurnTarget.copy(target);
     } else if (this.plannedTurnTime > 0) {
-      // A thin post can fall between future samples on the next frame. Keep its
-      // planned clearance until arrival unless the turn reverses or pivot moves.
       prediction.blocked = true;
       prediction.distance = this.plannedTurnDistance;
       prediction.time = this.plannedTurnTime;
@@ -316,40 +323,20 @@ export class ThirdPersonCamera {
       ? this.interiorOffset
       : this.exteriorOffset;
 
-    /*
-     * Convert our default camera offset
-     * into spherical coordinates.
-     *
-     * This makes temporary orbiting much
-     * cleaner than manually rotating X/Y.
-     */
     this.baseSpherical.setFromVector3(offset);
     this.cameraSpherical.copy(this.baseSpherical);
 
-    /*
-     * Zoom only exists outside.
-     */
     if (!this.interiorMode) {
       this.cameraSpherical.radius *= this.exteriorZoom;
     }
 
-    // Temporary mouse orbit.
-
     this.cameraSpherical.theta += this.orbitYaw;
     this.cameraSpherical.phi += this.orbitPitch;
 
-    /*
-     * Prevent the camera from reaching
-     * the vertical poles.
-     */
     this.cameraSpherical.makeSafe();
 
     this.cameraOffset.setFromSpherical(this.cameraSpherical);
 
-    /*
-     * Camera remains relative to whatever
-     * direction the player is facing.
-     */
     this.cameraOffset.applyQuaternion(this.player.quaternion);
 
     return this.tempPosition.copy(this.player.position).add(this.cameraOffset);
@@ -376,7 +363,11 @@ export class ThirdPersonCamera {
   };
 
   private onPointerMove = (event: PointerEvent): void => {
-    if (!this.inputEnabled || !this.dragging || event.pointerId !== this.dragPointer) {
+    if (
+      !this.inputEnabled ||
+      !this.dragging ||
+      event.pointerId !== this.dragPointer
+    ) {
       return;
     }
 
@@ -385,10 +376,8 @@ export class ThirdPersonCamera {
     this.lastPointerX = event.clientX;
     this.lastPointerY = event.clientY;
 
-    // Horizontal camera rotation.
     this.orbitYaw -= deltaX * this.dragSensitivity;
 
-    // Vertical camera rotation.
     this.orbitPitch -= deltaY * this.dragSensitivity;
 
     this.orbitPitch = THREE.MathUtils.clamp(
@@ -406,10 +395,6 @@ export class ThirdPersonCamera {
     this.dragging = false;
     this.dragPointer = null;
 
-    /*
-     * Make the return use the shortest
-     * direction back to the default camera.
-     */
     this.orbitYaw = this.normalizeAngle(this.orbitYaw);
 
     if (this.domElement.hasPointerCapture(event.pointerId)) {
@@ -418,10 +403,6 @@ export class ThirdPersonCamera {
   };
 
   private onWheel = (event: WheelEvent): void => {
-    /*
-     * Wheel zoom is intentionally
-     * unavailable inside the house.
-     */
     if (!this.inputEnabled || this.interiorMode) {
       return;
     }
@@ -471,10 +452,6 @@ export class ThirdPersonCamera {
     this.recoveringDistance = false;
     this.clearTime = 0;
 
-    /*
-     * Never carry a temporary camera
-     * rotation through a scene transition.
-     */
     this.orbitYaw = 0;
     this.orbitPitch = 0;
     this.dragging = false;
@@ -495,7 +472,10 @@ export class ThirdPersonCamera {
     this.followPosition.copy(this.getIdealPosition());
     this.followReady = true;
     const lookAt = this.getIdealLookAt();
-    this.previousIdealYaw = Math.atan2(this.followPosition.x - lookAt.x, this.followPosition.z - lookAt.z);
+    this.previousIdealYaw = Math.atan2(
+      this.followPosition.x - lookAt.x,
+      this.followPosition.z - lookAt.z,
+    );
     this.turnReady = true;
     this.turnVelocity = 0;
     this.plannedTurnTime = 0;

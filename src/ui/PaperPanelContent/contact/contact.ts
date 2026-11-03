@@ -35,7 +35,8 @@ function setupSocialLinks(fragment: DocumentFragment): void {
   }
 
   if (linkedin) {
-    linkedin.href = import.meta.env.VITE_LINKEDIN_ENDPOINT || PROFILE.linkedinUrl;
+    linkedin.href =
+      import.meta.env.VITE_LINKEDIN_ENDPOINT || PROFILE.linkedinUrl;
   }
 
   if (email) {
@@ -68,7 +69,8 @@ function setupContactForm(fragment: DocumentFragment): void {
 
     const endpoint = import.meta.env.VITE_FORM_ENDPOINT;
     if (!endpoint) {
-      status.textContent = "The form is unavailable. Please use the email link above to get in touch.";
+      status.textContent =
+        "The form is unavailable. Please use the email link above to get in touch.";
       status.dataset.state = "error";
       return;
     }
@@ -98,7 +100,8 @@ function setupContactForm(fragment: DocumentFragment): void {
 
       form.reset();
 
-      status.textContent = "Thanks for your message. I'll get back to you soon.";
+      status.textContent =
+        "Thanks for your message. I'll get back to you soon.";
 
       status.dataset.state = "success";
     } catch {

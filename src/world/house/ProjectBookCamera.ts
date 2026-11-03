@@ -35,12 +35,10 @@ export class ProjectBookCamera {
 
     const center = bounds.getCenter(new THREE.Vector3());
 
-    // Save gameplay camera transform.
     this.returnPosition.copy(this.camera.position);
     this.returnQuaternion.copy(this.camera.quaternion);
     this.hasReturnPose = true;
 
-    // Marker chooses viewing direction, not zoom distance.
     const markerPosition = marker.getWorldPosition(new THREE.Vector3());
 
     const direction = markerPosition.sub(center);
@@ -51,15 +49,12 @@ export class ProjectBookCamera {
 
     direction.normalize();
 
-    // Respect the camera marker's screen-up orientation.
     const markerQuaternion = marker.getWorldQuaternion(new THREE.Quaternion());
 
     const up = new THREE.Vector3(0, 1, 0)
       .applyQuaternion(markerQuaternion)
       .normalize();
 
-    // Avoid an invalid lookAt when up and viewing
-    // direction happen to be nearly parallel.
     if (Math.abs(up.dot(direction)) > 0.98) {
       up.set(0, 0, -1);
     }
@@ -88,8 +83,6 @@ export class ProjectBookCamera {
     const padding = 1.17;
     let distance = 0;
 
-    // Calculate distance using all eight bounding-box
-    // corners, rather than a rough fixed camera offset.
     for (const x of [bounds.min.x, bounds.max.x]) {
       for (const y of [bounds.min.y, bounds.max.y]) {
         for (const z of [bounds.min.z, bounds.max.z]) {
@@ -155,7 +148,6 @@ export class ProjectBookCamera {
 
     const t = THREE.MathUtils.clamp(this.elapsed / this.duration, 0, 1);
 
-    // Smoothstep.
     const eased = t * t * (3 - 2 * t);
 
     this.camera.position.lerpVectors(

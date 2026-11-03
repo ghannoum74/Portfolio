@@ -1,4 +1,3 @@
-/** Text displayed by the real, interactive workshop artifacts. */
 export interface WorkshopSkill {
   readonly id: string;
   readonly eyebrow: string;
@@ -88,5 +87,5 @@ export const WORKSHOP_SKILLS: readonly WorkshopSkill[] = [
     artifact: "The Navigator",
   },
 ];
-/** Backwards-compatible export for any older files still using the prototype. */
+
 export const FIRST_WORKSHOP_SKILL = WORKSHOP_SKILLS[0];

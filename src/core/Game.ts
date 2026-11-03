@@ -1,19 +1,16 @@
 import * as THREE from "three";
 
 import { Renderer } from "./Renderer";
-import { performanceOptions } from "./PerformanceOptions";
+
 import { VisibleAnimationLoop } from "./VisibleAnimationLoop";
-import { FrameProfiler } from "./FrameProfiler";
-import { PerformanceReport, downloadPerformanceReport } from "./PerformanceReport";
+
 import { World } from "../world/World";
-import type { WaterShaderMode } from "../world/environment/Water";
+
 import { Keyboard } from "../input/Keyboard";
 import { MobileControls, type MobileContext } from "../input/MobileControls";
 
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ThirdPersonCamera } from "../camera/ThirdPersonCamera";
 
-import GUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 import { TimeOfDay } from "../ui/TimeOfDay/TimeOfDay";
 
 import { StartupLoading } from "../loaders/StartupLoading";
@@ -49,7 +46,10 @@ import { AwardsExperience } from "../world/house/awards/AwardsExperience";
 import { AwardsInteraction } from "../interactions/interactions/AwardsInteraction";
 
 import { HouseFurnitureInteractions } from "../world/house/furniture/HouseFurnitureInteractions";
-import { HouseFirstVisitGuide, houseTourSteps } from "../world/house/HouseFirstVisitGuide";
+import {
+  HouseFirstVisitGuide,
+  houseTourSteps,
+} from "../world/house/HouseFirstVisitGuide";
 import { HouseTourPath } from "../world/house/HouseTourPath";
 
 type GamePhase = "loading" | "introduction" | "rules" | "playing";
@@ -59,13 +59,11 @@ export class Game {
   private renderer: Renderer;
 
   private playerCamera: THREE.PerspectiveCamera;
-  private debugCamera: THREE.PerspectiveCamera;
 
   private world: World;
   private keyboard: Keyboard;
   private readonly mobileControls: MobileControls;
 
-  private controls: OrbitControls;
   private thirdPersonCamera?: ThirdPersonCamera;
 
   private readonly paperPanel: PaperPanel;
@@ -77,37 +75,11 @@ export class Game {
 
   private entranceCameraProgress = 0;
 
-  private debugMode = false;
-
-  private cameraDebugMesh: THREE.Group;
-  private cameraHelper: THREE.CameraHelper;
-
-  private gui?: GUI;
   private readonly timeOfDay: TimeOfDay;
-  private readonly cameraDebugState = { debugView: false };
+
   private controlsUiElapsed = 0;
 
   private timer = new THREE.Timer();
-  private animationLoop: VisibleAnimationLoop;
-  private readonly frameProfiler = performanceOptions.perfDiag ? new FrameProfiler() : undefined;
-  private readonly performanceReport = performanceOptions.perfDiag ? new PerformanceReport() : undefined;
-  private readonly performanceDebugState = {
-    exteriorLod: performanceOptions.exteriorLod,
-    waterShader: performanceOptions.waterShader,
-    stoneLod: performanceOptions.stoneLod,
-    surfaceCulling: performanceOptions.surfaceCulling,
-    staticBatching: performanceOptions.staticBatching,
-    staticTransforms: performanceOptions.staticTransforms,
-    borderHighlight: performanceOptions.outlines,
-    shadows: performanceOptions.shadows,
-    gpuTiming: performanceOptions.gpuTiming,
-    pixelRatio: performanceOptions.pixelRatio,
-    restartReadings: () => this.resetPerformanceSamples(),
-    downloadReport: () => this.downloadPerformanceReport(),
-  };
-  private raycaster = new THREE.Raycaster();
-  private mouse = new THREE.Vector2();
-  private clickedWorldPoint: THREE.Vector3 | null = null;
 
   private readonly interactionSystem: InteractionSystem;
   private readonly dialogueBox: DialogueBox;
@@ -134,11 +106,7 @@ export class Game {
   private readonly projectBookCamera: ProjectBookCamera;
 
   private projectBookMode:
-    | "idle"
-    | "opening"
-    | "focusing"
-    | "reading"
-    | "returning" = "idle";
+    "idle" | "opening" | "focusing" | "reading" | "returning" = "idle";
 
   private activeProjectBook: AnimatedBook3D | null = null;
 
@@ -167,25 +135,10 @@ export class Game {
 
     this.playerCamera.lookAt(0, 0, 0);
 
-    this.debugCamera = new THREE.PerspectiveCamera(
-      60,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000,
-    );
-
-    this.debugCamera.position.set(22, 18, 22);
-
-    this.debugCamera.lookAt(0, 2, 0);
-
-    // Gameplay input remains disabled
-    // until the introductory rules close.
     this.keyboard = new Keyboard();
     this.keyboard.setEnabled(false);
 
     this.renderer = new Renderer(canvas);
-
-    this.renderer.setupInteractionOutline(this.scene, this.playerCamera);
 
     this.projectBookCamera = new ProjectBookCamera(this.playerCamera);
 
@@ -208,17 +161,6 @@ export class Game {
       },
     );
 
-    this.controls = new OrbitControls(
-      this.debugCamera,
-      this.renderer.instance.domElement,
-    );
-
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.target.set(0, 2, 0);
-    this.controls.enabled = false;
-    this.controls.update();
-
     this.worldAudio = new WorldAudio();
 
     this.soundButton = new SoundButton(() => {
@@ -238,7 +180,6 @@ export class Game {
     this.paperPanel = new PaperPanel({
       onOpen: () => {
         this.keyboard.setEnabled(false);
-        this.controls.enabled = false;
       },
 
       onClose: () => {
@@ -248,8 +189,6 @@ export class Game {
           this.helpButton.setVisible(true);
         }
 
-        // Also supports future mailbox dialogs
-        // opened during normal gameplay.
         if (this.phase === "playing") {
           this.keyboard.setEnabled(true);
         }
@@ -263,8 +202,6 @@ export class Game {
     this.dialogueBox = new DialogueBox({
       onOpen: () => {
         this.keyboard.setEnabled(false);
-
-        this.controls.enabled = false;
       },
 
       onClose: () => {
@@ -300,32 +237,19 @@ export class Game {
       this.loading.manager,
       this.loading.assetReady,
     );
-    this.setupPerformanceReport();
-
-    this.cameraDebugMesh = this.createCameraDebugMesh();
-
-    this.scene.add(this.cameraDebugMesh);
-
-    this.cameraHelper = new THREE.CameraHelper(this.playerCamera);
-
-    this.scene.add(this.cameraHelper);
 
     this.timeOfDay = new TimeOfDay(uiRoot, this.world);
-    // Developer tools are opt-in; visitors only see the parchment time control.
-    if (performanceOptions.perfDiag) this.gui = this.createGui();
 
-    this.mobileControls = new MobileControls(this.keyboard, code =>
+    this.mobileControls = new MobileControls(this.keyboard, (code) =>
       this.handleCommand({ code, repeat: false, preventDefault() {} }),
     );
 
     this.updateOverlay();
 
-    /*
-     * The entrance owns the scrolling effect.
-     * Game owns what happens afterward.
-     */
     this.entrance = new WorldEntrance({
-      onEnter: () => { void this.mobileControls.requestLandscape(); },
+      onEnter: () => {
+        void this.mobileControls.requestLandscape();
+      },
       onProgress: (progress) => {
         this.entranceCameraProgress = progress;
       },
@@ -347,9 +271,12 @@ export class Game {
     window.addEventListener("resize", this.onResize);
 
     this.timer.connect(document);
-    this.animationLoop = new VisibleAnimationLoop(document,
-      callback => this.renderer.instance.setAnimationLoop(callback), this.update,
-      () => { this.timer.reset(); this.resetPerformanceSamples(); });
+    new VisibleAnimationLoop(
+      document,
+      (callback) => this.renderer.instance.setAnimationLoop(callback),
+      this.update,
+      () => this.timer.reset(),
+    );
 
     void this.init();
   }
@@ -378,31 +305,20 @@ export class Game {
 
       await this.renderer.prepareScene(this.scene, this.playerCamera);
 
-      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
+      await this.renderer.prepareHighlights(
+        this.scene,
+        this.playerCamera,
+        this.interactionSystem.highlightTargets,
+      );
 
-      this.cameraHelper.visible = false;
-      this.cameraDebugMesh.visible = false;
-
-      this.world.setSunDebugVisible(false);
-
-      this.world.setPhysicsDebugVisible(false);
-
-      // Render the initial world behind
-      // the loading screen.
       this.renderer.render(this.scene, this.playerCamera);
 
-      /*
-       * The scene is ready, but gameplay
-       * is not available yet.
-       */
       this.phase = "introduction";
 
-      // Wait for the loading fade-out.
       await this.loading.complete();
 
       this.loadNpcsInBackground();
 
-      // Now the visitor may scroll.
       this.entrance.activate();
     } catch (error) {
       this.phase = "loading";
@@ -422,37 +338,41 @@ export class Game {
   }
 
   private update = (): void => {
-    this.frameProfiler?.begin();
     this.timer.update();
 
     const delta = this.timer.getDelta();
 
     this.controlsUiElapsed += delta;
-
     if (this.phase === "playing" && this.controlsUiElapsed >= 1) {
       this.controlsUiElapsed = 0;
       this.updateOverlay();
     }
 
-    this.timeOfDay.setVisible(this.phase === "playing" && !this.insideHouse &&
-      !this.transitioning && !this.preparingScene && !this.paperPanel.isOpen && !this.dialogueBox.isOpen);
+    this.timeOfDay.setVisible(
+      this.phase === "playing" &&
+        !this.insideHouse &&
+        !this.transitioning &&
+        !this.preparingScene &&
+        !this.paperPanel.isOpen &&
+        !this.dialogueBox.isOpen,
+    );
 
     this.entrance.raf(performance.now());
 
-    this.mobileControls?.setWorldActive(this.phase === "playing" || this.phase === "rules");
-    if (this.transitioning || this.preparingScene) this.mobileControls?.setContext(this.mobileContext(false));
+    this.mobileControls?.setWorldActive(
+      this.phase === "playing" || this.phase === "rules",
+    );
+    if (this.transitioning || this.preparingScene)
+      this.mobileControls?.setContext(this.mobileContext(false));
     if (this.mobileControls?.isBlocking) {
       this.thirdPersonCamera?.setInputEnabled(false);
-      this.frameProfiler?.skip();
+
       return;
     }
 
     if (this.phase === "loading" || this.preparingScene) {
-      this.frameProfiler?.skip();
       return;
     }
-
-    this.frameProfiler?.mark("setup");
 
     this.world.update(delta, !this.insideHouse);
 
@@ -462,10 +382,6 @@ export class Game {
         this.world.getTimeOfDay(),
       );
     }
-    this.frameProfiler?.mark("world");
-
-    // Wait until the physical cover finishes opening
-    // before moving the cinematic camera toward it.
 
     if (
       this.projectBookMode === "opening" &&
@@ -474,42 +390,39 @@ export class Game {
       this.focusOnProjectBook();
     }
 
-    // Only one main camera controller should control
-    // the player camera at any given time.
-
-    this.houseGuide?.update(delta,
-      this.insideHouse && this.phase === "playing" && !this.transitioning &&
-      this.projectBookMode === "idle" && !this.workshop?.isControllingCamera &&
-      !this.awards?.isControllingCamera && !this.journey?.isControllingCamera &&
-      !this.furniture?.isControllingCamera && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+    this.houseGuide?.update(
+      delta,
+      this.insideHouse &&
+        this.phase === "playing" &&
+        !this.transitioning &&
+        this.projectBookMode === "idle" &&
+        !this.workshop?.isControllingCamera &&
+        !this.awards?.isControllingCamera &&
+        !this.journey?.isControllingCamera &&
+        !this.furniture?.isControllingCamera &&
+        !this.paperPanel.isOpen &&
+        !this.dialogueBox.isOpen,
     );
 
+    const cameraControlled =
+      this.houseGuide?.isControllingCamera ||
+      this.workshop?.isControllingCamera ||
+      this.awards?.isControllingCamera ||
+      this.journey?.isControllingCamera ||
+      this.furniture?.isControllingCamera;
     if (this.phase === "introduction") {
       this.thirdPersonCamera?.updateEntrance(this.entranceCameraProgress);
-    } else if (this.houseGuide?.isControllingCamera) {
-      // The first-visit guide owns the camera until its saved view is restored.
     } else if (
-      this.projectBookMode === "focusing" ||
-      this.projectBookMode === "reading" ||
-      this.projectBookMode === "returning"
+      !this.houseGuide?.isControllingCamera &&
+      (this.projectBookMode === "focusing" ||
+        this.projectBookMode === "reading" ||
+        this.projectBookMode === "returning")
     ) {
-      // Cinematic camera focused on the real 3D book.
       this.projectBookCamera.update(delta);
-    } else if (this.workshop?.isControllingCamera) {
-      // The workshop camera is driven in workshop.update() below.
-    } else if (this.awards?.isControllingCamera) {
-      // AwardsExperience owns the cinematic shot while inspecting.
-    } else if (this.journey?.isControllingCamera) {
-      // JourneyMapExperience animates the camera in its own update.
-    } else if (this.furniture?.isControllingCamera) {
-      // Rest camera is animated by furniture.update below.
-    } else {
-      // Normal third-person camera.
+    } else if (!cameraControlled) {
       this.thirdPersonCamera?.update(delta);
     }
-    this.frameProfiler?.mark("camera");
 
-    // House systems retain their state, but do no frame work outside.
     if (this.insideHouse) {
       this.workshop?.update(delta);
       this.furniture?.update(delta);
@@ -523,7 +436,6 @@ export class Game {
     this.bookPageControls.update(
       this.projectBookMode === "reading" ? this.activeProjectBook : null,
     );
-    this.frameProfiler?.mark("effectsUi");
 
     const gameplayActive =
       this.phase === "playing" &&
@@ -537,43 +449,17 @@ export class Game {
       !this.paperPanel.isOpen &&
       !this.dialogueBox.isOpen;
 
-    this.thirdPersonCamera?.setInputEnabled(gameplayActive && !this.debugMode);
+    this.thirdPersonCamera?.setInputEnabled(gameplayActive);
 
     if (gameplayActive) {
       this.interactionSystem.update(this.world.player.model.position);
     }
     this.mobileControls?.setContext(this.mobileContext(gameplayActive));
 
-    if (this.debugMode) this.syncCameraDebugMesh();
-    else this.cameraDebugMesh.visible = false;
-
-    this.controls.enabled = gameplayActive && this.debugMode;
-
-    if (this.controls.enabled) {
-      this.controls.update();
-    }
-
-    const showDebug = gameplayActive && this.debugMode;
-
-    this.cameraHelper.visible = showDebug;
-
-    this.world.setSunDebugVisible(showDebug);
-
-    this.world.setPhysicsDebugVisible(showDebug);
-
-    if (showDebug) this.cameraHelper.update();
-    this.frameProfiler?.mark("interaction");
-
-    const camera = this.getActiveCamera();
+    const camera = this.playerCamera;
     this.world.updateLod(camera, window.innerHeight);
-    this.frameProfiler?.mark("lod");
+
     this.renderer.render(this.scene, camera);
-    this.frameProfiler?.mark("render");
-    const profile = this.frameProfiler?.finish(this.insideHouse ? "house" : "exterior");
-    if (profile) {
-      console.info("[Frame profile]", profile, JSON.stringify(profile));
-      this.performanceReport?.record("frame", profile, this.performanceReportContext());
-    }
   };
 
   private onResize = (): void => {
@@ -581,15 +467,10 @@ export class Game {
 
     this.playerCamera.aspect = aspect;
 
-    this.debugCamera.aspect = aspect;
-
     this.playerCamera.updateProjectionMatrix();
 
-    this.debugCamera.updateProjectionMatrix();
-
     this.renderer.resize();
-    this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
-    this.resetPerformanceSamples();
+
     this.updateOverlay();
   };
 
@@ -624,265 +505,106 @@ export class Game {
 
       return;
     }
-
-    if (
-      this.phase !== "playing" ||
-      this.projectBookMode !== "idle" ||
-      this.transitioning ||
-      this.paperPanel.isOpen
-    ) {
-      return;
-    }
-
-    const rect = this.renderer.instance.domElement.getBoundingClientRect();
-
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    this.raycaster.setFromCamera(this.mouse, this.getActiveCamera());
-
-    const intersects = this.raycaster.intersectObject(this.world.model, true);
-
-    const hit = intersects.find(({ object }) => {
-      for (
-        let current: THREE.Object3D | null = object;
-        current;
-        current = current.parent
-      ) {
-        if (!current.visible) return false;
-      }
-      return true;
-    });
-
-    this.clickedWorldPoint = hit ? hit.point.clone() : null;
-
-    if (this.clickedWorldPoint) {
-      const { x, y, z } = this.clickedWorldPoint;
-      console.log("Clicked world coordinates:", { x, y, z });
-    }
-
-    this.updateOverlay();
   };
 
-  private getActiveCamera(): THREE.PerspectiveCamera {
-    return this.debugMode ? this.debugCamera : this.playerCamera;
-  }
-
   private hideWorldControls(): void {
-    if (this.gui) this.gui.domElement.style.display = "none";
     this.timeOfDay.setVisible(false);
   }
 
   private showWorldControls(): void {
-    if (this.gui) this.gui.domElement.style.display = "";
     this.timeOfDay.setVisible(!this.insideHouse);
-  }
-
-  private createCameraDebugMesh(): THREE.Group {
-    const group = new THREE.Group();
-
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.9, 1),
-      new THREE.MeshBasicMaterial({
-        color: 0x4ecdc4,
-        wireframe: true,
-      }),
-    );
-
-    const lens = new THREE.Mesh(
-      new THREE.ConeGeometry(0.35, 0.9, 12),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        wireframe: true,
-      }),
-    );
-
-    lens.rotation.x = Math.PI / 2;
-
-    lens.position.z = -0.95;
-
-    group.add(body);
-    group.add(lens);
-
-    group.visible = false;
-
-    return group;
-  }
-
-  private syncCameraDebugMesh(): void {
-    this.cameraDebugMesh.visible =
-      this.phase === "playing" && this.debugMode && !this.paperPanel.isOpen;
-
-    this.cameraDebugMesh.position.copy(this.playerCamera.position);
-
-    this.cameraDebugMesh.quaternion.copy(this.playerCamera.quaternion);
-  }
-
-  private createGui(): GUI {
-    const gui = new GUI({
-      width: 320,
-    });
-
-    gui
-      .add(this.cameraDebugState, "debugView")
-      .name("Debug view")
-      .onChange((value: boolean) => {
-        this.debugMode = value;
-
-        this.updateOverlay();
-      });
-
-    if (performanceOptions.perfDiag) {
-      const performanceFolder = gui.addFolder("Performance");
-      if (performanceOptions.highlightMode === "border") {
-        performanceFolder.add(this.performanceDebugState, "borderHighlight").name("Border highlight").onChange((enabled: boolean) => {
-          this.renderer.setBorderHighlightEnabled(enabled);
-          this.resetPerformanceSamples();
-        });
-      }
-      performanceFolder.add(this.performanceDebugState, "shadows").name("Shadows").onChange((enabled: boolean) => {
-        this.renderer.setShadowsEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      const gpuTimingController = performanceFolder.add(this.performanceDebugState, "gpuTiming").name("GPU timing").onChange((enabled: boolean) => {
-        this.renderer.setGpuTimingEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      if (performanceOptions.gpuStats) gpuTimingController.disable();
-      performanceFolder.add(this.performanceDebugState, "waterShader", {
-        "Original": "original", "Vertex phases": "vertex", "Depth only (diagnostic)": "depth",
-      }).name("Water shader").onChange((mode: WaterShaderMode) => {
-        performanceOptions.waterShader = mode;
-        this.world.setWaterShaderMode(mode);
-        this.resetPerformanceSamples();
-      });
-      performanceFolder.add(this.performanceDebugState, "exteriorLod").name("Exterior LOD").onChange((enabled: boolean) => {
-        performanceOptions.exteriorLod = enabled;
-        this.world.setExteriorLodEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      performanceFolder.add(this.performanceDebugState, "stoneLod").name("Stone LOD").onChange((enabled: boolean) => {
-        performanceOptions.stoneLod = enabled;
-        this.world.setHouseStoneLodEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      performanceFolder.add(this.performanceDebugState, "surfaceCulling").name("Backface culling").onChange((enabled: boolean) => {
-        performanceOptions.surfaceCulling = enabled;
-        this.world.setSurfaceCullingEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      performanceFolder.add(this.performanceDebugState, "staticBatching").name("Static batching").onChange((enabled: boolean) => {
-        performanceOptions.staticBatching = enabled;
-        this.world.setStaticBatchingEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      performanceFolder.add(this.performanceDebugState, "staticTransforms").name("Static transforms").onChange((enabled: boolean) => {
-        performanceOptions.staticTransforms = enabled;
-        this.world.setStaticTransformsEnabled(enabled);
-        this.resetPerformanceSamples();
-      });
-      const maximumRatio = Math.min(window.devicePixelRatio || 1, 2);
-      performanceFolder.add(this.performanceDebugState, "pixelRatio", Math.min(0.5, maximumRatio), maximumRatio, 0.05)
-        .name("Pixel ratio").onFinishChange((ratio: number) => {
-          this.renderer.setPixelRatio(ratio);
-          this.performanceDebugState.pixelRatio = this.renderer.instance.getPixelRatio();
-          this.resetPerformanceSamples();
-        });
-      performanceFolder.add(this.performanceDebugState, "restartReadings").name("Restart readings");
-      performanceFolder.add(this.performanceDebugState, "downloadReport").name("Download report");
-      performanceFolder.open();
-    }
-
-    return gui;
-  }
-
-  private resetPerformanceSamples(): void {
-    this.frameProfiler?.reset();
-    this.renderer.resetPerformanceSamples();
-    this.world.resetPerformanceSamples();
-    this.performanceReport?.newRun();
-  }
-
-  private setupPerformanceReport(): void {
-    if (!this.performanceReport) return;
-    this.renderer.onPerformanceSample = sample => this.performanceReport?.record("renderer", sample, this.performanceReportContext());
-    this.world.onPerformanceSample = sample => this.performanceReport?.record("physics", sample, this.performanceReportContext());
-  }
-
-  private performanceReportContext(): Record<string, unknown> {
-    const camera = this.getActiveCamera();
-    camera.updateWorldMatrix(true, false);
-    const canvas = this.renderer.instance.domElement;
-    return {
-      phase: this.phase,
-      scene: this.insideHouse ? "house" : "exterior",
-      debugView: this.debugMode,
-      bookMode: this.projectBookMode,
-      workshopMode: this.workshop?.mode ?? null,
-      awardsMode: this.awards?.mode ?? null,
-      journeyMode: this.journey?.mode ?? null,
-      furnitureControlsCamera: this.furniture?.isControllingCamera ?? false,
-      realTime: this.world.isUsingRealTime(),
-      hour: this.world.getTimeOfDay(),
-      playerPosition: this.world.player?.model?.position.toArray() ?? null,
-      camera: { type: camera.type, worldMatrix: camera.matrixWorld.toArray(), projectionMatrix: camera.projectionMatrix.toArray() },
-      viewport: { cssWidth: window.innerWidth, cssHeight: window.innerHeight,
-        framebufferWidth: canvas.width, framebufferHeight: canvas.height,
-        nativePixelRatio: window.devicePixelRatio, pixelRatio: this.renderer.instance.getPixelRatio() },
-      settings: { ...performanceOptions, pixelRatio: this.renderer.instance.getPixelRatio() },
-    };
-  }
-
-  private downloadPerformanceReport(): void {
-    if (!this.performanceReport) return;
-    downloadPerformanceReport(this.performanceReport.snapshot({
-      page: { origin: window.location.origin, pathname: window.location.pathname },
-      sourceRevision: null,
-      documentVisibility: document.visibilityState,
-      contextAtDownload: this.performanceReportContext(),
-    }));
   }
 
   private updateOverlay(): void {
     this.timeOfDay.sync();
-    this.cameraDebugState.debugView = this.debugMode;
-
-    for (const controller of this.gui?.controllersRecursive() ?? []) {
-      controller.updateDisplay();
-    }
   }
 
   private mobileContext(gameplayActive: boolean): MobileContext {
-    const context: MobileContext = { movement: false, action: null, back: false, navigation: false, openProject: false };
-    if (this.transitioning || this.preparingScene || this.paperPanel.isOpen || this.houseGuide?.isControllingCamera) return context;
-    if (this.dialogueBox.isOpen) return { ...context, action: "Continue", back: true };
-    if (this.furniture?.isControllingCamera) return { ...context, back: !this.furniture.isPanelOpen };
-    if (this.workshop?.isControllingCamera || this.awards?.isControllingCamera || this.journey?.isControllingCamera) {
+    const context: MobileContext = {
+      movement: false,
+      action: null,
+      back: false,
+      navigation: false,
+      openProject: false,
+    };
+    if (
+      this.transitioning ||
+      this.preparingScene ||
+      this.paperPanel.isOpen ||
+      this.houseGuide?.isControllingCamera
+    )
+      return context;
+    if (this.dialogueBox.isOpen)
+      return { ...context, action: "Continue", back: true };
+    if (this.furniture?.isControllingCamera)
+      return { ...context, back: !this.furniture.isPanelOpen };
+    if (
+      this.workshop?.isControllingCamera ||
+      this.awards?.isControllingCamera ||
+      this.journey?.isControllingCamera
+    ) {
       return { ...context, action: "Details", back: true, navigation: true };
     }
-    if (this.projectBookMode === "reading") return { ...context, navigation: true, back: true, openProject: true };
-    if (this.projectBookMode !== "idle") return { ...context, back: this.projectBookMode !== "returning" };
-    return { ...context, movement: gameplayActive && !this.debugMode, action: gameplayActive ? this.interactionSystem.activeHint : null };
+    if (this.projectBookMode === "reading")
+      return { ...context, navigation: true, back: true, openProject: true };
+    if (this.projectBookMode !== "idle")
+      return { ...context, back: this.projectBookMode !== "returning" };
+    return {
+      ...context,
+      movement: gameplayActive,
+      action: gameplayActive ? this.interactionSystem.activeHint : null,
+    };
   }
 
   private onKeyDown = (event: KeyboardEvent): void => this.handleCommand(event);
 
-  private handleCommand(event: Pick<KeyboardEvent, "code" | "repeat" | "preventDefault">): void {
-    if (this.mobileControls?.isBlocking) { event.preventDefault(); return; }
+  private handleCommand(
+    event: Pick<KeyboardEvent, "code" | "repeat" | "preventDefault">,
+  ): void {
+    if (this.mobileControls?.isBlocking) {
+      event.preventDefault();
+      return;
+    }
     if (this.houseGuide?.isControllingCamera) {
-      if (["Escape", "KeyE", "Enter", "Space", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+      if (
+        [
+          "Escape",
+          "KeyE",
+          "Enter",
+          "Space",
+          "KeyW",
+          "KeyA",
+          "KeyS",
+          "KeyD",
+          "ArrowLeft",
+          "ArrowRight",
+        ].includes(event.code)
+      ) {
         event.preventDefault();
         if (!event.repeat) {
           if (event.code === "Escape") this.houseGuide.skip();
-          else if (["KeyE", "Enter", "Space"].includes(event.code)) this.houseGuide.advance();
+          else if (["KeyE", "Enter", "Space"].includes(event.code))
+            this.houseGuide.advance();
         }
       }
       return;
     }
-    // Furniture focus owns its seat and panel controls, not gameplay input.
+
     if (this.furniture?.isControllingCamera) {
-      if (["Escape", "KeyE", "Enter", "Space", "KeyW", "KeyA", "KeyS", "KeyD", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+      if (
+        [
+          "Escape",
+          "KeyE",
+          "Enter",
+          "Space",
+          "KeyW",
+          "KeyA",
+          "KeyS",
+          "KeyD",
+          "ArrowLeft",
+          "ArrowRight",
+        ].includes(event.code)
+      ) {
         event.preventDefault();
         if (!event.repeat) this.furniture.handleFocusKey(event.code);
       }
@@ -895,11 +617,14 @@ export class Game {
         if (!event.repeat) this.leaveJourneyMap();
       } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
         event.preventDefault();
-        if (!event.repeat) this.journey.selectRelative(event.code === "ArrowRight" ? 1 : -1);
+        if (!event.repeat)
+          this.journey.selectRelative(event.code === "ArrowRight" ? 1 : -1);
       } else if (event.code === "KeyE" || event.code === "Enter") {
         event.preventDefault();
         if (!event.repeat) this.journey.toggleSelection();
-      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+      } else if (
+        ["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)
+      ) {
         event.preventDefault();
       }
       return;
@@ -911,11 +636,14 @@ export class Game {
         if (!event.repeat) this.leaveAwardsExperience();
       } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
         event.preventDefault();
-        if (!event.repeat) this.awards.selectRelative(event.code === "ArrowRight" ? 1 : -1);
+        if (!event.repeat)
+          this.awards.selectRelative(event.code === "ArrowRight" ? 1 : -1);
       } else if (event.code === "KeyE" || event.code === "Enter") {
         event.preventDefault();
         if (!event.repeat) this.awards.toggleSelection();
-      } else if (["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+      } else if (
+        ["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)
+      ) {
         event.preventDefault();
       }
       return;
@@ -933,7 +661,17 @@ export class Game {
         if (!event.repeat) {
           this.workshop.selectRelative(event.code === "ArrowLeft" ? -1 : 1);
         }
-      } else if (["Space", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(event.code)) {
+      } else if (
+        [
+          "Space",
+          "ArrowLeft",
+          "ArrowRight",
+          "KeyW",
+          "KeyA",
+          "KeyS",
+          "KeyD",
+        ].includes(event.code)
+      ) {
         event.preventDefault();
       }
       return;
@@ -966,7 +704,6 @@ export class Game {
         event.preventDefault();
 
         if (!event.repeat) {
-          // Reverse or forward the same Blender morph-target animation.
           void this.activeProjectBook?.turnPage(
             event.code === "ArrowLeft" ? -1 : 1,
           );
@@ -974,9 +711,6 @@ export class Game {
 
         return;
       }
-
-      // Block gameplay controls while the cinematic
-      // camera is focusing or returning.
 
       if (
         event.code === "Space" ||
@@ -1028,14 +762,6 @@ export class Game {
 
     if (event.code === "KeyE") {
       this.interactionSystem.interact();
-
-      return;
-    }
-
-    if (event.code === "KeyC" && performanceOptions.perfDiag) {
-      this.debugMode = !this.debugMode;
-
-      this.updateOverlay();
 
       return;
     }
@@ -1095,8 +821,6 @@ export class Game {
     } catch (error) {
       console.error("Failed to load NPCs:", error);
     } finally {
-      // A failed optional model must not leave the successfully loaded guides
-      // without their conversations and proximity hints.
       this.registerNpcInteractions();
     }
   }
@@ -1108,11 +832,6 @@ export class Game {
 
     this.transitioning = true;
 
-    /*
-     * Store the exact exterior position
-     * so exiting returns us to where we
-     * entered from.
-     */
     this.world.player.getFeetPosition(this.houseReturnPosition);
 
     this.houseReturnRotationY = this.world.player.model.rotation.y;
@@ -1123,13 +842,8 @@ export class Game {
     let entered = false;
 
     try {
-      /*
-       * Completely cover the scene first.
-       */
       await this.sceneTransition.fadeIn("house");
 
-      // Keep light preparation deterministic while the opaque cover is visible.
-      // The clock still ticks, so resuming does not simulate the preparation interval.
       this.preparingScene = true;
 
       house = await this.world.loadHouseInterior();
@@ -1155,11 +869,6 @@ export class Game {
         "YXZ",
       );
 
-      /*
-       * Swap environments while the
-       * cream overlay completely covers
-       * the screen.
-       */
       this.worldAudio.setActive(false);
 
       this.world.setExteriorVisible(false);
@@ -1168,7 +877,6 @@ export class Game {
 
       house.show();
 
-      // Move the REAL Rapier player.
       const spawnForward = new THREE.Vector3(0, 0, 1)
         .applyAxisAngle(new THREE.Vector3(0, 1, 0), spawnRotation.y + Math.PI)
         .multiplyScalar(2);
@@ -1181,24 +889,25 @@ export class Game {
 
       this.thirdPersonCamera?.snap();
 
-      /*
-       * First entry may require shader
-       * compilation.
-       *
-       * Do it while the screen is covered
-       * so there is no visible hitch.
-       */
       this.sceneTransition.setHouseStage("lighting");
       await this.renderer.prepareScene(this.scene, this.playerCamera);
-      const compile = () => this.renderer.instance.compileAsync(this.scene, this.playerCamera);
+      const compile = () =>
+        this.renderer.instance.compileAsync(this.scene, this.playerCamera);
       if (this.furniture) {
-        await this.furniture.prepareLightingVariants(compile, () =>
-          this.workshop?.prepareLightingVariants(compile) ?? Promise.resolve(),
+        await this.furniture.prepareLightingVariants(
+          compile,
+          () =>
+            this.workshop?.prepareLightingVariants(compile) ??
+            Promise.resolve(),
         );
       } else await this.workshop?.prepareLightingVariants(compile);
 
       this.sceneTransition.setHouseStage("finishing");
-      await this.renderer.prepareHighlights(this.scene, this.playerCamera, this.interactionSystem.highlightTargets);
+      await this.renderer.prepareHighlights(
+        this.scene,
+        this.playerCamera,
+        this.interactionSystem.highlightTargets,
+      );
 
       this.insideHouse = true;
       this.preparingScene = false;
@@ -1218,10 +927,7 @@ export class Game {
       this.world.setExteriorLightingEnabled(true);
 
       this.worldAudio.setActive(true);
-      /*
-       * Restore the player if something
-       * failed after teleporting.
-       */
+
       this.world.player.teleport(
         this.houseReturnPosition,
         this.houseReturnRotationY,
@@ -1246,7 +952,7 @@ export class Game {
         this.keyboard.setEnabled(true);
       }
     }
-    // Start only after loading, shader warm-up and the entrance cover complete.
+
     if (entered && this.phase === "playing") this.houseGuide?.start();
   }
 
@@ -1315,22 +1021,28 @@ export class Game {
       console.warn("Animated Projects Book or interaction anchor missing");
     }
 
-    // Reuse the existing Blender workshop stand as an E-key anchor.
-    const workshopStand = house.model.getObjectByName("SEC_WORKSHOP_WeaponStand");
+    const workshopStand = house.model.getObjectByName(
+      "SEC_WORKSHOP_WeaponStand",
+    );
     if (workshopStand) {
       this.workshop = new WorkshopExperience(
-        house.model, workshopStand, this.playerCamera, this.renderer.instance.domElement,
+        house.model,
+        workshopStand,
+        this.playerCamera,
+        this.renderer.instance.domElement,
         () => !this.worldAudio.isMuted,
       );
       this.interactionSystem.register(
-        new WorkshopInteraction(workshopStand, () => this.enterWorkshopExperience()),
+        new WorkshopInteraction(workshopStand, () =>
+          this.enterWorkshopExperience(),
+        ),
       );
     } else {
-      console.warn("Workshop asset SEC_WORKSHOP_WeaponStand not found in house.glb");
+      console.warn(
+        "Workshop asset SEC_WORKSHOP_WeaponStand not found in house.glb",
+      );
     }
 
-    // Awards Hall: inspect the actual physical framed pictures and trophy.
-    // No duplicated geometry or guessed certification claims.
     this.awards = new AwardsExperience(
       house.model,
       this.playerCamera,
@@ -1351,35 +1063,40 @@ export class Game {
       }
     }
 
-    // Cartographer's Trail: interactive symbolic path on the REAL map table.
     const mapTop = house.model.getObjectByName("SEC_MAP_MapTop");
     const mapTable = house.model.getObjectByName("SEC_MAP_Table_Large");
     if (mapTop && mapTable) {
       this.journey = new JourneyMapExperience(
-        house.model, mapTop, this.playerCamera, this.renderer.instance.domElement,
+        house.model,
+        mapTop,
+        this.playerCamera,
+        this.renderer.instance.domElement,
       );
       this.interactionSystem.register(
         new JourneyMapInteraction(mapTable, () => this.enterJourneyMap()),
       );
     } else {
-      console.warn("Journey Map requires SEC_MAP_MapTop and SEC_MAP_Table_Large in house.glb");
+      console.warn(
+        "Journey Map requires SEC_MAP_MapTop and SEC_MAP_Table_Large in house.glb",
+      );
     }
 
-    // Extra cottage furniture: a single system for the remaining physical props.
     this.furniture = new HouseFurnitureInteractions(
       house.model,
       this.playerCamera,
       {
         onFocusStart: (showPlayer = false) => {
           if (
-            this.phase !== "playing" || !this.insideHouse ||
-            this.transitioning || this.houseGuide?.isControllingCamera || this.projectBookMode !== "idle" ||
-            this.paperPanel.isOpen || this.dialogueBox.isOpen
-          ) return false;
-          if (this.debugMode) {
-            this.debugMode = false;
-            this.updateOverlay();
-          }
+            this.phase !== "playing" ||
+            !this.insideHouse ||
+            this.transitioning ||
+            this.houseGuide?.isControllingCamera ||
+            this.projectBookMode !== "idle" ||
+            this.paperPanel.isOpen ||
+            this.dialogueBox.isOpen
+          )
+            return false;
+
           this.keyboard.setEnabled(false);
           this.thirdPersonCamera?.setInputEnabled(false);
           this.renderer.setInteractionOutline(null);
@@ -1392,34 +1109,46 @@ export class Game {
           this.thirdPersonCamera?.snap();
           this.helpButton.setVisible(this.phase === "playing");
           this.keyboard.setEnabled(
-            this.phase === "playing" && this.insideHouse &&
-            !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+            this.phase === "playing" &&
+              this.insideHouse &&
+              !this.transitioning &&
+              !this.paperPanel.isOpen &&
+              !this.dialogueBox.isOpen,
           );
         },
-        onSitStart: (seat, look, couch) => this.world.player.beginSitting(seat, look, couch),
+        onSitStart: (seat, look, couch) =>
+          this.world.player.beginSitting(seat, look, couch),
         onSitEnd: () => this.world.player.endSitting(),
-        onLieStart: bed => this.world.player.beginLying(bed),
+        onLieStart: (bed) => this.world.player.beginLying(bed),
         onLieEnd: () => this.world.player.endSitting(),
         onEndingContact: () => {
-          if (this.phase === "playing" && this.insideHouse && !this.transitioning) {
+          if (
+            this.phase === "playing" &&
+            this.insideHouse &&
+            !this.transitioning
+          ) {
             this.paperPanel.open(createContactContent(), "Let’s talk.");
           }
         },
         isMuted: () => this.worldAudio.isMuted,
       },
     );
-    this.furniture.register((interaction) => this.interactionSystem.register(interaction));
+    this.furniture.register((interaction) =>
+      this.interactionSystem.register(interaction),
+    );
 
-    const steps = houseTourSteps(house.model, book?.model).filter(step =>
-      step.id === "projects" || (step.id === "journey" && this.journey) ||
-      (step.id === "awards" && (this.awards?.exhibitCount ?? 0) > 0) || (step.id === "workshop" && this.workshop),
+    const steps = houseTourSteps(house.model, book?.model).filter(
+      (step) =>
+        step.id === "projects" ||
+        (step.id === "journey" && this.journey) ||
+        (step.id === "awards" && (this.awards?.exhibitCount ?? 0) > 0) ||
+        (step.id === "workshop" && this.workshop),
     );
     this.houseGuide = new HouseFirstVisitGuide(this.playerCamera, steps, {
       approach: house.getSpawn()!.getWorldPosition(new THREE.Vector3()),
       route: new HouseTourPath(this.world.physics, house.model),
-      onTargetChange: target => this.renderer.setInteractionOutline(target),
-      onCameraStart: target => {
-        if (this.debugMode) { this.debugMode = false; this.updateOverlay(); }
+      onTargetChange: (target) => this.renderer.setInteractionOutline(target),
+      onCameraStart: (target) => {
         this.keyboard.setEnabled(false);
         this.thirdPersonCamera?.setInputEnabled(false);
         this.interactionSystem.clear();
@@ -1430,10 +1159,14 @@ export class Game {
       onCameraEnd: () => {
         this.world.player.model.visible = true;
         this.renderer.setInteractionOutline(null);
-        const playable = this.phase === "playing" && this.insideHouse && !this.transitioning &&
-          !this.paperPanel.isOpen && !this.dialogueBox.isOpen;
+        const playable =
+          this.phase === "playing" &&
+          this.insideHouse &&
+          !this.transitioning &&
+          !this.paperPanel.isOpen &&
+          !this.dialogueBox.isOpen;
         this.keyboard.setEnabled(playable);
-        this.thirdPersonCamera?.setInputEnabled(playable && !this.debugMode);
+        this.thirdPersonCamera?.setInputEnabled(playable);
         this.helpButton.setVisible(playable);
       },
     });
@@ -1464,10 +1197,7 @@ export class Game {
       this.world.setExteriorLightingEnabled(true);
 
       this.worldAudio.setActive(true);
-      /*
-       * Return exactly outside where
-       * the visitor entered.
-       */
+
       this.world.player.teleport(
         this.houseReturnPosition,
         this.houseReturnRotationY,
@@ -1499,12 +1229,16 @@ export class Game {
 
   private enterWorkshopExperience(): void {
     const workshop = this.workshop;
-    if (!workshop || this.phase !== "playing" || !this.insideHouse ||
-        this.transitioning || this.houseGuide?.isControllingCamera || this.projectBookMode !== "idle") return;
-    if (this.debugMode) {
-      this.debugMode = false;
-      this.updateOverlay();
-    }
+    if (
+      !workshop ||
+      this.phase !== "playing" ||
+      !this.insideHouse ||
+      this.transitioning ||
+      this.houseGuide?.isControllingCamera ||
+      this.projectBookMode !== "idle"
+    )
+      return;
+
     if (!workshop.enter()) return;
     this.keyboard.setEnabled(false);
     this.thirdPersonCamera?.setInputEnabled(false);
@@ -1517,23 +1251,29 @@ export class Game {
       this.world.player.model.visible = true;
       this.thirdPersonCamera?.snap();
       this.keyboard.setEnabled(
-        this.phase === "playing" && this.insideHouse &&
-        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+        this.phase === "playing" &&
+          this.insideHouse &&
+          !this.transitioning &&
+          !this.paperPanel.isOpen &&
+          !this.dialogueBox.isOpen,
       );
     });
   }
 
   private enterAwardsExperience(): void {
     if (
-      !this.awards || this.phase !== "playing" || !this.insideHouse ||
-      this.transitioning || this.houseGuide?.isControllingCamera || this.projectBookMode !== "idle" ||
-      this.workshop?.isControllingCamera || this.paperPanel.isOpen ||
+      !this.awards ||
+      this.phase !== "playing" ||
+      !this.insideHouse ||
+      this.transitioning ||
+      this.houseGuide?.isControllingCamera ||
+      this.projectBookMode !== "idle" ||
+      this.workshop?.isControllingCamera ||
+      this.paperPanel.isOpen ||
       this.dialogueBox.isOpen
-    ) return;
-    if (this.debugMode) {
-      this.debugMode = false;
-      this.updateOverlay();
-    }
+    )
+      return;
+
     if (!this.awards.enter()) return;
     this.keyboard.setEnabled(false);
     this.thirdPersonCamera?.setInputEnabled(false);
@@ -1548,23 +1288,30 @@ export class Game {
       this.thirdPersonCamera?.snap();
       this.helpButton.setVisible(this.phase === "playing");
       this.keyboard.setEnabled(
-        this.phase === "playing" && this.insideHouse &&
-        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+        this.phase === "playing" &&
+          this.insideHouse &&
+          !this.transitioning &&
+          !this.paperPanel.isOpen &&
+          !this.dialogueBox.isOpen,
       );
     });
   }
 
   private enterJourneyMap(): void {
     if (
-      !this.journey || this.phase !== "playing" || !this.insideHouse ||
-      this.transitioning || this.houseGuide?.isControllingCamera || this.projectBookMode !== "idle" ||
-      this.workshop?.isControllingCamera || this.awards?.isControllingCamera ||
-      this.paperPanel.isOpen || this.dialogueBox.isOpen
-    ) return;
-    if (this.debugMode) {
-      this.debugMode = false;
-      this.updateOverlay();
-    }
+      !this.journey ||
+      this.phase !== "playing" ||
+      !this.insideHouse ||
+      this.transitioning ||
+      this.houseGuide?.isControllingCamera ||
+      this.projectBookMode !== "idle" ||
+      this.workshop?.isControllingCamera ||
+      this.awards?.isControllingCamera ||
+      this.paperPanel.isOpen ||
+      this.dialogueBox.isOpen
+    )
+      return;
+
     if (!this.journey.enter()) return;
     this.keyboard.setEnabled(false);
     this.thirdPersonCamera?.setInputEnabled(false);
@@ -1579,8 +1326,11 @@ export class Game {
       this.thirdPersonCamera?.snap();
       this.helpButton.setVisible(this.phase === "playing");
       this.keyboard.setEnabled(
-        this.phase === "playing" && this.insideHouse &&
-        !this.transitioning && !this.paperPanel.isOpen && !this.dialogueBox.isOpen,
+        this.phase === "playing" &&
+          this.insideHouse &&
+          !this.transitioning &&
+          !this.paperPanel.isOpen &&
+          !this.dialogueBox.isOpen,
       );
     });
   }
@@ -1605,7 +1355,6 @@ export class Game {
       return;
     }
 
-    // Don't interrupt a running paper animation.
     if (
       book.currentState === "opening" ||
       book.currentState === "turning" ||
@@ -1618,25 +1367,14 @@ export class Game {
     this.projectBookMarker = marker;
     this.projectBookMode = "opening";
 
-    // Always render through the gameplay camera
-    // during this cinematic interaction.
-    if (this.debugMode) {
-      this.debugMode = false;
-      this.updateOverlay();
-    }
-
-    // Freeze player and mouse-camera input.
     this.keyboard.setEnabled(false);
     this.thirdPersonCamera?.setInputEnabled(false);
 
-    // Clear the book's proximity outline.
     this.renderer.setInteractionOutline(null);
 
     if (book.currentState === "closed") {
       book.open();
 
-      // If the GLB animation couldn't start,
-      // don't leave the player controls locked.
       if (book.currentState === "closed") {
         this.finishProjectBookReading();
       }
@@ -1644,7 +1382,6 @@ export class Game {
       return;
     }
 
-    // The player may return to a previously opened book.
     this.focusOnProjectBook();
   }
 
@@ -1659,7 +1396,6 @@ export class Game {
 
     this.projectBookMode = "focusing";
 
-    // Keep the character from blocking the close-up.
     this.world.player.model.visible = false;
 
     try {
@@ -1689,8 +1425,6 @@ export class Game {
       return;
     }
 
-    // If the cover is still opening, we haven't
-    // started the cinematic camera movement.
     if (this.projectBookMode === "opening") {
       this.finishProjectBookReading();
       return;
@@ -1712,10 +1446,8 @@ export class Game {
     this.activeProjectBook = null;
     this.projectBookMarker = null;
 
-    // Reveal the player again.
     this.world.player.model.visible = true;
 
-    // Resume normal camera-follow behavior.
     this.thirdPersonCamera?.snap();
 
     this.keyboard.setEnabled(

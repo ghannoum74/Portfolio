@@ -23,40 +23,54 @@ export class TimeOfDay {
   private readonly local: HTMLButtonElement;
   private readonly presets: HTMLButtonElement[];
 
-  constructor(uiRoot: HTMLElement, private readonly clock: WorldClock) {
+  constructor(
+    uiRoot: HTMLElement,
+    private readonly clock: WorldClock,
+  ) {
     this.root = document.createElement("div");
     this.root.className = "world-time";
     this.root.hidden = true;
     this.root.innerHTML = html;
-    this.toggle = this.root.querySelector<HTMLButtonElement>("[data-time-toggle]")!;
+    this.toggle =
+      this.root.querySelector<HTMLButtonElement>("[data-time-toggle]")!;
     this.panel = this.root.querySelector<HTMLElement>("[data-time-panel]")!;
     this.current = this.root.querySelector<HTMLElement>("[data-time-current]")!;
-    this.output = this.root.querySelector<HTMLOutputElement>("[data-time-output]")!;
-    this.slider = this.root.querySelector<HTMLInputElement>("[data-time-slider]")!;
-    this.local = this.root.querySelector<HTMLButtonElement>("[data-time-local]")!;
-    this.presets = [...this.root.querySelectorAll<HTMLButtonElement>("[data-time-hour]")];
+    this.output =
+      this.root.querySelector<HTMLOutputElement>("[data-time-output]")!;
+    this.slider =
+      this.root.querySelector<HTMLInputElement>("[data-time-slider]")!;
+    this.local =
+      this.root.querySelector<HTMLButtonElement>("[data-time-local]")!;
+    this.presets = [
+      ...this.root.querySelectorAll<HTMLButtonElement>("[data-time-hour]"),
+    ];
 
     this.toggle.addEventListener("click", () => {
       this.setOpen(this.panel.hidden === true);
     });
     for (const preset of this.presets) {
-      preset.addEventListener("click", () => this.choose(Number(preset.dataset.timeHour)));
+      preset.addEventListener("click", () =>
+        this.choose(Number(preset.dataset.timeHour)),
+      );
     }
-    this.slider.addEventListener("input", () => this.choose(Number(this.slider.value)));
+    this.slider.addEventListener("input", () =>
+      this.choose(Number(this.slider.value)),
+    );
     this.local.addEventListener("click", () => {
       this.clock.setTimeOfDay(null);
       this.sync();
     });
-    // Space/Enter and the game's E/W/A/S/D shortcuts belong to this UI while focused.
-    this.root.addEventListener("keydown", event => {
+
+    this.root.addEventListener("keydown", (event) => {
       event.stopPropagation();
       if (event.key === "Escape" && !this.panel.hidden) {
         event.preventDefault();
         this.setOpen(false, true);
       }
     });
-    this.root.addEventListener("focusout", event => {
-      if (!this.root.contains(event.relatedTarget as Node | null)) this.setOpen(false);
+    this.root.addEventListener("focusout", (event) => {
+      if (!this.root.contains(event.relatedTarget as Node | null))
+        this.setOpen(false);
     });
     document.addEventListener("pointerdown", this.onOutsidePointer);
     uiRoot.appendChild(this.root);
@@ -68,7 +82,8 @@ export class TimeOfDay {
     this.root.hidden = !visible;
     if (!visible) {
       this.setOpen(false);
-      if (this.root.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
+      if (this.root.contains(document.activeElement))
+        (document.activeElement as HTMLElement)?.blur();
     }
   }
 
@@ -76,15 +91,24 @@ export class TimeOfDay {
     const hour = this.clock.getTimeOfDay();
     const realTime = this.clock.isUsingRealTime();
     const time = formatHour(hour);
-    const preset = !realTime && this.presets.find(button => Math.abs(Number(button.dataset.timeHour) - hour) < 0.005);
-    const caption = realTime ? `Local · ${time}` : preset ? `${preset.textContent?.trim()} · ${time}` : time;
+    const preset =
+      !realTime &&
+      this.presets.find(
+        (button) => Math.abs(Number(button.dataset.timeHour) - hour) < 0.005,
+      );
+    const caption = realTime
+      ? `Local · ${time}`
+      : preset
+        ? `${preset.textContent?.trim()} · ${time}`
+        : time;
     this.current.textContent = caption;
     this.toggle.setAttribute("aria-label", `Change world time, ${caption}`);
     this.output.textContent = time;
     this.slider.value = String(hour);
     this.slider.setAttribute("aria-valuetext", time);
     this.local.setAttribute("aria-pressed", String(realTime));
-    for (const button of this.presets) button.setAttribute("aria-pressed", String(button === preset));
+    for (const button of this.presets)
+      button.setAttribute("aria-pressed", String(button === preset));
   }
 
   destroy(): void {

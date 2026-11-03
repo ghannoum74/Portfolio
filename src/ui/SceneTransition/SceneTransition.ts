@@ -1,7 +1,8 @@
 import "./ScreenTransition.css";
 import houseLoadingHtml from "./HouseLoading.html?raw";
 
-export type HouseLoadingStage = "loading" | "lighting" | "finishing" | "ready" | "error";
+export type HouseLoadingStage =
+  "loading" | "lighting" | "finishing" | "ready" | "error";
 
 const STAGES: Record<HouseLoadingStage, string> = {
   loading: "Bringing the cottage to life…",
@@ -22,7 +23,8 @@ export class SceneTransition {
   private readonly houseLoading: HTMLElement;
   private readonly message: HTMLElement;
   private readonly status: HTMLElement;
-  private readonly reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  private readonly reducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   private messageTimer: number | null = null;
   private messageIndex = 0;
   private houseActive = false;
@@ -34,9 +36,15 @@ export class SceneTransition {
     this.element.className = "scene-transition";
     this.element.setAttribute("aria-hidden", "true");
     this.element.innerHTML = houseLoadingHtml.trim();
-    this.houseLoading = this.element.querySelector<HTMLElement>("[data-house-loading]")!;
-    this.message = this.element.querySelector<HTMLElement>("[data-house-loading-message]")!;
-    this.status = this.element.querySelector<HTMLElement>("[data-house-loading-phase]")!;
+    this.houseLoading = this.element.querySelector<HTMLElement>(
+      "[data-house-loading]",
+    )!;
+    this.message = this.element.querySelector<HTMLElement>(
+      "[data-house-loading-message]",
+    )!;
+    this.status = this.element.querySelector<HTMLElement>(
+      "[data-house-loading-phase]",
+    )!;
 
     parent.appendChild(this.element);
   }
@@ -70,9 +78,10 @@ export class SceneTransition {
     this.status.textContent = STAGES[stage];
     if (stage === "ready" || stage === "error") {
       this.stopMessages();
-      this.message.textContent = stage === "ready"
-        ? "Not a speck of dust. Probably."
-        : "The broom has requested a short break.";
+      this.message.textContent =
+        stage === "ready"
+          ? "Not a speck of dust. Probably."
+          : "The broom has requested a short break.";
     }
   }
 
@@ -82,7 +91,7 @@ export class SceneTransition {
     this.element.classList.remove("is-visible");
 
     await this.wait(this.reducedMotion ? 0 : 450);
-    // A late fade-out must not hide a newer entry/retry.
+
     if (revision !== this.revision) return;
     this.houseActive = false;
     this.houseLoading.hidden = true;

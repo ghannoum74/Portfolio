@@ -46,11 +46,6 @@ export class NpcAnimator {
 
     this.currentAction = this.idleAction;
 
-    /*
-     * Apply the first idle frame immediately.
-     * This keeps far NPCs in a proper idle pose
-     * even while their mixer is paused.
-     */
     this.mixer.update(0);
   }
 

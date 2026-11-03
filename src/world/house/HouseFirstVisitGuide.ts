@@ -23,13 +23,7 @@ type Options = {
   reducedMotion?: boolean;
 };
 type Stage =
-  | "idle"
-  | "intro"
-  | "moving"
-  | "holding"
-  | "returning"
-  | "cover"
-  | "reveal";
+  "idle" | "intro" | "moving" | "holding" | "returning" | "cover" | "reveal";
 
 export const HOUSE_GUIDE_SEEN_KEY = "portfolio.house-first-visit.v2";
 const UP = new THREE.Vector3(0, 1, 0);
@@ -106,7 +100,6 @@ export function houseTourSteps(
   return steps;
 }
 
-/** Fit a contextual, oblique shot; reading close-ups are never used as tour poses. */
 export function houseGuideShot(
   step: HouseGuideStep,
   camera: THREE.PerspectiveCamera,
@@ -174,7 +167,6 @@ export function houseGuideShot(
   return null;
 }
 
-/** A continuous first-entry tour; every available section is shown automatically. */
 export class HouseFirstVisitGuide {
   private stage: Stage = "idle";
   private active = false;
@@ -239,17 +231,13 @@ export class HouseFirstVisitGuide {
     this.attempted = true;
     try {
       if (this.storage?.getItem(HOUSE_GUIDE_SEEN_KEY) === "seen") return false;
-    } catch {
-      /* Storage can be blocked. */
-    }
+    } catch {}
     this.steps = this.steps.filter((step) => this.shot(step));
     if (!this.steps.length) return false;
     this.createUi();
     try {
       this.storage?.setItem(HOUSE_GUIDE_SEEN_KEY, "seen");
-    } catch {
-      /* Once in this Game instance when storage is blocked. */
-    }
+    } catch {}
     this.savedPosition.copy(this.camera.position);
     this.savedRotation.copy(this.camera.quaternion);
     this.active = true;
@@ -267,7 +255,6 @@ export class HouseFirstVisitGuide {
     return true;
   }
 
-  /** Advance during a pause; movement is never replaced by an abrupt jump. */
   advance(): void {
     if (
       !this.active ||
@@ -299,7 +286,6 @@ export class HouseFirstVisitGuide {
     this.duration = 0.2;
   }
 
-  /** Scene changes restore the exact previous view synchronously. */
   cancel(): void {
     if (!this.active) return;
     this.restoreCamera();

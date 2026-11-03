@@ -95,7 +95,7 @@ export class AwardsExperience {
           depthWrite: false,
         }),
       );
-      // Small light reflected near the physical display, not an extra treasure object.
+
       const glimmerWorld = center
         .clone()
         .add(new THREE.Vector3(0, size.y * 0.33, 0));
@@ -179,7 +179,6 @@ export class AwardsExperience {
     return this.exhibits.length;
   }
 
-  /** Open the first available milestone directly from any frame or trophy. */
   enter(): boolean {
     if (this.modeState !== "idle" || this.exhibits.length === 0) return false;
     this.camera.updateMatrixWorld(true);
@@ -199,7 +198,6 @@ export class AwardsExperience {
     return true;
   }
 
-  /** Starts return immediately, even if a different cinematic shot is moving. */
   leave(onComplete: () => void): void {
     if (this.modeState === "idle" || this.modeState === "leaving") return;
     this.modeState = "leaving";
@@ -287,7 +285,7 @@ export class AwardsExperience {
       }
     }
     if (this.modeState !== "active") return;
-    // Read layout once before hover DOM writes; picking still runs for every active frame.
+
     const rect = this.pointerIn ? this.canvas.getBoundingClientRect() : null;
     this.hoveredIndex = rect
       ? this.pick(this.pointerX, this.pointerY, rect)
@@ -298,12 +296,28 @@ export class AwardsExperience {
       this.hint.classList.toggle("is-visible", hovering);
     if (hovering && rect) {
       const exhibit = this.exhibits[this.hoveredIndex!];
-      const screen = this.hintPosition.copy(exhibit.center).project(this.camera);
-      const left = THREE.MathUtils.clamp(rect.left + ((screen.x + 1) * rect.width) / 2, 60, innerWidth - 60);
-      const top = THREE.MathUtils.clamp(rect.top + ((1 - screen.y) * rect.height) / 2 - 72, 30, innerHeight - 60);
-      // Cache desired numbers: CSSOM may round a pixel string when reading it back.
-      if (this.hintLeft !== left) { this.hint.style.left = `${left}px`; this.hintLeft = left; }
-      if (this.hintTop !== top) { this.hint.style.top = `${top}px`; this.hintTop = top; }
+      const screen = this.hintPosition
+        .copy(exhibit.center)
+        .project(this.camera);
+      const left = THREE.MathUtils.clamp(
+        rect.left + ((screen.x + 1) * rect.width) / 2,
+        60,
+        innerWidth - 60,
+      );
+      const top = THREE.MathUtils.clamp(
+        rect.top + ((1 - screen.y) * rect.height) / 2 - 72,
+        30,
+        innerHeight - 60,
+      );
+
+      if (this.hintLeft !== left) {
+        this.hint.style.left = `${left}px`;
+        this.hintLeft = left;
+      }
+      if (this.hintTop !== top) {
+        this.hint.style.top = `${top}px`;
+        this.hintTop = top;
+      }
     }
   }
 
@@ -376,7 +390,7 @@ export class AwardsExperience {
       .clone()
       .addScaledVector(this.approach, distance);
     position.y += 0.22;
-    // Slight over-the-shoulder offset leaves breathing room for the small plaque.
+
     position.add(
       new THREE.Vector3(this.approach.z, 0, -this.approach.x).multiplyScalar(
         0.22,
@@ -426,7 +440,11 @@ export class AwardsExperience {
     this.duration = duration;
   }
 
-  private pick(x: number, y: number, rect = this.canvas.getBoundingClientRect()): number | null {
+  private pick(
+    x: number,
+    y: number,
+    rect = this.canvas.getBoundingClientRect(),
+  ): number | null {
     if (!rect.width || !rect.height) return null;
     this.pointer.set(
       ((x - rect.left) / rect.width) * 2 - 1,

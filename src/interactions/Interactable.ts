@@ -5,7 +5,6 @@ export interface Interactable {
 
   interactionDistance: number;
 
-  /** Optional distance to an extended object instead of a single point. */
   distanceTo?(position: THREE.Vector3): number;
 
   highlightTarget: THREE.Object3D;

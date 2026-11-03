@@ -114,14 +114,12 @@ export class DialogueBox {
       return;
     }
 
-    // if text still typing reveals it instantly
     if (this.typing) {
       this.finishTyping();
 
       return;
     }
 
-    // move to next line
     if (this.lineIndex < this.lines.length - 1) {
       this.lineIndex++;
 
@@ -130,7 +128,6 @@ export class DialogueBox {
       return;
     }
 
-    // if no more lines
     this.close();
   };
 

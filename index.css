@@ -5,7 +5,6 @@
   --font-root: "Coiny", system-ui;
 }
 
-/* Hide the scrollbar without disabling scrolling. */
 html {
   scrollbar-width: none;
   font-family: var(--font-root);
@@ -16,10 +15,6 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-/*
- * Lock scrolling during loading and gameplay.
- * Scrolling is enabled during the introduction.
- */
 html.is-loading,
 html.is-world {
   overflow: hidden;

@@ -30,7 +30,6 @@ type Callbacks = {
   onContact?: () => void;
 };
 
-/** A small, reusable panel; it has no global listeners or per-frame work. */
 export class DiningPanel {
   private readonly root = document.createElement("section");
   private readonly art = document.createElement("div");

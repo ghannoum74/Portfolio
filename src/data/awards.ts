@@ -6,7 +6,7 @@ export interface AwardEntry {
   description: string;
   footnote: string;
   proofUrl?: string;
-  /** Image placed physically inside an existing frame. */
+
   certificateImage?: string;
   artMarkerName?: string;
 }
@@ -39,7 +39,6 @@ export const AWARD_ENTRIES: readonly AwardEntry[] = [
     title: "Learning through practice",
     description:
       "My learning also includes a full-stack internship with Prodigy InfoTech and courses in React, Next.js, Three.js and Java with object-oriented programming.",
-    footnote:
-      "Web development courses and internship training",
+    footnote: "Web development courses and internship training",
   },
 ];

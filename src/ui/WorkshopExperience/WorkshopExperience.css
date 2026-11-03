@@ -1,4 +1,3 @@
-/* Workshop Phase 2: a small, physical-object-led interface. */
 .workshop-label {
   position: fixed;
   z-index: 92;
@@ -187,7 +186,6 @@
   }
 }
 
-/* Each craft has a restrained accent. No animated borders or intrusive bloom. */
 .workshop-inspector {
   position: fixed;
   overflow: hidden;

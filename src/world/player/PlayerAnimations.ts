@@ -3,7 +3,6 @@ import * as THREE from "three";
 export class PlayerAnimations {
   private actions = new Map<string, THREE.AnimationAction>();
   private lockedActionName?: string;
-  private currentActionName?: string;
   private currentAction?: THREE.AnimationAction;
 
   constructor(private mixer: THREE.AnimationMixer) {
@@ -38,7 +37,6 @@ export class PlayerAnimations {
     nextAction.reset().fadeIn(fadeDuration).play();
 
     this.currentAction = nextAction;
-    this.currentActionName = name;
   }
 
   playOnce(name: string, fadeDuration = 0.2) {

@@ -17,7 +17,6 @@ export class DayNightCycle {
   private formattedSecond = Number.NaN;
   private formattedHour = 0;
 
-  // for debbuging purposes
   private overrideHours: number | null = null;
 
   private readonly horizonSunColor = new THREE.Color(0xff9a5a);
@@ -60,12 +59,6 @@ export class DayNightCycle {
       this.scene.background = new THREE.Color();
     }
 
-    /*
-     * Hide the end of the horizon water.
-     *
-     * The color gets synchronized with
-     * the sky inside applyTime().
-     */
     this.scene.fog = new THREE.Fog(this.daySkyColor, 40, 65);
 
     this.applyTime(this.getCurrentHour());
@@ -88,8 +81,7 @@ export class DayNightCycle {
   private getCurrentHour(): number {
     const timestamp = Date.now();
     const epochSecond = Math.floor(timestamp / 1000);
-    // Formatting returns whole seconds. Reuse only within that wall-clock second,
-    // including when the clock moves backward or jumps while updates are paused.
+
     if (epochSecond === this.formattedSecond) return this.formattedHour;
     const parts = this.timeFormatter.formatToParts(timestamp);
 
@@ -109,68 +101,30 @@ export class DayNightCycle {
   }
 
   private applyTime(hour: number): void {
-    /*
-     * Sun cycle:
-     *
-     * 06:00 -> eastern horizon
-     * 12:00 -> highest point
-     * 18:00 -> western horizon
-     * 00:00 -> below the world
-     */
     const angle = ((hour - 6) / 24) * Math.PI * 2;
 
     const horizontal = Math.cos(angle);
 
     const height = Math.sin(angle);
 
-    /*
-     * +X = sunrise side
-     * -X = sunset side
-     *
-     * Z remains slightly offset so the light
-     * isn't perfectly aligned with one axis.
-     */
     this.sunPivot.position.set(
       horizontal * this.sunRadius,
       height * this.sunRadius,
       10,
     );
 
-    /*
-     * height:
-     *
-     * -1 = deep night
-     *  0 = horizon
-     *  1 = midday
-     *
-     * smoothstep gives us a soft dawn/dusk
-     * rather than lights suddenly switching.
-     */
     const daylight = THREE.MathUtils.smoothstep(height, -0.15, 0.2);
 
-    /*
-     * Strong close to the horizon,
-     * zero once the sun is high.
-     */
     const horizonWarmth =
       1 - THREE.MathUtils.smoothstep(Math.abs(height), 0, 0.45);
 
-    /*
-     * ----- SUN -----
-     */
-
     this.sun.intensity = THREE.MathUtils.lerp(0, 3, daylight);
-    // A zero-intensity sun contributes no light, but Three.js still renders its
-    // shadow map. Keep the map for reuse and restore authored shadows at dawn.
+
     this.sun.castShadow = this.sunShadowsEnabled && daylight > 0;
 
     this.sun.color
       .copy(this.horizonSunColor)
       .lerp(this.daySunColor, 1 - horizonWarmth);
-
-    /*
-     * ----- AMBIENT LIGHT -----
-     */
 
     this.ambientLight.intensity = THREE.MathUtils.lerp(0.22, 1.5, daylight);
 
@@ -178,18 +132,10 @@ export class DayNightCycle {
       .copy(this.nightAmbientColor)
       .lerp(this.dayAmbientColor, daylight);
 
-    /*
-     * ----- SKY -----
-     */
-
     this.calculatedSkyColor
       .copy(this.nightSkyColor)
       .lerp(this.daySkyColor, daylight);
 
-    /*
-     * Add orange/pink near sunrise
-     * and sunset.
-     */
     this.calculatedSkyColor.lerp(this.horizonSkyColor, horizonWarmth * 0.5);
 
     if (this.scene.background instanceof THREE.Color) {

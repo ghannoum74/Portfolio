@@ -7,9 +7,6 @@ import "./ProjectWebsitePreview.css";
 type UVRect = { minU: number; maxU: number; minV: number; maxV: number };
 type Point = [number, number];
 
-/**
- * Modern hover for the REAL textured right-hand page, not an HTML book modal.
- */
 export class ProjectWebsitePreview {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -88,7 +85,6 @@ export class ProjectWebsitePreview {
     return { minU, maxU, minV, maxV };
   }
 
-  /** Convert the drawn browser rectangle to raw Blender page UVs. */
   private frameUV(b: UVRect): UVRect {
     const f = PROJECT_SCREENSHOT_FRAME;
     const du = b.maxU - b.minU;
@@ -124,7 +120,6 @@ export class ProjectWebsitePreview {
     );
   }
 
-  /** Project all four corners of the physical screenshot into screen space. */
   private projectFrame(mesh: THREE.Mesh): Point[] | null {
     const uv = mesh.geometry.getAttribute("uv");
     const position = mesh.geometry.getAttribute("position");
@@ -132,7 +127,6 @@ export class ProjectWebsitePreview {
     if (!b || !uv || !position) return null;
     const f = this.frameUV(b);
 
-    // The supplied Blender book uses a rectangular four-corner page.
     const corner = (u: number, v: number): THREE.Vector3 => {
       let index = 0;
       let best = Infinity;
@@ -192,7 +186,6 @@ export class ProjectWebsitePreview {
     }
   }
 
-  /** Called every frame by Game.ts, only when the book is in reading mode. */
   update(book: AnimatedBook3D | null): void {
     if (!book || book.currentState !== "open" || !this.pointerInside) {
       this.hide();
@@ -224,7 +217,6 @@ export class ProjectWebsitePreview {
       .querySelector("svg")
       ?.setAttribute("viewBox", `0 0 ${vw} ${vh}`);
 
-    // CTA is anchored to the PAGE, not the moving mouse cursor.
     const right = Math.max(...points.map(([x]) => x));
     const bottom = Math.max(...points.map(([, y]) => y));
     this.overlay.style.setProperty(
@@ -241,7 +233,6 @@ export class ProjectWebsitePreview {
     this.overlay.classList.add("is-visible");
   }
 
-  /** Opens directly in a new tab, synchronously within the click or key event. */
   openCurrent(book: AnimatedBook3D | null): boolean {
     if (!book || book.currentState !== "open") return false;
     const url = this.getProjectUrl(book.currentProject);

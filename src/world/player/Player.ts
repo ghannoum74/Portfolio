@@ -27,10 +27,10 @@ export class Player {
   constructor(
     private scene: THREE.Scene,
     private keyboard: Keyboard,
-    private loadingManager: THREE.LoadingManager,
+    loadingManager: THREE.LoadingManager,
     private physics: PhysicsWorld,
     private stairDetector: StairDetector,
-    private readonly onAssetReady?: (url: string) => void,
+    onAssetReady?: (url: string) => void,
   ) {
     this.loader = new AssetLoader(loadingManager, onAssetReady);
   }
@@ -38,17 +38,21 @@ export class Player {
   async load() {
     const [playerAsset, animationAssets] = await Promise.all([
       this.loader.loadGLB(ASSETS.player),
-      Promise.all([
-        ASSETS.animations.idle, ASSETS.animations.walking, ASSETS.animations.walkingBackward,
-        ASSETS.animations.running, ASSETS.animations.runningBackward, ASSETS.animations.jump,
-        ASSETS.animations.ascendingStairs,
-      ].map(url => this.loader.loadGLB(url))),
+      Promise.all(
+        [
+          ASSETS.animations.idle,
+          ASSETS.animations.walking,
+          ASSETS.animations.walkingBackward,
+          ASSETS.animations.running,
+          ASSETS.animations.runningBackward,
+          ASSETS.animations.jump,
+          ASSETS.animations.ascendingStairs,
+        ].map((url) => this.loader.loadGLB(url)),
+      ),
     ]);
 
     this.model = playerAsset.scene;
     this.seatedPose = new SeatedPose(this.model);
-
-    // this.model.scale.setScalar(0.01);
 
     this.model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -92,8 +96,6 @@ export class Player {
       runningBackword,
       jump,
       ascendingStairs,
-      // leftTurn,
-      // rightTurn,
     ] = assets;
 
     this.animations.add("idle", idle.animations[0]);
@@ -112,18 +114,6 @@ export class Player {
       "ascending_stairs",
       this.stripRootTranslation(ascendingStairs.animations[0]),
     );
-
-    // this.animations.add(
-    //   "left_turn",
-    //   leftTurn.animations[0],
-    //   THREE.LoopPingPong,
-    // );
-
-    // this.animations.add(
-    //   "right_turn",
-    //   rightTurn.animations[0],
-    //   THREE.LoopPingPong,
-    // );
   }
 
   updatePhysics(delta: number): void {
@@ -141,19 +131,30 @@ export class Player {
     this.body.syncModel(this.model, this.modelBottomY, interpolationAlpha);
   }
 
-  beginSitting(seat: THREE.Vector3, look: THREE.Vector3, couch?: THREE.Object3D): THREE.Vector3 | false {
-    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive) return false;
+  beginSitting(
+    seat: THREE.Vector3,
+    look: THREE.Vector3,
+    couch?: THREE.Object3D,
+  ): THREE.Vector3 | false {
+    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive)
+      return false;
     this.body.getFeetPosition(this.standingFeet);
     if (!this.seatedPose.begin(seat, look, couch)) return false;
-    // Keep the physics capsule at the clear approach point, outside the sofa.
+
     this.body.teleport(this.standingFeet);
     return this.seatedPose.getCameraTarget(new THREE.Vector3());
   }
 
-  beginLying(bed: THREE.Object3D): { target: THREE.Vector3; headDirection: THREE.Vector3 } | false {
-    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive) return false;
+  beginLying(
+    bed: THREE.Object3D,
+  ): { target: THREE.Vector3; headDirection: THREE.Vector3 } | false {
+    if (!this.body?.isGrounded || !this.seatedPose || this.seatedPose.isActive)
+      return false;
     this.body.getFeetPosition(this.standingFeet);
-    const pose = this.seatedPose.beginLying(bed, this.model.getWorldPosition(new THREE.Vector3()));
+    const pose = this.seatedPose.beginLying(
+      bed,
+      this.model.getWorldPosition(new THREE.Vector3()),
+    );
     if (!pose) return false;
     this.body.teleport(this.standingFeet);
     return pose;
@@ -181,15 +182,15 @@ export class Player {
       return clip;
     }
 
-    const values = track.values; // [x0,y0,z0, x1,y1,z1, ...]
+    const values = track.values;
     const baseX = values[0];
     const baseY = values[1];
     const baseZ = values[2];
 
     for (let i = 0; i < values.length; i += 3) {
-      values[i] = baseX; // lock X to frame-0 value
-      values[i + 1] = baseY; // lock Y to frame-0 value
-      values[i + 2] = baseZ; // lock Z to frame-0 value
+      values[i] = baseX;
+      values[i + 1] = baseY;
+      values[i + 2] = baseZ;
     }
 
     return clip;

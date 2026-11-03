@@ -16,7 +16,6 @@ export class StairDetector {
   constructor(environment: THREE.Object3D) {
     environment.updateMatrixWorld(true);
 
-    // Add more staircase IDs here when needed.
     const staircaseIds = ["01", "02"];
 
     for (const id of staircaseIds) {
@@ -61,14 +60,7 @@ export class StairDetector {
         uphillDirection,
       });
 
-      // Hide the detection mesh.
       zone.visible = false;
-
-      console.log(`Staircase ${id} initialized`, {
-        bottom: bottomPosition,
-        top: topPosition,
-        uphillDirection,
-      });
     }
   }
 
@@ -85,18 +77,14 @@ export class StairDetector {
     this.horizontalMovement.normalize();
 
     for (const zone of this.zones) {
-      // Convert the player's world position into
-      // this staircase's local coordinate system.
       this.localPosition.copy(playerPosition);
 
       zone.mesh.worldToLocal(this.localPosition);
 
-      // Check whether the player is inside this zone.
       if (!zone.bounds.containsPoint(this.localPosition)) {
         continue;
       }
 
-      // Check whether movement is toward the top.
       const dot = this.horizontalMovement.dot(zone.uphillDirection);
 
       if (dot > 0.55) {

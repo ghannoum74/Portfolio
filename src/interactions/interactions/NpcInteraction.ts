@@ -67,7 +67,6 @@ export class NpcInteraction implements Interactable {
 
     const directionX = this.playerWorldPosition.x - this.npcWorldPosition.x;
     const directionZ = this.playerWorldPosition.z - this.npcWorldPosition.z;
-    const directionY = this.playerWorldPosition.y - this.npcWorldPosition.y;
 
     this.npc.model.rotation.y = Math.atan2(directionX, directionZ);
   }

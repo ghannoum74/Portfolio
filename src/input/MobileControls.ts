@@ -14,7 +14,6 @@ const ICONS = {
     '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M18 10v4M5 3h10m0 0-2-2m2 2-2 2"/>',
 } as const;
 
-/** Finger travel in CSS pixels, deliberately larger than the displayed knob. */
 export const TOUCH_STICK = { radius: 84, runEnter: 78, runExit: 64 } as const;
 
 function shortAction(action: string): string {
@@ -36,7 +35,6 @@ export type MobileContext = {
   openProject: boolean;
 };
 
-/** Touch UI feeds the same commands and movement state as the keyboard. */
 export class MobileControls {
   private readonly media = window.matchMedia("(pointer: coarse)");
   private readonly root = document.createElement("div");
@@ -238,8 +236,7 @@ export class MobileControls {
     button.append(symbol, caption);
     if (icon === "action") this.actionCaption = caption;
     let touchedAt = -Infinity;
-    // Explicit touch release also works for the second finger while the first
-    // holds the movement pad. Keep this a user gesture for links/fullscreen.
+
     button.addEventListener("pointerup", (event) => {
       if (event.pointerType !== "touch") return;
       event.preventDefault();
@@ -334,7 +331,6 @@ export class MobileControls {
     this.syncViewport();
   };
 
-  /** Must be called directly by a visitor's tap; unsupported APIs are optional. */
   async requestLandscape(): Promise<void> {
     if (!this.isTouch || this.destroyed) return;
     try {
@@ -344,17 +340,13 @@ export class MobileControls {
       ) {
         await document.documentElement.requestFullscreen();
       }
-    } catch {
-      /* Manual rotation remains available when fullscreen is refused. */
-    }
+    } catch {}
     try {
       const orientation = screen.orientation as ScreenOrientation & {
         lock?: (orientation: string) => Promise<void>;
       };
       if (!this.destroyed) await orientation?.lock?.("landscape");
-    } catch {
-      /* Keep the landscape guard instead of pretending the lock worked. */
-    }
+    } catch {}
     if (!this.destroyed) this.syncViewport();
   }
 
@@ -372,7 +364,7 @@ export class MobileControls {
     event.preventDefault();
     event.stopPropagation();
     this.pointer = event.pointerId;
-    // Keep the complete pad on screen, including notched/short landscape screens.
+
     this.originX = event.clientX;
     this.originY = event.clientY;
     this.pad.style.left = `${Math.max(60, Math.min(window.innerWidth * 0.45 - 55, event.clientX))}px`;

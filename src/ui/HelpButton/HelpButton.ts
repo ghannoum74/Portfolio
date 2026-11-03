@@ -29,6 +29,5 @@ export class HelpButton {
 
   setVisible(visible: boolean): void {
     this.button.hidden = !visible;
-    console.log(visible);
   }
 }

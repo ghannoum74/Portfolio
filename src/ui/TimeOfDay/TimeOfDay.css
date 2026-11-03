@@ -146,7 +146,6 @@
   visibility: visible;
 }
 
-/* Leave the mobile fullscreen control in its existing top-right position. */
 .has-touch-controls .world-time {
   right: max(122px, calc(env(safe-area-inset-right) + 112px));
 }

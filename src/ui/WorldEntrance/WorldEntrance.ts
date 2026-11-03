@@ -17,7 +17,6 @@ export class WorldEntrance {
 
   private state: EntranceState = "idle";
 
-  // Created only while the introduction is active.
   private lenis: Lenis | null = null;
 
   private readonly mask: OrganicPortalMask;
@@ -37,7 +36,9 @@ export class WorldEntrance {
     }
 
     this.mask = new OrganicPortalMask(shape);
-    document.querySelector("[data-enter-world]")?.addEventListener("click", this.onEnter);
+    document
+      .querySelector("[data-enter-world]")
+      ?.addEventListener("click", this.onEnter);
 
     this.renderProgress(0);
   }
@@ -58,42 +59,27 @@ export class WorldEntrance {
     this.finish();
   };
 
-  /**
-   * Start scrolling only after the world
-   * has loaded and the loading screen is gone.
-   */
   activate(): void {
     if (this.state !== "idle") return;
 
     this.state = "active";
 
-    // Start at the beginning of the introduction.
     window.scrollTo(0, 0);
 
-    // Unlock native document scrolling.
     document.documentElement.classList.remove("is-loading");
 
-    // Lenis controls the window's scroll position.
     this.lenis = new Lenis({
       smoothWheel: true,
 
-      // Smaller values produce a longer,
-      // smoother trailing effect.
       lerp: 0.05,
 
-      // Game.ts already has a render loop.
-      // Do not start a second one.
       autoRaf: false,
 
-      // Keep normal native touch scrolling.
       syncTouch: false,
 
-      // Honor the visitor's accessibility preference.
       respectReducedMotion: true,
     });
 
-    // Update the portal whenever Lenis changes
-    // the actual scroll position.
     this.lenis.on("scroll", this.onSmoothScroll);
 
     window.addEventListener("resize", this.onResize);
@@ -101,12 +87,6 @@ export class WorldEntrance {
     this.update();
   }
 
-  /**
-   * Called from the existing Three.js game loop.
-   *
-   * Lenis expects a timestamp in milliseconds,
-   * not your game's delta in seconds.
-   */
   raf(time: number): void {
     if (this.state !== "active") return;
 
@@ -131,8 +111,6 @@ export class WorldEntrance {
 
     const travel = Math.max(this.section.offsetHeight - window.innerHeight, 1);
 
-    // Progress uses the actual, smoothed
-    // scroll position rather than wheel input.
     const progress = this.clamp(-rect.top / travel);
 
     if (this.reducedMotion && progress > 0.02) {
@@ -142,8 +120,6 @@ export class WorldEntrance {
 
     this.renderProgress(progress);
 
-    // Finish only when the animated scroll
-    // has reached the end of the introduction.
     if (progress >= 0.995) {
       this.finish();
     }
@@ -158,38 +134,26 @@ export class WorldEntrance {
 
     this.portal.style.setProperty("--entrance-opacity", String(opacity));
 
-    /*
-     * The camera receives exactly the same progress
-     * as the SVG world reveal.
-     */
     this.options.onProgress?.(revealProgress);
   }
 
   private finish(): void {
     if (this.state !== "active") return;
 
-    // Prevent repeated completion callbacks.
     this.state = "complete";
 
-    // Remove scroll momentum before changing
-    // document height and locking scrolling.
     this.destroyLenis();
 
     window.removeEventListener("resize", this.onResize);
 
-    // Guarantee the exact final visual state.
     this.renderProgress(1);
 
-    // The portal becomes fixed and full-screen.
     this.section.classList.add("world-entrance_complete");
 
     document.documentElement.classList.add("is-world");
 
-    // Safe now because the world is fixed.
     window.scrollTo(0, 0);
 
-    // Paint the full-screen world before
-    // Game.ts opens the rules dialog.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         this.options.onComplete();
@@ -213,7 +177,9 @@ export class WorldEntrance {
   }
 
   destroy(): void {
-    document.querySelector("[data-enter-world]")?.removeEventListener("click", this.onEnter);
+    document
+      .querySelector("[data-enter-world]")
+      ?.removeEventListener("click", this.onEnter);
     this.destroyLenis();
 
     window.removeEventListener("resize", this.onResize);
