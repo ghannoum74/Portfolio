@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { NpcDialogue } from "./NpcData";
 import { NpcAnimator } from "./NpcAnimator";
+import type { NpcCollider } from "./NpcCollider";
 
 export interface Npc {
   id: string;
@@ -19,4 +20,6 @@ export interface Npc {
   shadowMeshes: THREE.Mesh[];
 
   shadowsEnabled: boolean;
+
+  collision: NpcCollider | null;
 }

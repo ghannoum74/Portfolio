@@ -1,0 +1,92 @@
+<section
+  class="house-loading"
+  data-house-loading
+  hidden
+  aria-label="Preparing the cottage"
+>
+  <svg
+    class="house-loading__art"
+    viewBox="0 0 360 240"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <ellipse cx="180" cy="218" rx="139" ry="8" fill="#5c4534" opacity=".08" />
+    <g
+      stroke="#5c4534"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <!-- A slightly crooked cottage, drawn with the same ink as the UI. -->
+      <path d="M57 104 126 43l69 61v105H57Z" fill="#f9efda" />
+      <path d="m43 109 83-77 84 77-14 4-70-63-70 63Z" fill="#bda078" />
+      <path d="M154 58V30h19v46" fill="#d6bd94" />
+      <path d="M88 209v-61a27 27 0 0 1 54 0v61" fill="#8fa58c" />
+      <path d="M115 124v85M95 156h39M95 181h39" opacity=".3" />
+      <circle cx="132" cy="172" r="3" fill="#d4b566" />
+      <path d="M80 212h72" stroke-width="5" />
+      <circle cx="167" cy="133" r="15" fill="#c7d9d0" />
+      <path d="M152 133h30m-15-15v30" />
+      <path d="m66 207 10 1m91 1 20-1" opacity=".3" />
+
+      <!-- The broom is taking its new hospitality duties very seriously. -->
+      <g class="house-loading__broom">
+        <path d="m241 176 35-105a5 5 0 0 0-9-3l-37 105" fill="#b99060" />
+        <path d="m224 170 25 8 7 34c-17 5-34 1-46-12Z" fill="#d9b86b" />
+        <path d="m224 170 25 8 2 9-32-10Z" fill="#7a9a89" />
+        <path
+          d="m226 182-8 20m15-17-4 22m12-19-1 22m7-20 2 19"
+          opacity=".45"
+          stroke-width="2"
+        />
+        <circle cx="229" cy="190" r="1.8" fill="#5c4534" stroke="none" />
+        <circle cx="242" cy="194" r="1.8" fill="#5c4534" stroke="none" />
+        <path d="m231 199 5 3 5-1" stroke-width="2" />
+      </g>
+      <g
+        class="house-loading__dust house-loading__dust--one"
+        fill="#d8c49c"
+        stroke-width="2"
+      >
+        <path d="M184 211c-6-1-8-7-4-10 0-8 11-10 14-3 8-1 12 10 3 13Z" />
+        <path d="m183 198-3-5m10 4 2-5" />
+      </g>
+      <g
+        class="house-loading__dust house-loading__dust--two"
+        fill="#d8c49c"
+        stroke-width="2"
+      >
+        <circle cx="201" cy="208" r="3" />
+        <circle cx="210" cy="201" r="2" />
+        <circle cx="204" cy="192" r="1" />
+      </g>
+      <path
+        class="house-loading__swoosh"
+        d="m272 183 13-7m-10 18 16-1"
+        opacity=".35"
+        stroke-width="2"
+      />
+    </g>
+  </svg>
+
+  <div class="house-loading__copy">
+    <p class="house-loading__eyebrow">ONE MOMENT, TRAVELER</p>
+    <h2>Tidying up the cottage…</h2>
+    <p class="house-loading__message" data-house-loading-message>
+      Hiding the laundry. Please don't open that cupboard.
+    </p>
+    <p
+      class="house-loading__phase"
+      data-house-loading-phase
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      Bringing the cottage to life…
+    </p>
+    <div class="house-loading__dots" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</section>

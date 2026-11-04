@@ -69,6 +69,21 @@ export function batchHouseBeams(
         const geometry = mesh.geometry.clone();
         temporary.push(geometry);
         deinterleaveGeometry(geometry);
+        // Meshopt may store these in normalized integer buffers. Decode before
+        // baking TRS: transformed positions must not be written back into the
+        // bounded integer range. Keep UV/color/index storage and source meshes.
+        for (const name of ["position", "normal", "tangent"]) {
+          const attribute = geometry.getAttribute(name);
+          if (!attribute || (attribute.array instanceof Float32Array && !attribute.normalized)) continue;
+          const values = new Float32Array(attribute.count * attribute.itemSize);
+          for (let i = 0; i < attribute.count; i++) {
+            values[i * attribute.itemSize] = attribute.getX(i);
+            values[i * attribute.itemSize + 1] = attribute.getY(i);
+            values[i * attribute.itemSize + 2] = attribute.getZ(i);
+            if (attribute.itemSize === 4) values[i * attribute.itemSize + 3] = attribute.getW(i);
+          }
+          geometry.setAttribute(name, new THREE.BufferAttribute(values, attribute.itemSize));
+        }
         geometry.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverseRoot, mesh.matrixWorld));
       }
       const geometry = mergeGeometries(temporary);

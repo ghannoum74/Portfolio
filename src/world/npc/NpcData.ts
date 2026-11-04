@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import { ASSETS } from "../../loaders/AssetManifest";
+import type { NpcCapsuleDefinition } from "./NpcCollider";
 
 export type NpcTalkAnimation = "talking_1" | "talking_2" | "talking_3";
 
@@ -26,71 +27,69 @@ export interface NpcDefinition {
 
   scale?: number;
 
+  collision: NpcCapsuleDefinition;
+
   dialogues: readonly NpcDialogue[];
 }
 
+// Local-space capsules measured against the current GLBs in their initial idle
+// pose. They are physics-only and do not depend on world.blend or extra meshes.
 export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
   {
     id: "frequenc",
-    name: "Frequenc Teammate",
+    name: "Frequenc · Career Guide",
     company: "Frequenc",
     asset: ASSETS.characters.frequenc,
+    collision: { radius: 0.22, height: 1.311, center: [0, 0.674, 0] },
     position: new THREE.Vector3(2.5, 12.5, 5),
     rotationY: Math.PI,
     scale: 1.3,
     dialogues: [
       [
         {
-          text: "There you are! You've reached the big one. Frequenc. Grab a seat, this is where he levels up from developer to engineer.",
+          text: "This stop covers my work at Frequenc, where I joined as a Full Stack Developer in July 2025.",
           animation: "talking_1",
         },
         {
-          text: "We run a SaaS event management platform, and he owns it end to end: frontend, backend, deployment. He designs the backend in NestJS with modular architecture and dependency injection, so features stay isolated and testable.",
+          text: "I work across the frontend and backend of a SaaS event management platform, building features with the team and maintaining the application.",
           animation: "talking_2",
         },
         {
-          text: "He thinks in system design. Scalability, security, performance and how each change affects the whole system, not just the ticket in front of him.",
+          text: "My work also includes deploying Node and NestJS services on AWS EC2, with security groups, environment configuration and automated deployments.",
           animation: "talking_3",
         },
         {
-          text: "Infrastructure too. He deploys and runs our Node and NestJS services handling security groups, environment configuration and automated deployments. No throwing code over the wall.",
+          text: "Working across the stack means considering how the interface, API and infrastructure fit together, including performance, security and maintainability.",
           animation: "talking_1",
-        },
-        {
-          text: "And here's the part I respect most: he runs our pull request flow. Every PR goes through his review for code quality, patterns and risk before it merges.",
-          animation: "talking_2",
-        },
-        {
-          text: "He also breaks down the work and assigns tasks across the team, so everyone knows what to build and why. He keeps the team moving and the codebase clean at the same time.",
-          animation: "talking_3",
         },
       ],
     ],
   },
   {
     id: "mtc",
-    name: "Medical Platform Teammate",
+    name: "Healthcare · Career Guide",
     company: "Medicals at the Center",
     asset: ASSETS.characters.mtc,
+    collision: { radius: 0.235, height: 1.407, center: [0, 0.744, -0.009] },
     position: new THREE.Vector3(13, 7.8, -4.8),
     rotationY: -Math.PI / 4,
     scale: 1.3,
     dialogues: [
       [
         {
-          text: "Welcome! Quiet here, but don't be fooled. We build a medical platform, and he's part of the team on top of his full-time job.",
+          text: "Since December 2025, I have worked part-time as a Full Stack Developer with Medicals at the Center, alongside my role at Frequenc.",
           animation: "talking_1",
         },
         {
-          text: "On the backend he designs scalable APIs and a relational data model with TypeORM, with clean entity relationships and domain-driven thinking so the schema reflects the real business.",
+          text: "I build APIs and end-to-end features, and model data with TypeORM, including the relationships between entities.",
           animation: "talking_2",
         },
         {
-          text: "The hard part is multi-tenancy. He built tenant-aware data isolation, so one organization can never see another's data. In healthcare that's non-negotiable.",
+          text: "My work includes tenant-aware data isolation: keeping each organization’s information separate within a shared application.",
           animation: "talking_3",
         },
         {
-          text: "Security, data integrity and maintainability decide everything here. He's the kind of engineer you trust with that. And that's the whole journey, so thanks for walking it!",
+          text: "In healthcare software, careful data modeling and attention to security are part of the everyday development work.",
           animation: "talking_1",
         },
       ],
@@ -99,28 +98,25 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
 
   {
     id: "prodigy",
-    name: "Prodigy Guide",
+    name: "Training · Learning Guide",
     company: "Prodigy InfoTech",
     asset: ASSETS.characters.prodigy,
+    collision: { radius: 0.312, height: 1.871, center: [0, 0.980, 0.023] },
     position: new THREE.Vector3(10, 3, -8),
     rotationY: 0,
     dialogues: [
       [
         {
-          text: "Oh, a visitor! I'm guessing you're curious how he got so comfortable across the whole stack. This is where that started.",
+          text: "This stop is about continued learning. My training includes a full-stack internship with Prodigy InfoTech.",
           animation: "talking_1",
         },
         {
-          text: "Prodigy InfoTech was his full-stack training ground: REST APIs, databases, frontend integration, and getting an application from an idea to something actually running.",
+          text: "I have also taken courses in React, Next.js, Three.js and Java with object-oriented programming.",
           animation: "talking_2",
         },
         {
-          text: "He didn't stop there. He kept stacking deep dives on the side: Next.js, React, Three.js (yes, the engine behind this very world) and Java with OOP principles.",
+          text: "Personal projects help me put that learning into practice. Inside the cottage, the Projects Book links to three examples you can try yourself.",
           animation: "talking_3",
-        },
-        {
-          text: "Fun fact: you're standing inside something he built with those skills. Keep exploring!",
-          animation: "talking_1",
         },
       ],
     ],
@@ -128,28 +124,25 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
 
   {
     id: "se-factory",
-    name: "SE Factory Mentor",
+    name: "SE Factory · Learning Guide",
     company: "SE Factory",
     asset: ASSETS.characters.seFactory,
+    collision: { radius: 0.32, height: 1.922, center: [0, 0.989, 0] },
     position: new THREE.Vector3(4, 3, 22),
     rotationY: Math.PI,
     dialogues: [
       [
         {
-          text: "Welcome, traveler. This is where the foundations were laid. SE Factory, 2024.",
+          text: "From April to July 2024, I attended SE Factory’s foundations programme.",
           animation: "talking_1",
         },
         {
-          text: "Before frameworks and cloud, there was computer science. Data structures, algorithms, complexity, how things work under the hood.",
+          text: "It helped strengthen my programming and problem-solving foundations before I moved into professional web development.",
           animation: "talking_2",
         },
         {
-          text: "Frameworks change every year. Fundamentals don't. That's why he can pick up a new stack fast and still make sound decisions in it.",
+          text: "The journey map inside the cottage connects this training with my later frontend and full-stack roles.",
           animation: "talking_3",
-        },
-        {
-          text: "Every good engineer I've met has a solid base. He built his here. Now go see what he built on top of it.",
-          animation: "talking_1",
         },
       ],
     ],
@@ -157,29 +150,26 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
 
   {
     id: "42",
-    name: "42 Peer",
+    name: "42 Beirut · Learning Guide",
     company: "42 Beirut",
     asset: ASSETS.characters.fortyTwo,
+    collision: { radius: 0.264, height: 1.584, center: [0, 0.842, -0.005] },
     position: new THREE.Vector3(16.5, 3, 7.5),
     rotationY: Math.PI,
     scale: 1.3,
     dialogues: [
       [
         {
-          text: "Hey, new face! Careful, this is 42. No teachers, no lectures. Just you, a problem and whoever's sitting next to you.",
+          text: "In February–March 2024, I took part in the four-week C Piscine at 42 Beirut.",
           animation: "talking_1",
         },
         {
-          text: "Abdelrahman spent four brutal weeks in C. Pointers, manual memory management, algorithms, no safety net and no garbage collector to bail him out.",
+          text: "The work covered C functions, pointers, memory management and algorithms, with a strong emphasis on solving problems and learning with peers.",
           animation: "talking_2",
         },
         {
-          text: "When your program segfaults at 2 a.m., you learn to debug systematically. You read, you trace, you reason about memory instead of guessing.",
+          text: "It gave me practice reading unfamiliar code, tracing errors and working through a problem step by step.",
           animation: "talking_3",
-        },
-        {
-          text: "That mindset never left him. It's why he's calm when production acts up. Good luck out there!",
-          animation: "talking_1",
         },
       ],
     ],
@@ -187,56 +177,50 @@ export const NPC_DEFINITIONS: readonly NpcDefinition[] = [
 
   {
     id: "bepro",
-    name: "bePro Collaborator",
+    name: "BePro · Career Guide",
     company: "bePro",
     asset: ASSETS.characters.bePro,
+    collision: { radius: 0.284, height: 1.704, center: [0, 0.877, 0.046] },
     position: new THREE.Vector3(13, 3, 17),
     rotationY: Math.PI,
     dialogues: [
       [
         {
-          text: "Ah, you found bePro! This was his freelance-style chapter. Client projects, real deadlines, real expectations.",
+          text: "From June to November 2025, I worked with BePro as a Full Stack Developer on a project basis.",
           animation: "talking_1",
         },
         {
-          text: "Here he wasn't just a developer on a ticket. He was the whole delivery pipeline: requirements, architecture, frontend, backend, deployment, all on his own.",
+          text: "I delivered custom web and mobile applications, working from requirements through development and deployment.",
           animation: "talking_2",
         },
         {
-          text: "Every client had a different problem, so he had to pick the right tools and structure for each one. Web apps, mobile apps, different stacks. That's trade-off thinking, not copy-paste coding.",
+          text: "That meant connecting the different parts of an application and keeping the original requirements in view throughout delivery.",
           animation: "talking_3",
-        },
-        {
-          text: "That's where full ownership clicked for him. When it's your project, you care about performance, scalability and maintenance before anyone asks. Ready for the next one?",
-          animation: "talking_1",
         },
       ],
     ],
   },
   {
     id: "interphase",
-    name: "Interphase Teammate",
+    name: "Interphase · Career Guide",
     company: "Interphase",
     asset: ASSETS.characters.interphase,
+    collision: { radius: 0.312, height: 1.871, center: [0, 1.004, 0.044] },
     position: new THREE.Vector3(7.5, 3, 12),
     rotationY: Math.PI,
     dialogues: [
       [
         {
-          text: "Hey, you made it all the way up here! Welcome to Interphase. Abdelrahman and I shipped the Populus platform together.",
+          text: "From February to July 2025, I worked as a Front End Developer at Interphase in Tripoli.",
           animation: "talking_1",
         },
         {
-          text: "He owned the Angular frontend. Dashboards, Kanban boards, calendars. Those screens are state-heavy, so he split them into reusable, component-driven modules instead of one-off pages.",
+          text: "I built Angular and SCSS interfaces for Populus, including dashboards, Kanban boards and calendars.",
           animation: "talking_2",
         },
         {
-          text: "Everything was responsive and accessible, too. He treated accessibility as a requirement from day one, not a cleanup task at the end.",
+          text: "The work involved responsive layouts and accessibility, alongside the practical details of building and maintaining interactive screens.",
           animation: "talking_3",
-        },
-        {
-          text: "That's where he learned what production frontend really means: clean architecture, maintainable UI and real users depending on it. Go on, the next stop is where it gets fun.",
-          animation: "talking_1",
         },
       ],
     ],

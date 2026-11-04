@@ -65,7 +65,7 @@ export class ProjectPageTextures {
     return texture;
   }
 
-  private paper(ctx: CanvasRenderingContext2D): void {
+  private paper(ctx: CanvasRenderingContext2D, showHeaderRule = true): void {
     // Soft paper color with a hint of depth at the binding edge.
     const ground = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
     ground.addColorStop(0, COLOR.light);
@@ -84,8 +84,10 @@ export class ProjectPageTextures {
     ctx.strokeStyle = COLOR.hairline;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(EDGE, 181);
-    ctx.lineTo(WIDTH - EDGE, 181);
+    if (showHeaderRule) {
+      ctx.moveTo(EDGE, 181);
+      ctx.lineTo(WIDTH - EDGE, 181);
+    }
     ctx.moveTo(EDGE, HEIGHT - 103);
     ctx.lineTo(WIDTH - EDGE, HEIGHT - 103);
     ctx.stroke();
@@ -191,14 +193,8 @@ export class ProjectPageTextures {
     if (cached) return cached;
 
     const { canvas, ctx } = this.canvas();
-    this.paper(ctx);
+    this.paper(ctx, false);
     const number = this.projectNumber(project);
-
-    // Top folio line.
-    this.label(ctx, "FIELD NOTES  /  PROJECTS", EDGE, 112);
-    ctx.textAlign = "right";
-    this.label(ctx, `NO. ${number}`, WIDTH - EDGE, 112, COLOR.muted);
-    ctx.textAlign = "left";
 
     // Title is the hero. Minimal decorative UI around it.
     ctx.fillStyle = COLOR.ink;

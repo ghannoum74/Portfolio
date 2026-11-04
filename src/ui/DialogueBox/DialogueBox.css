@@ -114,6 +114,10 @@
   animation: dialogue-arrow 800ms ease-in-out infinite alternate;
 }
 
+[data-dialogue-company] {
+  display: none;
+}
+
 @keyframes dialogue-arrow {
   from {
     transform: translateY(-2px);

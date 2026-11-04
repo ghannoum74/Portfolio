@@ -78,9 +78,15 @@ export class World {
       this.ambientLight,
     );
 
-    this.npcManager = new NpcManager(this.scene, this.loadingManager);
+    this.npcManager = new NpcManager(this.scene, this.loadingManager, this.physics, this.onAssetReady);
   }
   async init(): Promise<void> {
+    // Start the interior immediately, but keep its promise/errors outside startup.
+    this.preloadHouseInterior();
+    await Promise.all([this.loadExterior(), this.npcManager.loadStartup()]);
+  }
+
+  private async loadExterior(): Promise<void> {
     // Independent network/decoder work starts together behind the loading screen.
     const [, asset] = await Promise.all([
       this.physics.init(),
@@ -371,7 +377,7 @@ export class World {
   }
 
   preloadHouseInterior(): void {
-    // Optional downloads begin after the essential world/player loading screen.
+    // Optional downloads begin during startup and share work with early entry.
     void this.loadHouseInterior().catch(error => {
       console.warn("House preload failed; entering the house will retry:", error);
     });

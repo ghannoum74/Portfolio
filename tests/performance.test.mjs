@@ -31,6 +31,7 @@ await build({ stdin: {
     export { VisibleAnimationLoop } from './src/core/VisibleAnimationLoop';
     export { Keyboard } from './src/input/Keyboard';
     export { World } from './src/world/World';
+    export { PhysicsWorld } from './src/physics/PhysicsWorld';
     export { Player } from './src/world/player/Player';
     export { NpcManager } from './src/world/npc/NpcManager';
     export { NPC_DEFINITIONS } from './src/world/npc/NpcData';
@@ -46,7 +47,7 @@ await build({ stdin: {
     export { HouseFurnitureInteractions } from './src/world/house/furniture/HouseFurnitureInteractions';`,
   resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts',
 }, outfile: bundle, bundle: true, platform: 'node', format: 'esm', packages: 'external', loader: { '.css': 'empty', '.html': 'text' } });
-const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
+const { FrameProfiler, summarizeTimings, GpuTimer, StaticMeshBatches, StaticTransforms, mapConcurrent, Water, NPC_DEFINITIONS, Keyboard, ClosedSurfaceCulling, isClosedOutwardSurface, VisibleAnimationLoop, HouseStoneLod, HOUSE_STONE_NAMES, EXTERIOR_LOD_NAMES, geometryHash, sha256, HouseInterior, getPerformanceOptions, performanceOptions, Renderer, InteractionHighlight, HouseFurnitureInteractions, batchHouseBeams, World, PhysicsWorld, Player, NpcManager, InteractionHint, WorkshopExperience, WorkshopSound, createWorkshopCue, JourneyMapExperience } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 
 test('normal quality stays enabled with stats opt-in, switches remain independent', () => {
@@ -585,7 +586,7 @@ test('the game loader resolves animated book page names and morph tracks', async
   assert.ok(weights.every(Number.isFinite));
 });
 
-test('beam batches preserve world positions, normals, UVs, material and shadow settings', () => {
+for (const storage of ['float', 'normalized', 'interleaved']) test(`beam batches preserve positions, normals, tangents, UVs and shadows (${storage})`, () => {
   const root = new THREE.Group();
   root.position.set(0, -30, 0);
   root.rotation.y = 0.4;
@@ -597,6 +598,18 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
   const sources = [0, 1].map(i => {
     const geometry = new THREE.BoxGeometry(0.2, 1, 0.2);
     geometry.clearGroups();
+    geometry.computeTangents();
+    if (storage !== 'float') {
+      for (const name of ['position', 'normal', 'tangent']) {
+        const attribute = geometry.getAttribute(name);
+        const values = Int16Array.from(attribute.array, value => Math.round(value * 32767));
+        if (storage === 'interleaved') {
+          const stride = attribute.itemSize + 1, interleaved = new Int16Array(attribute.count * stride);
+          for (let index = 0; index < attribute.count; index++) interleaved.set(values.subarray(index * attribute.itemSize, (index + 1) * attribute.itemSize), index * stride + 1);
+          geometry.setAttribute(name, new THREE.InterleavedBufferAttribute(new THREE.InterleavedBuffer(interleaved, stride), attribute.itemSize, 1, true));
+        } else geometry.setAttribute(name, new THREE.Int16BufferAttribute(values, attribute.itemSize, true));
+      }
+    }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `BEAM_CORNER_${i}`;
     mesh.position.set(i, 2, 3);
@@ -608,7 +621,7 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     return mesh;
   });
   root.updateWorldMatrix(true, true);
-  const expectedPositions = [], expectedNormals = [], expectedUVs = [];
+  const expectedPositions = [], expectedNormals = [], expectedTangents = [], expectedUVs = [];
   for (const mesh of sources) {
     const position = mesh.geometry.getAttribute('position');
     const normal = mesh.geometry.getAttribute('normal');
@@ -617,6 +630,8 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     for (let i = 0; i < position.count; i++) {
       expectedPositions.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld));
       expectedNormals.push(new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix));
+      const tangent = mesh.geometry.getAttribute('tangent');
+      expectedTangents.push({ direction: new THREE.Vector3().fromBufferAttribute(tangent, i).transformDirection(mesh.matrixWorld), w: tangent.getW(i) });
       expectedUVs.push([uv.getX(i), uv.getY(i)]);
     }
   }
@@ -633,6 +648,9 @@ test('beam batches preserve world positions, normals, UVs, material and shadow s
     const actualNormal = new THREE.Vector3().fromBufferAttribute(normal, i).applyNormalMatrix(normalMatrix);
     assert.ok(actualPosition.distanceTo(expectedPositions[i]) < 0.000002);
     assert.ok(actualNormal.distanceTo(expectedNormals[i]) < 0.000002);
+    const tangent = batch.geometry.getAttribute('tangent');
+    assert.ok(new THREE.Vector3().fromBufferAttribute(tangent, i).transformDirection(batch.matrixWorld).distanceTo(expectedTangents[i].direction) < 0.000002);
+    assert.equal(tangent.getW(i), expectedTangents[i].w);
     assert.deepEqual([uv.getX(i), uv.getY(i)], expectedUVs[i]);
   }
   assert.equal(batch.material, material);
@@ -1689,17 +1707,21 @@ test('bounded loading preserves result order and drains started work before reje
   assert.deepEqual(started, [0, 1]); assert.equal(active, 0);
 });
 
-test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachment', async () => {
+test('NPC loading is deduplicated, bounded, ordered and preserves indoor detachment', async t => {
   const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let requests = 0, active = 0, peak = 0;
   Object.assign(manager, { scene, npcs: [], visible: false,
+    physics,
     loadAnimations: async () => clips,
     loader: { loadGLB: async () => {
       requests++; peak = Math.max(peak, ++active); await new Promise(resolve => setImmediate(resolve)); active--;
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   const first = manager.load(); assert.equal(manager.load(), first); await first;
   assert.equal(requests, NPC_DEFINITIONS.length); assert.equal(peak, 2);
   assert.deepEqual(manager.npcs.map(npc => npc.id), NPC_DEFINITIONS.map(definition => definition.id));
@@ -1825,17 +1847,21 @@ test('normal renderer entry keeps stats and legacy postprocessing out of its sta
   assert.ok(Object.values(outputs).some(output => Object.keys(output.inputs).some(input => input.endsWith('/OutlinePass.js'))));
 });
 
-test('a failed NPC load can retry without partial characters or duplicate registrations', async () => {
+test('a failed NPC load can retry without partial characters or duplicate registrations', async t => {
   const manager = Object.create(NpcManager.prototype), scene = new THREE.Scene();
+  const physics = new PhysicsWorld(); await physics.init();
+  t.after(() => physics.world.free());
   const clips = Object.fromEntries(['idle', 'talking_1', 'talking_2', 'talking_3'].map(name => [name, new THREE.AnimationClip(name, 1, [])]));
   let calls = 0;
   Object.assign(manager, { scene, npcs: [], visible: true, loadAnimations: async () => clips,
+    physics,
     loader: { loadGLB: async () => {
       const request = ++calls; await new Promise(resolve => setImmediate(resolve));
       if (request === 1) throw new Error('network failed');
       return { scene: new THREE.Group() };
     } },
   });
+  manager.startupLoader = manager.loader;
   await assert.rejects(manager.load(), /network failed/); assert.equal(manager.npcs.length, 0);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);
   await manager.load(); assert.equal(manager.npcs.length, NPC_DEFINITIONS.length);

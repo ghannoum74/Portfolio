@@ -566,7 +566,7 @@ export class WorkshopExperience {
       this.selectedIndex = index;
       this.artifacts[index].pulse = 1;
       if (playSound) this.sound.play("select", index);
-      this.renderPanel(this.artifacts[index].skill, index);
+      this.renderPanel(this.artifacts[index].skill);
       this.panel.classList.add("is-visible");
       this.panel.animate(
         [
@@ -580,19 +580,10 @@ export class WorkshopExperience {
     this.updateControlHint();
   }
 
-  private renderPanel(skill: WorkshopSkill, index: number): void {
+  private renderPanel(skill: WorkshopSkill): void {
     // Data is text-only; never insert project data into innerHTML.
     this.panel.replaceChildren();
     this.panel.dataset.craft = skill.id;
-    const top = document.createElement("div");
-    top.className = "workshop-inspector_topline";
-    const eyebrow = document.createElement("span");
-    eyebrow.textContent = skill.eyebrow;
-    const count = document.createElement("span");
-    count.className = "workshop-inspector_count";
-    count.textContent = `${String(index + 1).padStart(2, "0")} / ${String(this.artifacts.length).padStart(2, "0")}`;
-    top.append(eyebrow, count);
-
     const artifactName = document.createElement("p");
     artifactName.className = "workshop-inspector_artifact";
     artifactName.textContent = skill.artifact;
@@ -611,7 +602,7 @@ export class WorkshopExperience {
     const note = document.createElement("p");
     note.className = "workshop-inspector_note";
     note.textContent = skill.note;
-    this.panel.append(top, artifactName, name, desc, stack, note);
+    this.panel.append(artifactName, name, desc, stack, note);
   }
 
   private updateControlHint(): void {

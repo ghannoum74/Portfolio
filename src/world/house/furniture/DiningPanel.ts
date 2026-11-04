@@ -12,7 +12,7 @@ export const POTIONS: readonly Potion[] = [
 const BOOKS = [
   { name: "Building Worlds", description: "This portfolio brings together Blender models, Three.js and interaction design to make a world to explore." },
   { name: "Thoughtful Interfaces", description: "A good interaction helps people understand what they can do, and gives them a clear way back." },
-  { name: "A Traveler's Guide", description: "Visit the Projects book, the Workshop, the Journey map and the Awards to discover more of the portfolio." },
+  { name: "A Traveler's Guide", description: "Visit the Projects book, the Workshop, the Journey map and the Learning Milestones to discover more of the portfolio." },
 ] as const;
 
 type Callbacks = { onSelection: () => void; onBrew: (potion: Potion) => void; onClose: () => void };

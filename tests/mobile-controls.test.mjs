@@ -36,12 +36,12 @@ function environment(coarse = true) {
 environment();
 const temporary = await mkdtemp(new URL('../.mobile-test-', import.meta.url));
 const bundle = temporary + '/suite.mjs';
-await build({ stdin: { contents: "export {Keyboard} from './src/input/Keyboard'; export {MobileControls} from './src/input/MobileControls'; export {Game} from './src/core/Game'; export {ThirdPersonCamera} from './src/camera/ThirdPersonCamera'; export {getPerformanceOptions} from './src/core/PerformanceOptions';", resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts' },
+await build({ stdin: { contents: "export {Keyboard} from './src/input/Keyboard'; export {MobileControls} from './src/input/MobileControls'; export {Game} from './src/core/Game'; export {ThirdPersonCamera} from './src/camera/ThirdPersonCamera'; export {getPerformanceOptions, performanceOptions} from './src/core/PerformanceOptions';", resolveDir: fileURLToPath(new URL('..', import.meta.url)), loader: 'ts' },
   bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: bundle,
   loader: { '.css': 'empty', '.html': 'text', '.glsl': 'text' },
   plugins: [{ name: 'css', setup(b) { b.onResolve({ filter: /\.css$/ }, args => ({ path: args.path, namespace: 'css' })); b.onLoad({ filter: /.*/, namespace: 'css' }, () => ({ contents: '', loader: 'js' })); } }],
 });
-const { Keyboard, MobileControls, Game, ThirdPersonCamera, getPerformanceOptions } = await import(pathToFileURL(bundle));
+const { Keyboard, MobileControls, Game, ThirdPersonCamera, getPerformanceOptions, performanceOptions } = await import(pathToFileURL(bundle));
 await rm(temporary, { recursive: true, force: true });
 const pointer = (type, id, x, y, pointerType = 'touch') => Object.assign(new Event(type, { cancelable: true }), { pointerId: id, clientX: x, clientY: y, pointerType, button: 0 });
 const key = (type, code) => window.dispatchEvent(Object.assign(new Event(type), { code, repeat: false }));
@@ -206,4 +206,14 @@ test('the right camera drag stays attached to its own finger while another finge
   assert.equal(follow.dragging, true);
   canvas.dispatchEvent(pointer('pointercancel', 2, 630, 150));
   assert.equal(follow.dragging, false);
+});
+
+// Public visitors should never leave the player camera through the old debug shortcut.
+test('debug camera shortcuts are available only in explicit diagnostics', () => {
+  const f = gameFixture(); f.game.updateOverlay = () => {};
+  const original = performanceOptions.perfDiag;
+  try {
+    performanceOptions.perfDiag = false; f.send('KeyC'); assert.equal(f.game.debugMode, false);
+    performanceOptions.perfDiag = true; f.send('KeyC'); assert.equal(f.game.debugMode, true);
+  } finally { performanceOptions.perfDiag = original; }
 });

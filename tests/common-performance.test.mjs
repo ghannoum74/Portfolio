@@ -225,6 +225,9 @@ test('camera collision reuses fixed-only results and invalidates on movement and
 
 test('world loading starts the essential model before physics initialization completes', async () => {
   const world = new World(new THREE.Scene(), {}, new THREE.LoadingManager());
+  // Isolate exterior ordering; startup-loading.test exercises the other branches.
+  world.preloadHouseInterior = () => {};
+  world.npcManager.loadStartup = async () => {};
   const requested = []; let finishPhysics, failAsset;
   world.physics.init = () => new Promise(resolve => { finishPhysics = resolve; });
   const original = AssetLoader.prototype.loadGLB;
@@ -249,10 +252,11 @@ function cullingWorldFixture() {
   return fixture;
 }
 
-test('world culling overlaps player loading, honors late changes and shares its switch with batches and a later house', async () => {
+test('world culling overlaps player loading, honors late changes and shares its switch with batches and a preloaded house', async () => {
   const { root, meshes, material } = cullingWorldFixture();
   const world = new World(new THREE.Scene(), {}, new THREE.LoadingManager());
   world.physics.init = async () => {}; world.exteriorLodEnabled = false;
+  world.npcManager.loadStartup = async () => {};
   const original = { asset: AssetLoader.prototype.loadGLB, player: Player.prototype.load,
     culling: ClosedSurfaceCulling.create, house: HouseInterior.prototype.load, log: console.log };
   let releasePlayer, releaseAudit, auditWork, pending;
@@ -278,11 +282,11 @@ test('world culling overlaps player loading, honors late changes and shares its 
     assert.deepEqual(world.exteriorSurfaceCulling.stats, { enabled: false, meshes: 2, triangles: 24, materials: 1 });
     assert.deepEqual(world.staticBatches.stats, { sourceMeshes: 2, batches: 1, triangles: 24 });
     const batch = root.getObjectByName('STATIC_BATCH_1'); assert.equal(batch.material.side, THREE.DoubleSide);
-    const house = await world.loadHouseInterior(); assert.deepEqual(houseStates, [false]);
+    const house = await world.loadHouseInterior(); assert.deepEqual(houseStates, [true, false]);
     world.setSurfaceCullingEnabled(true);
     assert.equal(batch.material.side, THREE.FrontSide); assert.equal(material.side, THREE.DoubleSide);
     assert.equal(house.surfaceCullingEnabled, true);
-    assert.equal(await world.loadHouseInterior(), house); assert.deepEqual(houseStates, [false, true]);
+    assert.equal(await world.loadHouseInterior(), house); assert.deepEqual(houseStates, [true, false, true]);
     world.setSurfaceCullingEnabled(false);
     assert.equal(batch.material.side, THREE.DoubleSide); assert.equal(house.surfaceCullingEnabled, false);
   } finally {
@@ -298,6 +302,8 @@ test('world culling overlaps player loading, honors late changes and shares its 
 test('failed exterior culling preparation preserves authored materials and does not block world readiness', async () => {
   const { root, meshes, material } = cullingWorldFixture();
   const world = new World(new THREE.Scene(), {}, new THREE.LoadingManager());
+  world.preloadHouseInterior = () => {};
+  world.npcManager.loadStartup = async () => {};
   world.physics.init = async () => {}; world.exteriorLodEnabled = false;
   world.staticBatchingEnabled = false; world.staticTransformsEnabled = false;
   const original = { asset: AssetLoader.prototype.loadGLB, player: Player.prototype.load,

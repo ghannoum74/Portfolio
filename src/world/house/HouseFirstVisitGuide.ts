@@ -46,7 +46,7 @@ export function houseTourSteps(house: THREE.Object3D, book?: THREE.Object3D): Ho
   if (awards.length) steps.push({
     id: "awards", target: awards[0], contextTargets: awards, elevation: 0.12,
     cameraMarker: house.getObjectByName("CAMERA_TOUR_AWARDS") ?? house.getObjectByName("CAMERA_AWARDS"),
-    title: "The Achievements", description: "The frames and trophy hold milestones you can inspect with E.",
+    title: "Learning Milestones", description: "Inspect my training at 42 Beirut, SE Factory and beyond with E.",
   });
   const stand = house.getObjectByName("SEC_WORKSHOP_WeaponStand");
   if (stand) steps.push({
